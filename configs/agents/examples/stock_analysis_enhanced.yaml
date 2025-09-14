@@ -1,0 +1,48 @@
+# @package _global_
+# Create enhanced stock analysis agent configuration
+defaults:
+  - /agents/examples/stock_analysis@_self_
+  - /tools/enhanced_stock_analyzer@toolkits.enhanced_python_executor
+  - _self_
+
+# Override toolkit configuration for stock analysis
+toolkits:
+  enhanced_python_executor:
+    config:
+      workspace_root: "./stock_analysis_workspace"
+      save_code: true
+      timeout: 120  # Extended timeout for financial analysis
+      matplotlib_backend: "Agg"
+      
+      # Financial analysis specific settings
+      financial_packages:
+        - pandas>=1.5.0
+        - numpy>=1.21.0
+        - matplotlib>=3.5.0
+        - seaborn>=0.11.0
+        - yfinance>=0.2.0
+        - akshare>=1.0.0
+        - tushare>=1.2.0
+        - plotly>=5.0.0
+        - openpyxl>=3.0.0
+        - xlrd>=2.0.0
+
+# Additional settings for stock analysis
+analysis_config:
+  max_workers: 3
+  save_intermediate_results: true
+  generate_charts: true
+  chart_dpi: 300
+  report_format: "html"
+  
+# Data sources configuration
+data_sources:
+  akshare:
+    enabled: true
+    timeout: 30
+  tushare:
+    enabled: true
+    token_env: "TUSHARE_TOKEN"
+  yfinance:
+    enabled: true
+    timeout: 30

@@ -1,0 +1,191 @@
+[
+    {
+        "question": "分析陕西建工(600248.SH)最新财报数据，比较主要财务指标差异，绘制可视化图表出具报告",
+        "available_agents": [
+            {
+                "agent_name": "DataAgent",
+                "description": "财务数据获取专家，使用专用AKShare工具获取财报数据，不生成代码"
+            },
+            {
+                "agent_name": "DataAnalysisAgent", 
+                "description": "财务数据分析专家，使用标准化分析工具进行财务分析，避免代码生成"
+            },
+            {
+                "agent_name": "FinancialAnalysisAgent",
+                "description": "专业财务分析专家，基于标准化分析结果进行深度解读和投资分析"
+            },
+            {
+                "agent_name": "ChartGeneratorAgent",
+                "description": "财务数据可视化专家，生成趋势图、对比图等专业图表"
+            },
+            {
+                "agent_name": "ReportAgent",
+                "description": "投资分析报告整合专家，生成HTML格式的专业分析报告"
+            }
+        ],
+        "analysis": "这是一个标准化的A股财务分析任务。通过专用工具获取财务数据，使用标准化分析工具进行计算和分析，避免了代码生成的错误和token消耗。整个过程更加稳定、高效。",
+        "plan": [
+            {
+                "agent_name": "DataAgent",
+                "task": "使用get_financial_reports工具获取陕西建工(600248.SH)的完整财务报表数据",
+                "completed": false
+            },
+            {
+                "agent_name": "DataAnalysisAgent",
+                "task": "使用calculate_ratios工具计算所有标准财务比率（盈利能力、偿债能力、运营效率、成长能力）",
+                "completed": false
+            },
+            {
+                "agent_name": "DataAnalysisAgent",
+                "task": "使用analyze_trends工具分析财务数据趋势，包括收入、利润增长趋势",
+                "completed": false
+            },
+            {
+                "agent_name": "DataAnalysisAgent",
+                "task": "使用assess_health工具评估公司财务健康状况，生成风险等级和建议",
+                "completed": false
+            },
+            {
+                "agent_name": "FinancialAnalysisAgent",
+                "task": "基于标准化分析结果进行专业解读，识别投资机会和风险点",
+                "completed": false
+            },
+            {
+                "agent_name": "ChartGeneratorAgent",
+                "task": "生成关键财务指标的可视化图表，包括趋势图和对比图",
+                "completed": false
+            },
+            {
+                "agent_name": "ReportAgent",
+                "task": "整合所有分析结果，生成专业的HTML格式投资分析报告",
+                "completed": false
+            }
+        ]
+    },
+    {
+        "question": "分析贵州茅台(600519.SH)最近3年的财务状况，生成包含营收、利润、ROE趋势的分析报告",
+        "available_agents": [
+            {
+                "agent_name": "DataAgent",
+                "description": "财务数据获取专家，使用专用AKShare工具获取财报数据"
+            },
+            {
+                "agent_name": "DataAnalysisAgent",
+                "description": "财务数据分析专家，使用标准化分析工具进行财务分析"
+            },
+            {
+                "agent_name": "FinancialAnalysisAgent",
+                "description": "专业财务分析专家，基于标准化分析结果进行深度解读"
+            },
+            {
+                "agent_name": "ChartGeneratorAgent",
+                "description": "财务数据可视化专家，生成趋势图、对比图等专业图表"
+            },
+            {
+                "agent_name": "ReportAgent",
+                "description": "投资分析报告整合专家，生成HTML格式的专业分析报告"
+            }
+        ],
+        "analysis": "这是一个标准化的财务分析任务，通过专用工具获取数据并进行分析，避免了代码生成的不确定性。",
+        "plan": [
+            {
+                "agent_name": "DataAgent",
+                "task": "使用get_financial_reports工具获取贵州茅台(600519.SH)最近3年的财务报表数据",
+                "completed": false
+            },
+            {
+                "agent_name": "DataAnalysisAgent",
+                "task": "使用calculate_ratios工具计算关键财务比率，包括ROE、毛利率、净利率等",
+                "completed": false
+            },
+            {
+                "agent_name": "DataAnalysisAgent",
+                "task": "使用analyze_trends工具分析3年趋势，计算CAGR和增长率",
+                "completed": false
+            },
+            {
+                "agent_name": "DataAnalysisAgent",
+                "task": "使用assess_health工具评估财务健康状况，生成综合评分",
+                "completed": false
+            },
+            {
+                "agent_name": "FinancialAnalysisAgent",
+                "task": "基于分析结果进行投资价值评估，提供专业见解",
+                "completed": false
+            },
+            {
+                "agent_name": "ChartGeneratorAgent",
+                "task": "生成营收、利润、ROE的趋势图表",
+                "completed": false
+            },
+            {
+                "agent_name": "ReportAgent",
+                "task": "生成完整的HTML分析报告，包含投资建议",
+                "completed": false
+            }
+        ]
+    },
+    {
+        "question": "对比分析宁德时代(300750.SZ)和比亚迪(002594.SZ)最近2年的财务表现",
+        "available_agents": [
+            {
+                "agent_name": "DataAgent",
+                "description": "财务数据获取专家，使用专用AKShare工具获取多公司数据"
+            },
+            {
+                "agent_name": "DataAnalysisAgent",
+                "description": "财务数据分析专家，使用标准化工具进行对比分析"
+            },
+            {
+                "agent_name": "FinancialAnalysisAgent",
+                "description": "专业财务分析专家，进行多公司对比解读"
+            },
+            {
+                "agent_name": "ChartGeneratorAgent",
+                "description": "财务数据可视化专家，生成对比图表"
+            },
+            {
+                "agent_name": "ReportAgent",
+                "description": "投资分析报告整合专家，生成对比分析报告"
+            }
+        ],
+        "analysis": "这是一个多公司对比分析任务，通过标准化工具可以高效完成对比分析。",
+        "plan": [
+            {
+                "agent_name": "DataAgent",
+                "task": "使用get_financial_reports工具获取宁德时代和比亚迪最近2年的财务数据",
+                "completed": false
+            },
+            {
+                "agent_name": "DataAnalysisAgent",
+                "task": "使用calculate_ratios工具分别计算两家公司的财务比率",
+                "completed": false
+            },
+            {
+                "agent_name": "DataAnalysisAgent",
+                "task": "使用analyze_trends工具对比分析两家公司的发展趋势",
+                "completed": false
+            },
+            {
+                "agent_name": "DataAnalysisAgent",
+                "task": "使用assess_health工具对比评估两家公司的财务健康状况",
+                "completed": false
+            },
+            {
+                "agent_name": "FinancialAnalysisAgent",
+                "task": "进行两家公司的竞争优势和投资价值对比分析",
+                "completed": false
+            },
+            {
+                "agent_name": "ChartGeneratorAgent",
+                "task": "生成两家公司关键指标的对比图表",
+                "completed": false
+            },
+            {
+                "agent_name": "ReportAgent",
+                "task": "生成对比分析报告，包含投资建议",
+                "completed": false
+            }
+        ]
+    }
+]

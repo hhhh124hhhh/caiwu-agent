@@ -1,0 +1,102 @@
+# @package _global_
+# AKShare财务数据获取专用工具配置
+name: "akshare_financial_data"
+description: "专用的A股财务数据获取工具，提供稳定可靠的财报数据接口"
+
+activated_tools:
+  - "get_financial_reports"
+  - "get_key_metrics" 
+  - "get_historical_trend"
+  - "save_financial_data"
+
+config:
+  timeout: 60
+  cache_enabled: true
+  cache_ttl: 3600  # 缓存1小时
+  
+# 支持的数据源配置
+data_sources:
+  akshare:
+    enabled: true
+    timeout: 30
+    retry_count: 2
+    retry_delay: 1
+    
+# 支持的股票代码格式
+supported_stocks:
+  markets: ["SH", "SZ"]  # 上海、深圳
+  codes:
+    - prefix: "6"  # 60开头上海主板
+      market: "SH"
+    - prefix: "0"  # 00开头深圳主板  
+      market: "SZ"
+    - prefix: "3"  # 30开头创业板
+      market: "SZ"
+
+# 财务报表类型
+financial_reports:
+  income_statement:
+    name: "利润表"
+    api_methods: ["stock_profit_sheet_by_report_em", "stock_lrb_em"]
+    key_columns: ["TOTAL_OPERATE_INCOME", "NETPROFIT", "PARENT_NETPROFIT"]
+    
+  balance_sheet:
+    name: "资产负债表"
+    api_methods: ["stock_balance_sheet_by_report_em", "stock_zcfz_em"]
+    key_columns: ["TOTAL_ASSETS", "TOTAL_LIABILITIES", "TOTAL_EQUITY"]
+    
+  cash_flow_statement:
+    name: "现金流量表"
+    api_methods: ["stock_cash_flow_sheet_by_report_em", "stock_xjll_em"]
+    key_columns: ["OPERATE_CASH_FLOW_PS", "INVEST_CASH_FLOW_PS", "FINAN_CASH_FLOW_PS"]
+
+# 关键财务指标定义
+key_metrics:
+  profitability:
+    - name: "revenue_billion"
+      label: "营业收入(亿元)"
+      calculation: "直接获取"
+    - name: "net_profit_billion" 
+      label: "净利润(亿元)"
+      calculation: "直接获取"
+    - name: "parent_profit_billion"
+      label: "归母净利润(亿元)"
+      calculation: "直接获取"
+    - name: "net_profit_margin"
+      label: "净利率(%)"
+      calculation: "净利润/营业收入*100"
+    - name: "roe"
+      label: "ROE(%)"
+      calculation: "归母净利润/净资产*100"
+      
+  financial_position:
+    - name: "total_assets_billion"
+      label: "总资产(亿元)"
+      calculation: "直接获取"
+    - name: "total_liabilities_billion"
+      label: "总负债(亿元)"
+      calculation: "直接获取"
+    - name: "total_equity_billion"
+      label: "净资产(亿元)"
+      calculation: "直接获取"
+    - name: "debt_to_asset_ratio"
+      label: "资产负债率(%)"
+      calculation: "总负债/总资产*100"
+
+# 数据质量控制
+data_quality:
+  enable_validation: true
+  handle_missing:
+    strategy: "forward_fill"  # forward_fill, drop, zero_fill
+    max_missing_ratio: 0.3
+    
+  handle_outliers:
+    method: "iqr"  # iqr, zscore, none
+    threshold: 3.0
+    
+# 错误处理配置
+error_handling:
+  retry_on_failure: true
+  max_retries: 2
+  fallback_methods: true
+  log_level: "INFO"

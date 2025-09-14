@@ -1,0 +1,10 @@
+# Enhanced Python Executor Toolkit Configuration
+name: "enhanced_python_executor"
+description: "Enhanced Python code execution toolkit with code saving functionality"
+activated_tools:
+  - "execute_python_code_enhanced"
+
+config:
+  work_dir: "./run_workdir"
+  timeout: 30
+  default_encoding: "utf-8"

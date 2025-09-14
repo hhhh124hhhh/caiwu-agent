@@ -1,8 +1,4 @@
-from ..config import ConfigLoader
-from .arxiv_toolkit import ArxivToolkit
 from .audio_toolkit import AudioToolkit
-from .base import AsyncBaseToolkit as AsyncBaseToolkit
-from .bash_remote_tool import BashRemoteToolkit
 from .bash_toolkit import BashToolkit
 from .codesnip_toolkit import CodesnipToolkit
 from .document_toolkit import DocumentToolkit
@@ -11,6 +7,7 @@ from .github_toolkit import GitHubToolkit
 from .image_toolkit import ImageToolkit
 from .memory_toolkit import SimpleMemoryToolkit
 from .python_executor_toolkit import PythonExecutorToolkit
+from .enhanced_python_executor_toolkit import EnhancedPythonExecutorToolkit
 from .search_toolkit import SearchToolkit
 from .serper_toolkit import SerperToolkit
 from .tabular_data_toolkit import TabularDataToolkit
@@ -18,18 +15,20 @@ from .user_interaction_toolkit import UserInteractionToolkit as UserInteractionT
 from .video_toolkit import VideoToolkit
 from .wikipedia_toolkit import WikipediaSearchTool
 
+from ..config import ConfigLoader
+from .base import AsyncBaseToolkit
+
 TOOLKIT_MAP = {
     "search": SearchToolkit,
     "document": DocumentToolkit,
     "image": ImageToolkit,
     "file_edit": FileEditToolkit,
     "github": GitHubToolkit,
-    "arxiv": ArxivToolkit,
     "wikipedia": WikipediaSearchTool,
     "codesnip": CodesnipToolkit,
     "bash": BashToolkit,
-    "bash_remote": BashRemoteToolkit,
     "python_executor": PythonExecutorToolkit,
+    "enhanced_python_executor": EnhancedPythonExecutorToolkit,
     "video": VideoToolkit,
     "audio": AudioToolkit,
     "serper": SerperToolkit,

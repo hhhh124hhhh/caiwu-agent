@@ -1,0 +1,222 @@
+# @package _global_
+# 标准化财务分析智能体 - 使用专用工具，零代码生成
+defaults:
+  - /model/base@planner_model
+  - /model/base@reporter_model
+  - /agents/simple_agents/data_analysis_agent@workers.DataAnalysisAgent
+  - /agents/simple_agents/data_analysis_agent@workers.FinancialAnalysisAgent
+  - /agents/simple_agents/analysis_agent@workers.ChartGeneratorAgent
+  - /agents/simple_agents/analysis_agent@workers.ReportAgent
+  - /tools/akshare_financial_data@toolkits.akshare_data
+  - /tools/financial_analysis@toolkits.financial_analyzer
+  - /tools/enhanced_python_executor@toolkits.analysis_executor
+  - _self_
+
+
+type: orchestra
+
+planner_config:
+  examples_path: stock_analysis_examples.json
+  # 关键优化：限制上下文长度
+  max_plan_length: 1000
+  max_trajectory_items: 2
+  enable_context_compression: true
+
+# 简化报告器配置
+reporter_model:
+  model_provider:
+    type: ${oc.env:UTU_LLM_TYPE}
+    model: ${oc.env:UTU_LLM_MODEL}
+    api_key: ${oc.env:UTU_LLM_API_KEY}
+    base_url: ${oc.env:UTU_LLM_BASE_URL}
+  model_settings:
+    max_tokens: 1500  # 限制输出长度
+    temperature: 0.1  # 降低随机性
+
+# 专用数据获取Agent - 不再生成代码
+workers:
+  DataAgent:
+    agent:
+      instructions: |-
+        你是专业的财务数据获取专家。使用专用的AKShare工具获取财报数据，不要生成Python代码。
+        
+        核心工具：
+        - get_financial_reports: 获取完整财务报表
+        - get_key_metrics: 提取关键财务指标  
+        - get_historical_trend: 获取历史趋势数据
+        
+        工作流程：
+        1. 使用get_financial_reports获取数据
+        2. 使用get_key_metrics提取指标
+        3. 保存结果供后续分析
+        
+        注意：直接调用工具，不要写代码。
+    
+  DataAnalysisAgent:
+    agent:
+      instructions: |-
+        财务数据分析专家。使用标准化分析工具进行财务分析，避免编写计算代码。
+        
+        核心工具：
+        - calculate_ratios: 计算所有标准财务比率
+        - analyze_trends: 分析财务数据趋势
+        - assess_health: 评估财务健康状况
+        - generate_report: 生成完整分析报告
+        
+        工作流程：
+        1. 使用calculate_ratios计算盈利能力、偿债能力、运营效率、成长能力指标
+        2. 使用analyze_trends分析收入、利润趋势和增长率
+        3. 使用assess_health评估整体财务健康状况
+        4. 汇总分析结果供后续使用
+        
+        重要：直接调用分析工具，不要编写Python计算代码。
+        
+  FinancialAnalysisAgent:
+    agent:
+      instructions: |-
+        专业财务分析专家。基于标准化分析结果进行深度解读和投资分析。
+        
+        工作方式：
+        - 接收DataAnalysisAgent的分析结果（比率、趋势、健康评估）
+        - 进行专业解读和洞察分析
+        - 识别投资机会和风险点
+        - 提供投资建议
+        
+        分析重点：
+        - 基于财务比率的业绩评估
+        - 趋势分析的深层含义
+        - 财务健康状况的专业判断
+        - 行业地位和竞争力分析
+        
+        注意：专注于分析和解读，不进行基础计算。
+
+# 工具配置
+toolkits:
+  akshare_data:
+    config:
+      workspace_root: "./stock_analysis_workspace"
+      cache_enabled: true
+      timeout: 45
+      
+  financial_analyzer:
+    config:
+      workspace_root: "./stock_analysis_workspace"
+      cache_enabled: true
+      timeout: 30
+      
+  analysis_executor:
+    config:
+      workspace_root: "./stock_analysis_workspace"
+      save_code: true
+      timeout: 60
+      matplotlib_backend: "Agg"
+      max_output_length: 1500
+
+# Agent工作配置
+workers_info:
+  - name: DataAgent
+    desc: 财务数据获取专家
+    strengths: 专用AKShare工具、稳定数据获取、指标提取
+    weaknesses: 依赖网络连接
+    tools:
+      - akshare_financial_data  # 专用财务数据工具
+
+  - name: DataAnalysisAgent
+    desc: 数据分析专家
+    strengths: 标准化分析、指标计算、趋势分析、健康评估
+    weaknesses: 依赖数据质量
+    tools:
+      - financial_analysis
+      - enhanced_python_executor
+
+  - name: FinancialAnalysisAgent
+    desc: 财务分析专家
+    strengths: 深度分析、投资评估、风险识别
+    weaknesses: 依赖数据质量
+    tools:
+      - enhanced_python_executor
+
+  - name: ChartGeneratorAgent
+    desc: 图表生成专家
+    strengths: 数据可视化、趋势图、对比图
+    weaknesses: 依赖数据准确性
+    tools:
+      - enhanced_python_executor
+
+  - name: ReportAgent
+    desc: 报告生成专家
+    strengths: HTML报告、结果整合、专业术语
+    weaknesses: 依赖前期分析质量
+    tools:
+      - enhanced_python_executor
+      - document
+
+# 核心优化配置
+optimization_settings:
+  # 上下文管理
+  context_management:
+    max_history_items: 3
+    compress_long_messages: true
+    remove_duplicate_content: true
+    
+  # 输出控制
+  output_control:
+    max_response_length: 2000
+    enable_concise_mode: true
+    avoid_redundant_explanations: true
+    
+  # 工具调用优化
+  tool_optimization:
+    cache_tool_results: true
+    batch_similar_calls: true
+    error_handling: "fail_fast"  # fail_fast, retry_all, skip_errors
+
+# 分析配置
+analysis_config:
+  workdir: "./stock_analysis_workspace"
+  output_formats: ["html"]
+  chart_formats: ["png"]
+  
+  # 启用数据缓存
+  enable_caching: true
+  cache_duration: 1800  # 30分钟
+  
+  # 结果压缩
+  compress_intermediate_results: true
+  max_intermediate_size: 1000
+
+# 数据源配置（只使用AKShare）
+data_sources:
+  akshare:
+    enabled: true
+    priority: 1
+    
+  # 禁用其他数据源以简化流程
+  web_search:
+    enabled: false
+  tushare:
+    enabled: false
+  yfinance:
+    enabled: false
+
+# Token优化策略
+token_optimization:
+  # 减少系统提示长度
+  shorten_system_prompts: true
+  max_system_prompt_length: 800
+  
+  # 压缩历史对话
+  compress_history: true
+  history_compression_ratio: 0.6
+  
+  # 限制工具输出
+  limit_tool_output: true
+  max_tool_output_length: 800
+  
+  # 结果缓存
+  enable_result_caching: true
+  cache_ttl: 3600
+  
+  # 简化输出格式
+  concise_output: true
+  remove_redundant_details: true

@@ -1,0 +1,131 @@
+# @package _global_
+# 标准化财务分析工具配置
+name: "financial_analysis"
+description: "标准化财务分析工具库，提供稳定的财务比率计算、趋势分析和风险评估功能"
+
+activated_tools:
+  - "calculate_ratios"
+  - "analyze_trends" 
+  - "assess_health"
+  - "generate_report"
+
+config:
+  timeout: 30
+  cache_enabled: true
+  cache_ttl: 1800  # 30分钟缓存
+  
+# 分析参数设置
+analysis_settings:
+  # 趋势分析年数
+  trend_years: 4
+  
+  # 行业基准（可用于对比）
+  industry_benchmarks:
+    default: "general"
+    construction: "construction"
+    technology: "technology"
+    finance: "finance"
+  
+  # 财务健康评估权重
+  health_weights:
+    profitability: 0.3    # 盈利能力
+    solvency: 0.3         # 偿债能力  
+    efficiency: 0.2       # 运营效率
+    growth: 0.2           # 成长能力
+
+# 支持的分析类型
+supported_analysis:
+  ratio_analysis:
+    enabled: true
+    categories:
+      - profitability
+      - solvency
+      - efficiency
+      - growth
+  
+  trend_analysis:
+    enabled: true
+    metrics:
+      - revenue
+      - profit
+      - assets
+      - growth_rates
+  
+  health_assessment:
+    enabled: true
+    risk_levels:
+      - "低风险"
+      - "中等风险" 
+      - "高风险"
+  
+  report_generation:
+    enabled: true
+    formats:
+      - summary
+      - detailed
+      - recommendations
+
+# 数据质量控制
+data_quality:
+  # 缺失值处理
+  missing_data_handling: "ignore"  # ignore, zero_fill, interpolate
+  
+  # 异常值检测
+  outlier_detection: true
+  outlier_threshold: 3.0
+  
+  # 数据验证
+  validation_rules:
+    - ratios_should_be_positive: true
+    - growth_rates_reasonable: true
+    - balance_sheet_balance: true
+
+# 输出格式配置
+output_formats:
+  ratios:
+    format: "dict"
+    include_formulas: true
+    include_benchmarks: false
+    
+  trends:
+    format: "dict"
+    include_charts: false
+    include_forecast: false
+    
+  health:
+    format: "dict"
+    include_recommendations: true
+    include_score_breakdown: true
+    
+  reports:
+    format: "dict"
+    include_all_sections: true
+    executive_summary: true
+
+# 错误处理
+error_handling:
+  # 计算错误处理
+  calculation_errors: "skip"  # skip, fail, warn
+  
+  # 数据不足处理
+  insufficient_data: "skip_calculation"
+  
+  # 异常值处理
+  outlier_handling: "include_with_warning"
+  
+  # 日志级别
+  log_level: "INFO"
+
+# 性能优化
+performance:
+  # 批量计算
+  batch_processing: true
+  batch_size: 100
+  
+  # 结果缓存
+  result_caching: true
+  cache_size: 1000
+  
+  # 并行计算
+  parallel_computation: false
+  max_workers: 4

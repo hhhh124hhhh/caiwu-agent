@@ -1,0 +1,58 @@
+{
+  "stocks": {
+    "stock_600248": {
+      "stock_code": "600248",
+      "cached_date": "2025-09-14T18:34:38.224195",
+      "latest_report_date": "2025-06-30",
+      "data_types": [
+        "income",
+        "balance",
+        "cashflow",
+        "metrics",
+        "trend"
+      ],
+      "file_count": 5
+    },
+    "stock_000858": {
+      "stock_code": "000858",
+      "cached_date": "2025-09-14T18:35:30.548965",
+      "latest_report_date": "2025-06-30",
+      "data_types": [
+        "income",
+        "balance",
+        "cashflow",
+        "metrics",
+        "trend"
+      ],
+      "file_count": 5
+    },
+    "stock_600519": {
+      "stock_code": "600519",
+      "cached_date": "2025-09-14T18:35:11.836401",
+      "latest_report_date": "2025-06-30",
+      "data_types": [
+        "income",
+        "balance",
+        "cashflow",
+        "metrics",
+        "trend"
+      ],
+      "file_count": 5
+    },
+    "stock_002594": {
+      "stock_code": "002594",
+      "cached_date": "2025-09-14T18:35:23.186823",
+      "latest_report_date": "2025-06-30",
+      "data_types": [
+        "income",
+        "balance",
+        "cashflow",
+        "metrics",
+        "trend"
+      ],
+      "file_count": 5
+    }
+  },
+  "last_cleanup": "2025-09-14T18:34:20.235196",
+  "version": "1.0"
+}

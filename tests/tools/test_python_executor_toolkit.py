@@ -13,7 +13,8 @@ a
     result = await toolkit.execute_python_code(code=test_code)
     print(result)
     assert result["success"]
-    assert "1" in result["output"]
+    # Extract output from message
+    assert "1" in result["message"]
 
     test_code_with_plot = """
 import matplotlib.pyplot as plt
@@ -32,6 +33,6 @@ print("Image generated")
     result_plot = await toolkit.execute_python_code(code=test_code_with_plot, workdir="./test_output")
     print(result_plot)
     assert result_plot["success"]
-    assert "Image generated" in result_plot["output"]
+    assert "Image generated" in result_plot["message"]
     assert len(result_plot["files"]) == 1
     assert "output_image.png" in result_plot["files"][0]

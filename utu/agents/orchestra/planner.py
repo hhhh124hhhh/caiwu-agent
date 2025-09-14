@@ -44,7 +44,7 @@ class PlannerAgent:
         self.config = config
         self.llm = SimplifiedAsyncOpenAI(**self.config.planner_model.model_provider.model_dump())
         self.output_parser = OutputParser()
-        self.jinja_env = get_jinja_env(pathlib.Path(__file__).parent / "prompts")
+        self.jinja_env = get_jinja_env(str(pathlib.Path(__file__).parent / "prompts"))
         self.planner_examples = self._load_planner_examples()
         self.available_agents = self._load_available_agents()
 
@@ -64,7 +64,14 @@ class PlannerAgent:
     def _load_available_agents(self) -> list[AgentInfo]:
         available_agents = []
         for info in self.config.workers_info:
-            available_agents.append(AgentInfo(**info))
+            # 只传递 AgentInfo 构造函数接受的参数
+            agent_info_kwargs = {
+                "name": info.get("name", ""),
+                "desc": info.get("desc", ""),
+                "strengths": info.get("strengths", ""),
+                "weaknesses": info.get("weaknesses", "")
+            }
+            available_agents.append(AgentInfo(**agent_info_kwargs))
         return available_agents
 
     async def build(self):

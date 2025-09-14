@@ -1,0 +1,168 @@
+[
+    {
+        "question": "分析贵州茅台(600519.SH)最近3年的财务状况，生成包含营收、利润、ROE趋势的分析报告",
+        "available_agents": [
+            {
+                "agent_name": "SearchAgent",
+                "description": "A股市场和金融数据收集专家，擅长股票信息检索、财报数据收集、行业数据获取、金融API调用"
+            },
+            {
+                "agent_name": "DataAnalysisAgent", 
+                "description": "财报数据处理和基础分析专家，擅长CSV/Excel数据处理、数据清洗、基础统计分析"
+            },
+            {
+                "agent_name": "FinancialAnalysisAgent",
+                "description": "专业财务指标分析专家，擅长财务比率计算、趋势分析、同比环比分析、财务健康评估"
+            },
+            {
+                "agent_name": "ChartGeneratorAgent",
+                "description": "财务数据可视化专家，擅长财务图表制作、趋势图生成、对比图表、交互式图表"
+            },
+            {
+                "agent_name": "ReportAgent",
+                "description": "投资分析报告整合专家，擅长分析结果整合、投资建议生成、风险提示、HTML报告生成"
+            }
+        ],
+        "analysis": "这是一个典型的A股财务分析任务，需要系统性地分析贵州茅台的财务状况。任务涉及多个专业领域：首先需要获取公司最近3年的财务数据，包括营收、利润、ROE等核心指标；然后进行数据处理和清洗；接着计算关键财务比率并进行趋势分析；最后生成可视化图表和专业分析报告。整个过程需要金融专业知识、数据处理能力和报告生成技能的协作。",
+        "plan": [
+            {
+                "agent_name": "SearchAgent",
+                "task": "使用AKShare的stock_lrb_em、stock_zcfz_em、stock_xjll_em接口获取贵州茅台(600519.SH)最近3年的财务报表数据，包括利润表、资产负债表、现金流量表",
+                "completed": false
+            },
+            {
+                "agent_name": "SearchAgent", 
+                "task": "使用AKShare获取贵州茅台所属白酒行业的主要竞争对手数据，获取五粮液(000858.SZ)、洋河股份(002304.SZ)等同行业公司的最新财务指标",
+                "completed": false
+            },
+            {
+                "agent_name": "DataAnalysisAgent",
+                "task": "对获取的财务数据进行清洗和预处理，处理缺失值、异常值，确保数据质量和一致性",
+                "completed": false
+            },
+            {
+                "agent_name": "DataAnalysisAgent",
+                "task": "将处理后的数据整理成结构化格式，按年度和季度组织，便于后续分析使用",
+                "completed": false
+            },
+            {
+                "agent_name": "FinancialAnalysisAgent",
+                "task": "计算贵州茅台的关键财务比率：ROE、ROA、毛利率、净利率、负债率、流动比率等指标",
+                "completed": false
+            },
+            {
+                "agent_name": "FinancialAnalysisAgent",
+                "task": "进行财务趋势分析，分析营收、利润、ROE等指标近3年的变化趋势，计算同比和环比增长率",
+                "completed": false
+            },
+            {
+                "agent_name": "FinancialAnalysisAgent",
+                "task": "进行同行业对比分析，将贵州茅台的财务指标与行业平均水平及主要竞争对手进行对比",
+                "completed": false
+            },
+            {
+                "agent_name": "FinancialAnalysisAgent",
+                "task": "评估公司财务健康状况，识别优势和风险点，包括盈利能力、偿债能力、运营效率等方面",
+                "completed": false
+            },
+            {
+                "agent_name": "ChartGeneratorAgent",
+                "task": "生成营收和利润趋势图（2019-2023年），展示年度变化趋势",
+                "completed": false
+            },
+            {
+                "agent_name": "ChartGeneratorAgent",
+                "task": "制作ROE和主要盈利能力指标对比图，包括同行业对比数据",
+                "completed": false
+            },
+            {
+                "agent_name": "ChartGeneratorAgent",
+                "task": "创建财务健康雷达图，综合展示公司的各项财务指标表现",
+                "completed": false
+            },
+            {
+                "agent_name": "ChartGeneratorAgent",
+                "task": "生成交互式仪表板，整合所有关键财务指标和趋势数据",
+                "completed": false
+            },
+            {
+                "agent_name": "ReportAgent",
+                "task": "整合所有分析结果，生成专业的HTML格式投资分析报告",
+                "completed": false
+            },
+            {
+                "agent_name": "ReportAgent",
+                "task": "在报告中包含投资建议、风险提示和未来展望部分",
+                "completed": false
+            },
+            {
+                "agent_name": "ReportAgent",
+                "task": "生成Excel格式的数据附件，包含所有原始数据和分析结果",
+                "completed": false
+            }
+        ]
+    },
+    {
+        "question": "分析新能源板块(如宁德时代、比亚迪)最近2年的财务表现对比，并评估行业发展趋势",
+        "available_agents": [
+            {
+                "agent_name": "SearchAgent",
+                "description": "A股市场和金融数据收集专家，擅长股票信息检索、财报数据收集、行业数据获取"
+            },
+            {
+                "agent_name": "DataAnalysisAgent",
+                "description": "财报数据处理和基础分析专家，擅长CSV/Excel数据处理、数据清洗、基础统计分析"
+            },
+            {
+                "agent_name": "FinancialAnalysisAgent", 
+                "description": "专业财务指标分析专家，擅长财务比率计算、趋势分析、同比环比分析"
+            },
+            {
+                "agent_name": "ChartGeneratorAgent",
+                "description": "财务数据可视化专家，擅长财务图表制作、趋势图生成、对比图表"
+            },
+            {
+                "agent_name": "ReportAgent",
+                "description": "投资分析报告整合专家，擅长分析结果整合、投资建议生成、风险提示"
+            }
+        ],
+        "analysis": "这是一个多公司对比分析任务，需要分析新能源板块代表企业的财务表现并进行行业评估。任务涉及多家公司的数据收集、对比分析、趋势识别和行业评估，需要综合运用数据收集、财务分析、可视化和报告生成能力。",
+        "plan": [
+            {
+                "agent_name": "SearchAgent",
+                "task": "获取宁德时代(300750.SZ)、比亚迪(002594.SZ)最近2年的完整财务报表数据",
+                "completed": false
+            },
+            {
+                "agent_name": "SearchAgent",
+                "task": "收集新能源汽车行业的整体数据，包括市场规模、增长率、政策环境等信息",
+                "completed": false
+            },
+            {
+                "agent_name": "DataAnalysisAgent", 
+                "task": "对多家公司的数据进行标准化处理，确保数据口径一致便于对比",
+                "completed": false
+            },
+            {
+                "agent_name": "FinancialAnalysisAgent",
+                "task": "计算两家公司的关键财务指标并进行对比分析，识别各自的优势和劣势",
+                "completed": false
+            },
+            {
+                "agent_name": "FinancialAnalysisAgent",
+                "task": "分析新能源行业的发展趋势和两家公司的市场定位",
+                "completed": false
+            },
+            {
+                "agent_name": "ChartGeneratorAgent",
+                "task": "制作两家公司的财务指标对比图表，展示关键差异",
+                "completed": false
+            },
+            {
+                "agent_name": "ReportAgent",
+                "task": "生成新能源板块对比分析报告，包含行业趋势和投资建议",
+                "completed": false
+            }
+        ]
+    }
+]

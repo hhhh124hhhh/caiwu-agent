@@ -1,0 +1,22 @@
+# @package _global_
+# Enhanced Python Executor Toolkit for stock analysis
+defaults:
+  - _self_
+
+config:
+  name: enhanced_python_executor
+  workspace_root: "./stock_analysis_workspace"
+  save_code: true  # Always save code for stock analysis
+  timeout: 60
+  matplotlib_backend: "Agg"
+
+# Additional configurations for financial analysis
+financial_packages:
+  - pandas
+  - numpy
+  - matplotlib
+  - seaborn
+  - yfinance  # For stock data
+  - akshare   # For A-share data
+  - tushare   # For Chinese stock data
+  - plotly    # For interactive charts
