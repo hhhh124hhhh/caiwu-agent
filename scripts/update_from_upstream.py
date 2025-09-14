@@ -31,6 +31,31 @@ def check_for_conflicts():
     except subprocess.CalledProcessError:
         return []
 
+def get_remote_name():
+    """Get the name of the remote that points to the user's repository"""
+    try:
+        result = subprocess.run("git remote -v", shell=True, check=True,
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                              text=True)
+        remotes = result.stdout.strip()
+        
+        # Look for remotes that point to the user's repository
+        for line in remotes.split('\n'):
+            if 'hhhh124hhhh/caiwu-agent' in line and 'push' in line:
+                return line.split()[0]
+        
+        # Default to 'hhhh124hhhh' if found
+        if 'hhhh124hhhh' in remotes:
+            return 'hhhh124hhhh'
+            
+        # Fallback to 'caiwu-agent' if found
+        if 'caiwu-agent' in remotes:
+            return 'caiwu-agent'
+            
+        return None
+    except subprocess.CalledProcessError:
+        return None
+
 def main():
     print("Updating from upstream Youtu-Agent repository...")
     
@@ -65,7 +90,7 @@ def main():
         print("\nPlease resolve conflicts manually, then run:")
         print("  git add <resolved-files>")
         print("  git commit")
-        print("  git push origin main")
+        print("  git push <your-remote> main")
         sys.exit(1)
     elif merge_result is None:
         print("Failed to merge upstream changes")
@@ -76,9 +101,18 @@ def main():
     
     # Push to your repository
     print("4. Pushing changes to your repository...")
-    push_result = run_command(f"git push origin {current_branch}")
+    remote_name = get_remote_name()
+    if not remote_name:
+        print("Could not determine your remote repository name")
+        print("Please push manually using:")
+        print("  git push <your-remote-name> main")
+        sys.exit(1)
+    
+    push_result = run_command(f"git push {remote_name} {current_branch}")
     if push_result is None:
-        print("Failed to push changes to your repository")
+        print(f"Failed to push changes to your repository ({remote_name})")
+        print("Please check your remote configuration with:")
+        print("  git remote -v")
         sys.exit(1)
     
     print("Update completed successfully!")
