@@ -3,13 +3,11 @@ https://github.com/bytedance/SandboxFusion
 https://bytedance.github.io/SandboxFusion/docs/docs/get-started
 """
 
-from collections.abc import Callable
-
 import requests
 
 from ..config import ToolkitConfig
 from ..utils import get_logger, oneline_object
-from .base import AsyncBaseToolkit
+from .base import AsyncBaseToolkit, register_tool
 
 logger = get_logger(__name__)
 
@@ -51,6 +49,7 @@ class CodesnipToolkit(AsyncBaseToolkit):
         super().__init__(config)
         self.server_url = self.config.config.get("server_url")
 
+    @register_tool
     async def run_code(self, code: str, language: str = "python") -> str:
         """Run code in sandbox and return the result.
         Supported languages: python, cpp, nodejs, go, go_test, java, php, csharp, bash, typescript, sql, rust, cuda,
@@ -71,8 +70,3 @@ class CodesnipToolkit(AsyncBaseToolkit):
         result = response.json()
         logger.info(f"[tool] run_code ```{oneline_object(payload)}``` got result: {oneline_object(result)}")
         return str(result)
-
-    async def get_tools_map(self) -> dict[str, Callable]:
-        return {
-            "run_code": self.run_code,
-        }

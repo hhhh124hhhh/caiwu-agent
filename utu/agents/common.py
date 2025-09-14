@@ -1,4 +1,5 @@
 import asyncio
+import traceback
 from collections.abc import AsyncIterator
 from dataclasses import asdict, dataclass, field
 from typing import Any
@@ -29,11 +30,13 @@ class DataClassWithStreamEvents:
                 self._is_complete = True
                 break
 
+            # print(f"self._is_complete: {self._is_complete}, self._event_queue: {self._event_queue}")
             if self._is_complete and self._event_queue.empty():
                 break
             try:
                 item = await self._event_queue.get()
             except asyncio.CancelledError:
+                logger.debug("Breaking due to asyncio.CancelledError")
                 break
             if isinstance(item, QueueCompleteSentinel):
                 self._event_queue.task_done()
@@ -57,6 +60,8 @@ class DataClassWithStreamEvents:
             if run_impl_exc and isinstance(run_impl_exc, Exception):
                 # if isinstance(run_impl_exc, AgentsException) and run_impl_exc.run_data is None:
                 #     run_impl_exc.run_data = self._create_error_details()
+                logger.error(f"run_impl_exc: {run_impl_exc}")
+                logger.error(traceback.format_exc())
                 self._stored_exception = run_impl_exc
 
     def to_dict(self):

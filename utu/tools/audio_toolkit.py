@@ -1,10 +1,8 @@
-from collections.abc import Callable
-
 from openai.types.audio import TranscriptionVerbose
 
 from ..config import ToolkitConfig
 from ..utils import DIR_ROOT, EnvUtils, FileUtils, SimplifiedAsyncOpenAI, async_file_cache, get_logger
-from .base import TOOL_PROMPTS, AsyncBaseToolkit
+from .base import TOOL_PROMPTS, AsyncBaseToolkit, register_tool
 
 logger = get_logger(__name__)
 
@@ -12,12 +10,11 @@ logger = get_logger(__name__)
 class AudioToolkit(AsyncBaseToolkit):
     def __init__(self, config: ToolkitConfig = None) -> None:
         super().__init__(config)
-        # For audio transcribe, we use OpenAI's API
-        self.client = SimplifiedAsyncOpenAI(
-            model=config.config["audio_model"]["model"],
-            api_key=EnvUtils.get_env("OPENAI_API_KEY"),
-            base_url=EnvUtils.get_env("OPENAI_BASE_URL"),
+        self.audio_client = SimplifiedAsyncOpenAI(
+            api_key=EnvUtils.get_env("UTU_AUDIO_LLM_API_KEY"),  # NOTE: you should set these envs in .env
+            base_url=EnvUtils.get_env("UTU_AUDIO_LLM_BASE_URL"),
         )
+        self.audio_model = EnvUtils.get_env("UTU_AUDIO_LLM_MODEL")
         self.llm = SimplifiedAsyncOpenAI(**config.config_llm.model_provider.model_dump())
         self.md5_to_path = {}
 
@@ -25,8 +22,8 @@ class AudioToolkit(AsyncBaseToolkit):
     async def transcribe(self, md5: str) -> dict:
         # model: gpt-4o-transcribe, gpt-4o-mini-transcribe, and whisper-1
         fn = self.md5_to_path[md5]
-        transcript: TranscriptionVerbose = await self.client.audio.transcriptions.create(
-            model=self.config.config["audio_model"]["model"],
+        transcript: TranscriptionVerbose = await self.audio_client.audio.transcriptions.create(
+            model=self.audio_model,
             file=open(fn, "rb"),
             response_format="verbose_json",
             timestamp_granularities=["segment"],
@@ -46,6 +43,7 @@ class AudioToolkit(AsyncBaseToolkit):
         self.md5_to_path[md5] = path  # record md5 to map
         return md5
 
+    @register_tool
     async def audio_qa(self, audio_path: str, question: str) -> str:
         """Asks a question about the audio and gets an answer.
 
@@ -68,8 +66,3 @@ class AudioToolkit(AsyncBaseToolkit):
         ]
         output = await self.llm.query_one(messages=messages, **self.config.config_llm.model_params.model_dump())
         return output
-
-    async def get_tools_map(self) -> dict[str, Callable]:
-        return {
-            "audio_qa": self.audio_qa,
-        }

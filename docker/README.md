@@ -52,8 +52,8 @@ SERPER_API_KEY=<your-serper-key>
 
 # Frontend Configuration
 # Note: IP must be 0.0.0.0 for Docker container port forwarding
-FRONTEND_PORT=8848
-FRONTEND_IP=0.0.0.0
+UTU_WEBUI_PORT=8848
+UTU_WEBUI_IP=0.0.0.0
 ```
 
 ### Step 4. Launch the Service

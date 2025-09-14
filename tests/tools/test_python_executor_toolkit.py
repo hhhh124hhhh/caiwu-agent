@@ -13,7 +13,6 @@ a
     result = await toolkit.execute_python_code(code=test_code)
     print(result)
     assert result["success"]
-    # Extract output from message
     assert "1" in result["message"]
 
     test_code_with_plot = """
@@ -30,7 +29,7 @@ plt.grid(True)
 
 print("Image generated")
 """
-    result_plot = await toolkit.execute_python_code(code=test_code_with_plot, workdir="./test_output")
+    result_plot = await toolkit.execute_python_code(code=test_code_with_plot)
     print(result_plot)
     assert result_plot["success"]
     assert "Image generated" in result_plot["message"]

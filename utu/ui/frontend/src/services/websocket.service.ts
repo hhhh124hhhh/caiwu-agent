@@ -1,6 +1,8 @@
 import { useCallback } from 'react';
 import useWebSocket, { ReadyState } from 'react-use-websocket';
 
+import type { UserRequest } from '../types/requests';
+
 export const useChatWebSocket = (ws_url: string) => {
   const { sendMessage, lastMessage, readyState, getWebSocket } = useWebSocket(ws_url, {
     onError: (event) => {
@@ -19,8 +21,20 @@ export const useChatWebSocket = (ws_url: string) => {
     if (readyState === ReadyState.OPEN) {
       const message = JSON.stringify({
         type: 'query',
-        query: query
+        content: {
+          query: query
+        }
       });
+      sendMessage(message);
+      return true;
+    }
+    console.error('WebSocket is not connected');
+    return false;
+  }, [readyState, sendMessage]);
+
+  const sendRequest = useCallback((request: UserRequest) => {
+    if (readyState === ReadyState.OPEN) {
+      const message = JSON.stringify(request);
       sendMessage(message);
       return true;
     }
@@ -30,6 +44,7 @@ export const useChatWebSocket = (ws_url: string) => {
 
   return {
     sendQuery,
+    sendRequest,
     lastMessage,
     readyState,
     getWebSocket,

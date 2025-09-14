@@ -1,20 +1,69 @@
 from __future__ import annotations
 
 import asyncio
+import pathlib
 
 from agents import custom_span, gen_trace_id, trace
+from pydantic import BaseModel
 from rich.console import Console
 
-from .agents.planner_agent import WebSearchItem, WebSearchPlan, planner_agent
-from .agents.search_agent import search_agent
-from .agents.writer_agent import ReportData, writer_agent
-from .printer import Printer
+from examples.research.printer import Printer
+from utu.agents import SimpleAgent
+from utu.config import ConfigLoader
+from utu.tools import SearchToolkit
+from utu.utils import FileUtils
+
+PROMPTS = FileUtils.load_yaml(pathlib.Path(__file__).parent / "prompts.yaml")
+
+
+class WebSearchItem(BaseModel):
+    reason: str
+    "Your reasoning for why this search is important to the query."
+
+    query: str
+    "The search term to use for the web search."
+
+
+class WebSearchPlan(BaseModel):
+    searches: list[WebSearchItem]
+    """A list of web searches to perform to best answer the query."""
+
+
+class ReportData(BaseModel):
+    short_summary: str
+    """A short 2-3 sentence summary of the findings."""
+
+    markdown_report: str
+    """The final report"""
+
+    follow_up_questions: list[str]
+    """Suggested topics to research further"""
 
 
 class ResearchManager:
     def __init__(self):
         self.console = Console()
         self.printer = Printer(self.console)
+
+    async def build(self):
+        self.planner_agent = SimpleAgent(
+            name="PlannerAgent",
+            instructions=PROMPTS["PLANNER_PROMPT"],
+            # model="gpt-4o",
+            output_type=WebSearchPlan,
+        )
+        toolkit = SearchToolkit(ConfigLoader.load_toolkit_config("search"))
+        self.search_agent = SimpleAgent(
+            name="Search agent",
+            instructions=PROMPTS["SEARCH_PROMPT"],
+            tools=await toolkit.get_tools_in_agents(),
+        )
+        self.writer_agent = SimpleAgent(
+            name="WriterAgent",
+            instructions=PROMPTS["WRITER_PROMPT"],
+            # model="o3-mini",
+            output_type=ReportData,
+        )
 
     async def run(self, query: str) -> None:
         trace_id = gen_trace_id()
@@ -49,7 +98,7 @@ class ResearchManager:
 
     async def _plan_searches(self, query: str) -> WebSearchPlan:
         self.printer.update_item("planning", "Planning searches...")
-        result = await planner_agent.run(
+        result = await self.planner_agent.run(
             f"Query: {query}",
         )
         self.printer.update_item(
@@ -78,7 +127,7 @@ class ResearchManager:
     async def _search(self, item: WebSearchItem) -> str | None:
         input = f"Search term: {item.query}\nReason for searching: {item.reason}"
         try:
-            result = await search_agent.run(
+            result = await self.search_agent.run(
                 input,
             )
             return str(result.final_output)
@@ -88,18 +137,19 @@ class ResearchManager:
     async def _write_report(self, query: str, search_results: list[str]) -> ReportData:
         self.printer.update_item("writing", "Thinking about report...")
         input = f"Original query: {query}\nSummarized search results: {search_results}"
-        result = await writer_agent.run(
+        result = await self.writer_agent.run(
             input,
         )
         self.printer.mark_item_done("writing")
         return result.get_run_result().final_output_as(ReportData)
 
 
-async def main() -> None:
-    async with planner_agent, search_agent, writer_agent:  # agent context control
-        query = input("What would you like to research? ")
-        await ResearchManager().run(query)
+async def main(query: str) -> None:
+    research_manager = ResearchManager()
+    await research_manager.build()
+    await research_manager.run(query)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    query = input("What would you like to research? ")
+    asyncio.run(main(query))

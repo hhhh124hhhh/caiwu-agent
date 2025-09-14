@@ -6,11 +6,9 @@ Support backends:
 - pymupdf: <https://github.com/pymupdf/PyMuPDF>
 """
 
-from collections.abc import Callable
-
 from ..config import ToolkitConfig
 from ..utils import CACHE_DIR, FileUtils, SimplifiedAsyncOpenAI, get_logger
-from .base import TOOL_PROMPTS, AsyncBaseToolkit
+from .base import TOOL_PROMPTS, AsyncBaseToolkit, register_tool
 
 logger = get_logger(__name__)
 
@@ -50,6 +48,7 @@ class DocumentToolkit(AsyncBaseToolkit):
         self.md5_to_path[md5] = path  # record md5 to map
         return md5
 
+    @register_tool
     async def document_qa(self, document_path: str, question: str | None = None) -> str:
         """Get file content summary or answer questions about attached document.
 
@@ -77,8 +76,3 @@ class DocumentToolkit(AsyncBaseToolkit):
                 f"You did not provide a particular question, so here is a detailed caption for the document: {output}"
             )
         return output
-
-    async def get_tools_map(self) -> dict[str, Callable]:
-        return {
-            "document_qa": self.document_qa,
-        }

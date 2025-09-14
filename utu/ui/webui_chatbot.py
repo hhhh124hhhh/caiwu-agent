@@ -1,7 +1,6 @@
 import asyncio
 import json
 import traceback
-from dataclasses import asdict
 from importlib import resources
 
 import agents as ag
@@ -11,11 +10,12 @@ import tornado.websocket
 from utu.agents.orchestra import OrchestraStreamEvent
 from utu.agents.orchestra_agent import OrchestraAgent
 from utu.agents.simple_agent import SimpleAgent
+from utu.utils import EnvUtils
 
 from .common import (
     Event,
     ExampleContent,
-    UserQuery,
+    UserRequest,
     handle_new_agent,
     handle_orchestra_events,
     handle_raw_stream_events,
@@ -35,29 +35,32 @@ class WebSocketHandler(tornado.websocket.WebSocketHandler):
     def open(self):
         # print("WebSocket opened")
         # send example query
-        self.write_message(asdict(Event("example", ExampleContent(type="example", query=self.example_query))))
+        self.write_message(
+            Event(type="example", data=ExampleContent(type="example", query=self.example_query)).model_dump()
+        )
 
     async def send_event(self, event: Event):
         # print in green color
-        print(f"\033[92mSending event: {asdict(event)}\033[0m")
-        self.write_message(asdict(event))
+        print(f"\033[92mSending event: {event.model_dump()}\033[0m")
+        self.write_message(event.model_dump())
 
     async def on_message(self, message: str):
         try:
             data = json.loads(message)
-            if data.get("type") == "query":
+            user_request = UserRequest(**data)
+            if user_request.type == "query":
                 try:
-                    query = UserQuery(**data)
+                    content = user_request.content
                     # check query not empty
-                    if query.query.strip() == "":
+                    if content.query.strip() == "":
                         raise ValueError("Query cannot be empty")
 
                     # print(f"Received query: {query.query}")
                     # Echo back the query in the response
                     if isinstance(self.agent, OrchestraAgent):
-                        stream = self.agent.run_streamed(query.query)
+                        stream = self.agent.run_streamed(content.query)
                     elif isinstance(self.agent, SimpleAgent):
-                        self.agent.input_items.append({"role": "user", "content": query.query})
+                        self.agent.input_items.append({"role": "user", "content": content.query})
                         # print in red color
                         print(f"\033[91mInput items: {self.agent.input_items}\033[0m")
                         stream = self.agent.run_streamed(self.agent.input_items)
@@ -122,7 +125,9 @@ class WebUIChatbot:
         with resources.as_file(resources.files("utu_agent_ui.static").joinpath("index.html")) as static_dir:
             self.static_path = str(static_dir).replace("index.html", "")
 
-    def make_app(self) -> tornado.web.Application:
+    def make_app(self, autoload: bool | None = None) -> tornado.web.Application:
+        if autoload is None:
+            autoload = EnvUtils.get_env("UTU_WEBUI_AUTOLOAD", "false") == "true"
         return tornado.web.Application(
             [
                 (r"/ws", WebSocketHandler, {"agent": self.agent, "example_query": self.example_query}),
@@ -137,21 +142,21 @@ class WebUIChatbot:
                     {"path": self.static_path, "default_filename": "index.html"},
                 ),
             ],
-            debug=True,
+            debug=autoload,
         )
 
-    async def __launch(self, port: int = 8848, ip: str = "127.0.0.1"):
+    async def __launch(self, port: int = 8848, ip: str = "127.0.0.1", autoload: bool | None = None):
         await self.agent.build()
         app = self.make_app()
         app.listen(port, address=ip)
         print(f"Server started at http://{ip}:{port}/")
         await asyncio.Event().wait()
 
-    async def launch_async(self, port: int = 8848, ip: str = "127.0.0.1"):
-        await self.__launch(port=port, ip=ip)
+    async def launch_async(self, port: int = 8848, ip: str = "127.0.0.1", autoload: bool | None = None):
+        await self.__launch(port=port, ip=ip, autoload=autoload)
 
-    def launch(self, port: int = 8848, ip: str = "127.0.0.1"):
-        asyncio.run(self.__launch(port=port, ip=ip))
+    def launch(self, port: int = 8848, ip: str = "127.0.0.1", autoload: bool | None = None):
+        asyncio.run(self.__launch(port=port, ip=ip, autoload=autoload))
 
 
 if __name__ == "__main__":

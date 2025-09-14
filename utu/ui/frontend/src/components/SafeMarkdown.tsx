@@ -1,4 +1,4 @@
-import React, { useMemo, useState, memo } from 'react';
+import React, { useMemo, useState, memo, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import type { Components } from 'react-markdown';
 import remarkMath from 'remark-math';
@@ -8,11 +8,17 @@ import rehypeRaw from 'rehype-raw';
 import Mermaid from './Mermaid';
 import BrokenImagePlaceholder from './BrokenImagePlaceholder';
 
-type CodeProps = React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
-  inline?: boolean;
-  className?: string;
-  children?: React.ReactNode;
-};
+// type CodeProps = React.DetailedHTMLProps<React.HTMLAttributes<HTMLElement>, HTMLElement> & {
+//   inline?: boolean;
+//   className?: string;
+//   children?: React.ReactNode;
+// };
+
+interface MarkdownContentPart {
+  type: "text" | "mermaid";
+  content: string;
+  inCompleteMermaid?: boolean;
+}
 
 // Memoized image component to prevent re-renders
 const ImageWithErrorHandling = memo(({ src, alt, ...props }: { src?: string; alt?: string; [key: string]: any }) => {
@@ -36,7 +42,10 @@ const ImageWithErrorHandling = memo(({ src, alt, ...props }: { src?: string; alt
 ImageWithErrorHandling.displayName = 'ImageWithErrorHandling';
 
 // SafeMarkdown component with error boundary and type checking
-const SafeMarkdown: React.FC<{ children: React.ReactNode }> = memo(({ children }) => {
+const SafeMarkdown: React.FC<{ children: React.ReactNode, messageId: String }> = memo(({ children, messageId }) => {
+  // const [mermaidCount, setMermaidCount] = useState(0);
+  const [markdownParts, setMarkdownParts] = useState<Array<MarkdownContentPart>>([]);
+  
   // Function to decode Unicode escape sequences like \u975ePDF
   const decodeUnicodeEscapes = (str: string): string => {
     return str.replace(/\\u([\dA-Fa-f]{4})/g, (_, hex) => {
@@ -44,40 +53,80 @@ const SafeMarkdown: React.FC<{ children: React.ReactNode }> = memo(({ children }
     });
   };
 
-  try {
-    // Convert children to string and decode Unicode escapes
-    const content = useMemo(() => {
-      const str = typeof children === 'string' ? children : String(children);
-      return decodeUnicodeEscapes(str);
-    }, [children]);
-    
+  const removeMermaidStartDelimiter = (content: string) => {
+    return content.replace(/```mermaid/g, '');
+  };
+
+  const removeMermaidEndDelimiter = (content: string) => {
+    return content.replace(/```/g, '');
+  };
+
+  // Convert children to string and decode Unicode escapes
+  const content = useMemo(() => {
+    const str = typeof children === 'string' ? children : String(children);
+    return decodeUnicodeEscapes(str);
+  }, [children]);
+
+  useEffect(() => {
     // Return early if content is empty
-    if (!content.trim()) return null;
-    
-    // Extract mermaid code blocks for custom rendering
-    // const mermaidChunks = content.match(/```mermaid\n([\s\S]*?)\n```/g) || [];
-    // const mermaidContents = mermaidChunks.map(chunk => 
-    //   chunk.replace(/^```mermaid\n|```$/g, '').trim()
-    // );
-    
-    const components: Components = {
-      // Custom rendering for code blocks
-      code({inline, className, children, ...props}: CodeProps) {
-        const match = /language-(\w+)/.exec(className || '');
-        
-        // Handle mermaid code blocks
-        if (!inline && match && match[1] === 'mermaid') {
-          const content = String(children).replace(/\n$/, '');
-          return <Mermaid chart={content} />;
+    if (!content.trim()) {
+      return;
+    }
+
+    let splitedContentParts: Array<MarkdownContentPart> = [];
+    let mermaidPattern = /^```mermaid\s*?\n([\s\S]*?)\n```$/gm;
+    let inCompleteMermaidPattern = /^```mermaid\s*?\n([\s\S]*?)\z/gm;
+
+    let mermaidMatches = content.matchAll(mermaidPattern);
+
+    if (mermaidMatches) {
+      let contentStartIndex = 0;
+      let matchArr = Array.from(mermaidMatches);
+      for (let i = 0; i < matchArr.length; i++) {
+        let match = matchArr[i];
+        let mermaidContent = match[0];
+        let mermaidStartIndex = match.index;
+        let mermaidEndIndex = mermaidStartIndex + mermaidContent.length;
+
+        mermaidContent = removeMermaidStartDelimiter(mermaidContent);
+        mermaidContent = removeMermaidEndDelimiter(mermaidContent);
+
+        if (contentStartIndex < mermaidStartIndex) {
+          let contentBeforeMermaid = content.substring(contentStartIndex, mermaidStartIndex);
+          splitedContentParts.push({type: "text", content: contentBeforeMermaid});
         }
         
-        // Default code block rendering
-        return (
-          <code className={className} {...props}>
-            {children}
-          </code>
-        );
-      },
+        splitedContentParts.push({type: "mermaid", content: mermaidContent});
+        contentStartIndex = mermaidEndIndex;
+      }
+      if (contentStartIndex < content.length) {
+        let contentAfterMermaid = content.substring(contentStartIndex, content.length);
+        
+        let inCompleteMermaidMatches = content.matchAll(inCompleteMermaidPattern);
+        // at most one match
+        let inCompleteMermaidMatch = inCompleteMermaidMatches.next().value;
+
+        let realContentBeforeFinalMermaid = contentAfterMermaid;
+        
+        if (inCompleteMermaidMatch) {
+          let inCompleteMermaidContent = inCompleteMermaidMatch[0];
+          let inCompleteMermaidStartIndex = inCompleteMermaidMatch.index;
+          realContentBeforeFinalMermaid = contentAfterMermaid.substring(0, inCompleteMermaidStartIndex);
+          splitedContentParts.push({type: "text", content: realContentBeforeFinalMermaid});
+          splitedContentParts.push({type: "mermaid", content: inCompleteMermaidContent, inCompleteMermaid: true});
+        } else {
+          splitedContentParts.push({type: "text", content: realContentBeforeFinalMermaid});
+        }
+      }
+    } else {
+      splitedContentParts.push({type: "text", content: content});
+    }
+
+    setMarkdownParts(splitedContentParts);
+  }, [children]);
+
+  try {
+    const components: Components = {
       // Use memoized image component
       img: ImageWithErrorHandling,
       // Custom heading component to avoid conflicts with Mermaid
@@ -86,16 +135,38 @@ const SafeMarkdown: React.FC<{ children: React.ReactNode }> = memo(({ children }
       h3: ({node, ...props}) => <h3 className="markdown-h3" {...props} />,
     };
 
+    // const DebouncedMermaid = memo(({ chart, mermaidId }: { chart: string, mermaidId: string }) => {
+    //   const [isVisible, setIsVisible] = useState(false);
+
+    //   useEffect(() => {
+    //     const timer = setTimeout(() => setIsVisible(true), 200);
+    //     return () => clearTimeout(timer);
+    //   }, []);
+
+    //   return isVisible ? <Mermaid chart={chart} mermaidId={mermaidId} /> : <BrokenImagePlaceholder src={chart} alt="Mermaid Chart" />;
+    // });
+
     return (
       <div className="markdown-content">
-        <ReactMarkdown
-          remarkPlugins={[remarkMath, remarkGfm]}
-          rehypePlugins={[rehypeRaw, rehypeKatex]}
-          components={components}
-          skipHtml={false}
-        >
-          {content}
-        </ReactMarkdown>
+        {markdownParts.map((part, index) => {
+          if (part.type === "text") {
+            return <ReactMarkdown
+              key={index}
+              remarkPlugins={[remarkMath, remarkGfm]}
+              rehypePlugins={[rehypeRaw, rehypeKatex]}
+              components={components}
+              skipHtml={false}
+            >
+              {part.content}
+            </ReactMarkdown>;
+          } else if (part.type === "mermaid") {
+            if (part.inCompleteMermaid) {
+              return <BrokenImagePlaceholder key={index} src="" alt="Mermaid Chart" />;
+            } else {
+              return <Mermaid key={index} chart={part.content} mermaidId={messageId + "-mermaid" + "-" + index} />;
+            }
+          }
+        })}
       </div>
     );
   } catch (error) {

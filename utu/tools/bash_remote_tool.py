@@ -1,11 +1,10 @@
 import uuid
-from collections.abc import Callable
 
 import httpx
 
 from ..config import ToolkitConfig
 from ..utils import get_logger
-from .base import AsyncBaseToolkit
+from .base import AsyncBaseToolkit, register_tool
 
 logger = get_logger(__name__)
 
@@ -44,6 +43,7 @@ class BashRemoteToolkit(AsyncBaseToolkit):
         if not (response.status_code == 200):
             logger.info(f"Failed to close terminal with session_info: {self.session_info}")
 
+    @register_tool
     async def exec(self, cmd: str) -> str:
         """Execute a command in the terminal.
 
@@ -64,8 +64,3 @@ class BashRemoteToolkit(AsyncBaseToolkit):
                 "output": data["output"],
             }
         )
-
-    async def get_tools_map(self) -> dict[str, Callable]:
-        return {
-            "exec": self.exec,
-        }

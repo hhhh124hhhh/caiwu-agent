@@ -15,11 +15,10 @@ Run commands in a bash shell\n
 """
 
 import re
-from collections.abc import Callable
 
 from ..config import ToolkitConfig
 from ..utils import get_logger
-from .base import AsyncBaseToolkit
+from .base import AsyncBaseToolkit, register_tool
 
 logger = get_logger(__name__)
 
@@ -58,22 +57,16 @@ class BashToolkit(AsyncBaseToolkit):
             child.sendline(f"prompt {custom_prompt}")
             child.expect(custom_prompt)
         else:
-            if sys.platform == "win32":
-                child = pexpect.spawn("cmd.exe", encoding="utf-8", echo=False, timeout=timeout)
-                custom_prompt = "PROMPT_>"
-                child.sendline(f"prompt {custom_prompt}")
-                child.expect(custom_prompt)
-            else:
-                child = pexpect.spawn("/bin/bash", encoding="utf-8", echo=False, timeout=timeout)
-                # Set a known, unique prompt
-                # We use a random string that is unlikely to appear otherwise
-                # so we can detect the prompt reliably.
-                custom_prompt = "PEXPECT_PROMPT>> "
-                child.sendline("stty -onlcr")
-                child.sendline("unset PROMPT_COMMAND")
-                child.sendline(f"PS1='{custom_prompt}'")
-                # Force an initial read until the newly set prompt shows up
-                child.expect(custom_prompt)
+            child = pexpect.spawn("/bin/bash", encoding="utf-8", echo=False, timeout=timeout)
+            # Set a known, unique prompt
+            # We use a random string that is unlikely to appear otherwise
+            # so we can detect the prompt reliably.
+            custom_prompt = "PEXPECT_PROMPT>> "
+            child.sendline("stty -onlcr")
+            child.sendline("unset PROMPT_COMMAND")
+            child.sendline(f"PS1='{custom_prompt}'")
+            # Force an initial read until the newly set prompt shows up
+            child.expect(custom_prompt)
             return child, custom_prompt
 
     @staticmethod
@@ -94,6 +87,7 @@ class BashToolkit(AsyncBaseToolkit):
 
         return clean_output
 
+    @register_tool
     async def run_bash(self, command: str) -> str:
         """Execute a bash command in your workspace and return its output.
 
@@ -136,8 +130,3 @@ class BashToolkit(AsyncBaseToolkit):
                 }
             )
         # TODO: add workspace tree in output
-
-    async def get_tools_map(self) -> dict[str, Callable]:
-        return {
-            "run_bash": self.run_bash,
-        }

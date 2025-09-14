@@ -1,8 +1,0 @@
-name: memory
-mode: mcp
-activated_tools: null
-config:
-  command: npx
-  args: ["-y", "@modelcontextprotocol/server-memory"]
-  env:
-      MEMORY_FILE_PATH: ${oc.env:UTU_EXAMPLE_MEMORY_FILE_PATH}

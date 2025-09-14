@@ -3,7 +3,6 @@ from typing import Literal
 
 from pydantic import Field
 
-from ..utils import EnvUtils
 from .base_config import ConfigBaseModel
 from .model_config import ModelConfigs
 
@@ -18,14 +17,24 @@ class ProfileConfig(ConfigBaseModel):
 class ToolkitConfig(ConfigBaseModel):
     """Toolkit config."""
 
-    mode: Literal["builtin", "mcp"] = "builtin"
+    mode: Literal["builtin", "customized", "mcp"] = "builtin"
+    """Toolkit mode."""
     name: str | None = None
+    """Toolkit name."""
     activated_tools: list[str] | None = None
     """Activated tools, if None, all tools will be activated."""
     config: dict | None = Field(default_factory=dict)
     """Toolkit config."""
     config_llm: ModelConfigs | None = None
     """LLM config if used in toolkit."""
+    customized_filepath: str | None = None
+    """Customized toolkit filepath."""
+    customized_classname: str | None = None
+    """Customized toolkit classname."""
+    mcp_transport: Literal["stdio", "sse", "streamable_http"] = "stdio"
+    """MCP transport."""
+    mcp_client_session_timeout_seconds: int = 5
+    """The read timeout passed to the MCP ClientSession."""
 
 
 class ContextManagerConfig(ConfigBaseModel):
@@ -97,9 +106,3 @@ class AgentConfig(ConfigBaseModel):
     """Workforce executor config (dict)"""
     workforce_executor_infos: list[dict] = Field(default_factory=list)
     """Workforce executor infos, list of {name, desc, strengths, weaknesses}"""
-
-    # frontend server config
-    frontend_ip: str = EnvUtils.get_env("FRONTEND_IP", "127.0.0.1")
-    """Frontend server ip address"""
-    frontend_port: int = EnvUtils.get_env("FRONTEND_PORT", 8848)
-    """Frontend server port"""

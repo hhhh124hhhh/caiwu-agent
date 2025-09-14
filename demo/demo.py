@@ -19,7 +19,7 @@ def fibonacci(n: int) -> int:
         return b
 
 
-config = ConfigLoader.load_agent_config("examples/base")
+config = ConfigLoader.load_agent_config("base")
 config.max_turns = 100
 
 

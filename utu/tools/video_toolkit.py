@@ -3,14 +3,12 @@ https://github.com/googleapis/python-genai
 https://ai.google.dev/gemini-api/docs/api-key
 """
 
-from collections.abc import Callable
-
 from google import genai
 from google.genai.types import HttpOptions, Part
 
 from ..config import ToolkitConfig
 from ..utils import get_logger
-from .base import AsyncBaseToolkit
+from .base import AsyncBaseToolkit, register_tool
 
 logger = get_logger(__name__)
 
@@ -23,6 +21,7 @@ class VideoToolkit(AsyncBaseToolkit):
         )
         self.model = self.config.config.get("google_model")
 
+    @register_tool
     async def video_qa(self, video_url: str, question: str) -> str:
         r"""Asks a question about the video.
 
@@ -48,8 +47,3 @@ class VideoToolkit(AsyncBaseToolkit):
 
         logger.debug(f"Video analysis response from gemini: {response.text}")
         return response.text
-
-    async def get_tools_map(self) -> dict[str, Callable]:
-        return {
-            "video_qa": self.video_qa,
-        }

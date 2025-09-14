@@ -1,4 +1,7 @@
+# https://github.com/squidfunk/mkdocs-material
+
 site_name: Youtu-Agent
+site_url: https://tencentcloudadp.github.io/youtu-agent/
 theme:
   name: material
   palette:
@@ -99,13 +102,16 @@ watch:
   - utu
 
 nav:
-  - Intro: index.md
+  - Intro:
+    - Introduction: index.md
+    - FAQ: faq.md
   - Quickstart: 
     - QuickStart (for beginner): quickstart_beginner.md
     - QuickStart: quickstart.md
     - Start with Docker: docker.md
   - Documentation:
     - Config: config.md
+    - Environment Variables: environment_variables.md
     - Agents: agents.md
     - Agent Environments: env.md
     - Tools: tools.md

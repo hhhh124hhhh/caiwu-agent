@@ -2,12 +2,11 @@
 @ii-agent/src/ii_agent/tools/memory/
 """
 
-from collections.abc import Callable
 from typing import Literal
 
 from ..config import ToolkitConfig
 from ..utils import get_logger
-from .base import AsyncBaseToolkit
+from .base import AsyncBaseToolkit, register_tool
 
 logger = get_logger(__name__)
 
@@ -50,14 +49,15 @@ class SimpleMemoryToolkit(AsyncBaseToolkit):
         count = old_memory.count(old_string)
 
         if count > 1:
-            return {
+            return (
                 f"Warning: Found {count} occurrences of '{old_string}'. "
                 "Please confirm which occurrence to replace or use more specific context."
-            }
+            )
 
         self.full_memory = self.full_memory.replace(old_string, new_string)
         return "Edited memory: 1 occurrence replaced."
 
+    @register_tool
     async def simple_memory(
         self, action: Literal["read", "write", "edit"], content: str = "", old_string: str = "", new_string: str = ""
     ) -> str:
@@ -95,11 +95,6 @@ class SimpleMemoryToolkit(AsyncBaseToolkit):
         else:
             result = f"Error: Unknown action '{action}'. Valid actions are read, write, edit."
         return result
-
-    async def get_tools_map(self) -> dict[str, Callable]:
-        return {
-            "simple_memory": self.simple_memory,
-        }
 
 
 class CompactifyMemoryToolkit(AsyncBaseToolkit):

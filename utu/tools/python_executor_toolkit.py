@@ -5,14 +5,28 @@ import glob
 import io
 import os
 import re
+import traceback
+import uuid
+from datetime import datetime
+from typing import TYPE_CHECKING
 
 import matplotlib
+import matplotlib.pyplot as plt
+from IPython.core.interactiveshell import InteractiveShell
+from traitlets.config.loader import Config
 
 matplotlib.use("Agg")
-import matplotlib.pyplot as plt
 
 from ..config import ToolkitConfig
-from .base import AsyncBaseToolkit
+from .base import AsyncBaseToolkit, register_tool
+
+if TYPE_CHECKING:
+    from IPython.core.history import HistoryManager
+    from traitlets.config.loader import Config as BaseConfig
+
+    class Config(BaseConfig):
+        HistoryManager: HistoryManager
+
 
 # Used to clean ANSI escape sequences
 ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]")
@@ -38,9 +52,6 @@ def _execute_python_code_sync(code: str, workdir: str):
         files_before = set(glob.glob("*"))
 
         # Create a new IPython shell instance
-        from IPython.core.interactiveshell import InteractiveShell
-        from traitlets.config.loader import Config
-
         InteractiveShell.clear_instance()
 
         config = Config()
@@ -92,21 +103,26 @@ def _execute_python_code_sync(code: str, workdir: str):
         except Exception:  # pylint: disable=broad-except
             pass
 
+        success = True
+        if "Error" in stderr_result or ("Error" in stdout_result and "Traceback" in stdout_result):
+            success = False
+        message = "Code execution completed, no output"
+        if stdout_result.strip():
+            message = f"Code execution completed\nOutput:\n{stdout_result.strip()}"
+
         return {
-            "success": False
-            if "Error" in stderr_result or ("Error" in stdout_result and "Traceback" in stdout_result)
-            else True,
-            "message": f"Code execution completed\nOutput:\n{stdout_result.strip()}"
-            if stdout_result.strip()
-            else "Code execution completed, no output",
+            "workdir": workdir,
+            "success": success,
+            "message": message,
             "status": True,
             "files": new_files,
-            "error": stderr_result.strip() if stderr_result.strip() else "",
+            "error": stderr_result.strip(),
         }
     except Exception as e:  # pylint: disable=broad-except
         return {
+            "workdir": workdir,
             "success": False,
-            "message": f"Code execution failed, error message:\n{str(e)}",
+            "message": f"Code execution failed, error message:\n{str(e)},\nTraceback:{traceback.format_exc()}",
             "status": False,
             "files": [],
             "error": str(e),
@@ -123,12 +139,8 @@ class PythonExecutorToolkit(AsyncBaseToolkit):
     def __init__(self, config: ToolkitConfig | dict | None = None):
         super().__init__(config)
 
-    async def get_tools_map(self) -> dict[str, callable]:
-        return {
-            "execute_python_code": self.execute_python_code,
-        }
-
-    async def execute_python_code(self, code: str, workdir: str = "./run_workdir", timeout: int = 30) -> dict:
+    @register_tool
+    async def execute_python_code(self, code: str, workdir: str = None, timeout: int = 30) -> dict:
         """
         Executes Python code and returns the output.
 
@@ -140,6 +152,10 @@ class PythonExecutorToolkit(AsyncBaseToolkit):
         Returns:
             dict: A dictionary containing the execution results.
         """
+        if workdir is None:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            unique_id = str(uuid.uuid4())[:8]
+            workdir = f"/tmp/utu/python_executor/{timestamp}_{unique_id}"
         loop = asyncio.get_running_loop()
         try:
             return await asyncio.wait_for(

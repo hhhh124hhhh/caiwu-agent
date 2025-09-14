@@ -28,13 +28,45 @@ export interface NewAgentContent {
   name: string;
 }
 
-export type OrchestraContent = 
+export interface InitContent {
+  type: 'init';
+  default_agent: string;
+  agent_type: "simple" | "orchestra" | "other";
+  sub_agents: string[] | null;
+}
+
+export type OrchestraContent =
   | { type: 'plan'; item: PlanItem }
   | { type: 'worker'; item: WorkerItem }
   | { type: 'report'; item: ReportItem };
 
+export interface ListAgentsContent {
+  type: 'list_agents';
+  agents: string[];
+}
+
+export interface SwitchAgentContent {
+  type: 'switch_agent';
+  ok: boolean;
+  name: string;
+  agent_type: "simple" | "orchestra" | "other";
+  sub_agents: string[] | null;
+}
+
+export interface AskContent {
+  type: 'ask';
+  question: string;
+  ask_id: string;
+}
+
+export interface GeneratedAgentContent {
+  type: 'generated_agent_config';
+  filename: string;
+  config_content: string;
+}
+
 export interface Event {
-  type: 'raw' | 'orchestra' | 'finish' | 'example' | 'new';
-  data: TextDeltaContent | OrchestraContent | ExampleContent | NewAgentContent | null;
+  type: 'raw' | 'orchestra' | 'finish' | 'example' | 'new' | 'init' | 'list_agents' | 'switch_agent' | 'gen_agent' | 'ask' | 'generated_agent_config';
+  data: TextDeltaContent | OrchestraContent | ExampleContent | NewAgentContent | InitContent | ListAgentsContent | SwitchAgentContent | AskContent | GeneratedAgentContent | null;
   requireConfirm?: boolean;
 }

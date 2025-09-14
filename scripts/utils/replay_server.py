@@ -9,7 +9,7 @@ from importlib import resources
 import tornado.web
 import tornado.websocket
 
-from utu.ui.common import Event, ExampleContent, UserQuery
+from utu.ui.common import Event, ExampleContent, UserRequest
 
 REPLAY_INTERVAL = 0.5
 
@@ -37,11 +37,12 @@ class ReplayWebSocketHandler(tornado.websocket.WebSocketHandler):
     async def on_message(self, message: str):
         try:
             data = json.loads(message)
-            if data.get("type") == "query":
+            user_request = UserRequest(**data)
+            if user_request.type == "query":
                 try:
-                    query = UserQuery(**data)
+                    content = user_request.content
                     # check query not empty
-                    if query.query.strip() == "":
+                    if content.query.strip() == "":
                         raise ValueError("Query cannot be empty")
 
                     # last_time = 0

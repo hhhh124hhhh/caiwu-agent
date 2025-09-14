@@ -1,3 +1,12 @@
+"""Example usage of MCP with stdio transport
+
+- config: configs/agents/examples/mcp/stdio_example.yaml
+- env: MCP_MEMORY_FILE_PATH
+
+Usage:
+    python examples/mcp/stdio_example/main.py
+"""
+
 import asyncio
 
 from utu.agents import SimpleAgent
@@ -20,11 +29,11 @@ queries = [
 
 async def main():
     async with SimpleAgent(
-        config="examples/mcp",
-        name="example-mcp-agent",
+        config="examples/mcp/stdio_example",
+        name="mcp_stdio_example",
     ) as agent:
         for query in queries:
-            await agent.chat(query)
+            await agent.chat_streamed(query)
 
 
 if __name__ == "__main__":

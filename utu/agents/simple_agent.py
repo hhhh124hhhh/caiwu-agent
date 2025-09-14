@@ -18,13 +18,13 @@ from agents import (
     TResponseInputItem,
     trace,
 )
-from agents.mcp import MCPServer, MCPServerStdio
+from agents.mcp import MCPServer, MCPServerSse, MCPServerStdio, MCPServerStreamableHttp
 
 from ..config import AgentConfig, ConfigLoader, ToolkitConfig
 from ..context import BaseContextManager, build_context_manager
 from ..env import BaseEnv, get_env
 from ..tools import TOOLKIT_MAP, AsyncBaseToolkit
-from ..utils import AgentsUtils, get_logger
+from ..utils import AgentsUtils, get_logger, load_class_from_file
 from .base_agent import BaseAgent
 from .common import TaskRecorder
 
@@ -133,11 +133,14 @@ class SimpleAgent(BaseAgent):
         tools_list += await self.env.get_tools()  # add env tools
         # TODO: handle duplicate tool names
         for _, toolkit_config in self.config.toolkits.items():
-            if toolkit_config.mode == "mcp":
-                await self._load_mcp_server(toolkit_config)
-            elif toolkit_config.mode == "builtin":
+            if toolkit_config.mode == "builtin":
                 toolkit = await self._load_toolkit(toolkit_config)
                 tools_list.extend(await toolkit.get_tools_in_agents())
+            elif toolkit_config.mode == "customized":
+                toolkit = await self._load_customized_toolkit(toolkit_config)
+                tools_list.extend(await toolkit.get_tools_in_agents())
+            elif toolkit_config.mode == "mcp":
+                await self._load_mcp_server(toolkit_config)
             else:
                 raise ValueError(f"Unknown toolkit mode: {toolkit_config.mode}")
         tool_names = [tool.name for tool in tools_list]
@@ -151,15 +154,43 @@ class SimpleAgent(BaseAgent):
         self._toolkits.append(toolkit)
         return toolkit
 
+    async def _load_customized_toolkit(self, toolkit_config: ToolkitConfig) -> AsyncBaseToolkit:
+        logger.info(f"Loading customized toolkit `{toolkit_config.name}` with config {toolkit_config}")
+        assert toolkit_config.customized_filepath is not None and toolkit_config.customized_classname is not None
+        toolkit_class = load_class_from_file(toolkit_config.customized_filepath, toolkit_config.customized_classname)
+        toolkit = await self._tools_exit_stack.enter_async_context(toolkit_class(toolkit_config))
+        self._toolkits.append(toolkit)
+        return toolkit
+
     async def _load_mcp_server(self, toolkit_config: ToolkitConfig) -> MCPServer:
         logger.info(f"Loading MCP server `{toolkit_config.name}` with params {toolkit_config.config}")
-        server = await self._mcps_exit_stack.enter_async_context(
-            MCPServerStdio(  # FIXME: support other types of servers
-                name=toolkit_config.name,
-                params=toolkit_config.config,
-                client_session_timeout_seconds=20,
-            )
-        )
+        match toolkit_config.mcp_transport:
+            case "stdio":
+                server = await self._mcps_exit_stack.enter_async_context(
+                    MCPServerStdio(
+                        name=toolkit_config.name,
+                        params=toolkit_config.config,
+                        client_session_timeout_seconds=toolkit_config.mcp_client_session_timeout_seconds,
+                    )
+                )
+            case "sse":
+                server = await self._mcps_exit_stack.enter_async_context(
+                    MCPServerSse(
+                        name=toolkit_config.name,
+                        params=toolkit_config.config,
+                        client_session_timeout_seconds=toolkit_config.mcp_client_session_timeout_seconds,
+                    )
+                )
+            case "streamable_http":
+                server = await self._mcps_exit_stack.enter_async_context(
+                    MCPServerStreamableHttp(
+                        name=toolkit_config.name,
+                        params=toolkit_config.config,
+                        client_session_timeout_seconds=toolkit_config.mcp_client_session_timeout_seconds,
+                    )
+                )
+            case _:
+                raise ValueError(f"Unknown MCP transport: {toolkit_config.mcp_transport}")
         self._mcp_servers.append(server)
         return server
 
@@ -191,36 +222,49 @@ class SimpleAgent(BaseAgent):
     async def run(
         self, input: str | list[TResponseInputItem], trace_id: str = None, save: bool = False
     ) -> TaskRecorder:
-        trace_id = trace_id or AgentsUtils.gen_trace_id()
+        """Entrypoint for running the agent
+
+        Args:
+            trace_id: str to identify the run
+            save: whether to use history (use `input_items`)
+        """
         if not self._initialized:
             await self.build(trace_id)
+        trace_id = trace_id or AgentsUtils.gen_trace_id()
         logger.info(f"> trace_id: {trace_id}")
 
-        task_recorder = TaskRecorder(input, trace_id)
-        self.input_items.append({"content": input, "role": "user"})
-        run_kwargs = self._prepare_run_kwargs(self.input_items)
-
+        if isinstance(input, str):
+            input = self.input_items + [{"content": input, "role": "user"}]
+        run_kwargs = self._prepare_run_kwargs(input)
         if AgentsUtils.get_current_trace():
             run_result = await Runner.run(**run_kwargs)
         else:
             with trace(workflow_name="simple_agent", trace_id=trace_id):
                 run_result = await Runner.run(**run_kwargs)
+
+        task_recorder = TaskRecorder(input, trace_id)
         task_recorder.add_run_result(run_result)
         task_recorder.set_final_output(run_result.final_output)
-        # save the input_items and current_agent for next run
         if save:
             self.input_items = run_result.to_input_list()
             self.current_agent = run_result.last_agent  # NOTE: acturally, there are only one agent in SimpleAgent
         return task_recorder
 
     def run_streamed(self, input: str | list[TResponseInputItem], trace_id: str = None) -> RunResultStreaming:
-        trace_id = trace_id or AgentsUtils.gen_trace_id()
+        """Entrypoint for running the agent streamly
+
+        Notes:
+            - do not support `save` option for now
+
+        Args:
+            trace_id: str to identify the run
+        """
         if not self._initialized:
             raise RuntimeError("Agent is not initialized. Please call `build` first.")
+        trace_id = trace_id or AgentsUtils.gen_trace_id()
         logger.info(f"> trace_id: {trace_id}")
 
         run_kwargs = self._prepare_run_kwargs(input)
-
         if AgentsUtils.get_current_trace():
             return Runner.run_streamed(**run_kwargs)
         else:

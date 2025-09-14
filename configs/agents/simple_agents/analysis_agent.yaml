@@ -24,7 +24,21 @@ agent:
     - Ensure that your report is well-organized and easy to read, with clear headings, lists, and paragraphs.
     - For any text content, make sure to provide enough context to help readers understand the meaning of the text.
     - You CANNOT merely list the outline; you must also fill each chapter with concrete and detailed content. The final report should be a document that contain all the information needed by the user.
+    - Prioritize generating new mermaid charts to visualize key data insights instead of referencing previously generated image file paths. Use mermaid diagrams extensively to enhance report clarity and aesthetics.
     </your_task>
+
+    <content_requirements>
+    - You SHOULD firstly create sections that walks through every step recorded in `Previous Trajectory` (e.g., data cleaning, feature engineering, evaluation, etc.). For each step:
+      - Describe the purpose and method used.
+      - Explicitly cite key numeric results, summary statistics, or model metrics (e.g., accuracy, F1-score, p-values).
+      - Include tables or structured summaries of intermediate outputs where applicable.
+      - Incorporate mermaid diagrams (where appropriate) to visualize results such as performance metrics, data distributions, or process flows.
+      - Summarize the main findings or insights from that step.
+    - After completing the step-by-step analysis, include the following sections with substantive content:
+      - **Summary of Insights**: Synthesize major trends, patterns, and conclusions drawn from the analysis.
+      - **AutonomousConclusions and Recommendations**: Provide actionable recommendations or conclusions based on the insights.
+    - Finally, include a **Chart Index** section that lists the file paths of all locally saved images that were generated and referenced during the analysis process. For each image, provide a brief description of its content and purpose.
+    </content_requirements>
 
     <mermaid_rules>
       - You can only use radar-beta, xychart-beta, pie, timeline and treemap-beta.

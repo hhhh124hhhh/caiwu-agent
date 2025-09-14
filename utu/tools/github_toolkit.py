@@ -2,15 +2,15 @@
 https://docs.github.com/en/rest?apiVersion=2022-11-28
 """
 
-from collections.abc import Callable
 from urllib.parse import urlparse
 
 import requests
 
-from .base import AsyncBaseToolkit
+from .base import AsyncBaseToolkit, register_tool
 
 
 class GitHubToolkit(AsyncBaseToolkit):
+    @register_tool
     async def get_repo_info(self, github_url) -> dict:
         """Get the info of the specified github repo
 
@@ -54,8 +54,3 @@ class GitHubToolkit(AsyncBaseToolkit):
             return {"error": f"Request error: {str(e)}"}
         except (ValueError, KeyError) as e:
             return {"error": f"Failed to parse data: {str(e)}"}
-
-    async def get_tools_map(self) -> dict[str, Callable]:
-        return {
-            "get_repo_info": self.get_repo_info,
-        }

@@ -1,5 +1,6 @@
 from utu.agents import SimpleAgent
 from utu.config import ConfigLoader
+from utu.ui import ExampleConfig
 from utu.ui.webui_chatbot import WebUIChatbot
 
 EXAMPLE_QUERY = (
@@ -13,8 +14,9 @@ worker_agent = SimpleAgent(config=config)
 
 
 def main_gradio():
+    env_and_args = ExampleConfig()
     chatbot = WebUIChatbot(worker_agent, example_query=EXAMPLE_QUERY)
-    chatbot.launch(port=config.frontend_port, ip=config.frontend_ip)
+    chatbot.launch(port=env_and_args.port, ip=env_and_args.ip, autoload=env_and_args.autoload)
 
 
 if __name__ == "__main__":

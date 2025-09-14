@@ -1,7 +1,7 @@
 from typing import TypeVar
 
 from hydra import compose, initialize
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import OmegaConf
 from pydantic import BaseModel
 
 from .agent_config import AgentConfig, ToolkitConfig
@@ -18,12 +18,13 @@ class ConfigLoader:
     version_base = "1.3"
 
     @classmethod
-    def _load_config_to_dict(cls, name: str = "default", config_path: str = None) -> DictConfig:
+    def _load_config_to_dict(cls, name: str = "default", config_path: str = None) -> dict:
         config_path = config_path or cls.config_path
         with initialize(config_path=config_path, version_base=cls.version_base):
             cfg = compose(config_name=name)
             OmegaConf.resolve(cfg)
-        return cfg
+        # return dict instead of DictConfig -- avoid JSON serialization error
+        return OmegaConf.to_container(cfg, resolve=True)
 
     # @classmethod
     # def _load_config_to_cls(cls, name: str, config_type: Type[TConfig] = None) -> TConfig:

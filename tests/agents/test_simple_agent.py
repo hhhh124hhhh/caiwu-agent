@@ -27,7 +27,7 @@ async def test_chat(agent: SimpleAgent):
 async def test_run(agent: SimpleAgent):
     res = await agent.run("Hello! I'm Eason", save=True)
     print(f"res.final_output: {res.final_output}")
-    res = await agent.run("You know my name?")
+    res = await agent.run("Do you know my name? BTW, my last name is Shi.")
     print(f"res.final_output: {res.final_output}")
-    res = await agent.run("You know my name?")
+    res = await agent.run("Please tell me my full name.")
     print(f"res.final_output: {res.final_output}")

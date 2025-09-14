@@ -28,3 +28,4 @@ utu_agent_ui.egg-info
 build/
 
 _*.sh
+.vite

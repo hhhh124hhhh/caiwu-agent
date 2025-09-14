@@ -5,12 +5,14 @@ import type { PlanItem } from '../types/events';
 
 interface MessageComponentProps {
   message: Message;
+  messageId: String;
   showSender: boolean;
   onDownloadReport?: (content: any, contentType: "html" | "svg" | "markdown") => void;
 }
 
 const MessageComponent: React.FC<MessageComponentProps> = ({ 
-  message, 
+  message,
+  messageId,
   showSender,
   onDownloadReport 
 }) => {
@@ -68,6 +70,14 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
       console.log('Not a JSON string, using original content');
     }
 
+    if (message.content.toolName == "final_answer") {
+      return (
+        <div className="tool-call-argument">
+          <SafeMarkdown messageId={messageId + "-tool-call-argument"}>{displayContent}</SafeMarkdown>
+        </div>
+      )
+    }
+
     return (
       <>
         {displayContent && (
@@ -109,7 +119,7 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
   const renderPlanContent = (plan: PlanItem) => (
     <div className="plan-content">
       <div className="plan-analysis">
-        <SafeMarkdown>{plan.analysis}</SafeMarkdown>
+        <SafeMarkdown messageId={messageId + "-plan"}>{plan.analysis}</SafeMarkdown>
       </div>
       {plan.todo.length > 0 && (
         <div className="plan-todo">
@@ -117,7 +127,7 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
           <ol className="todo-list">
             {plan.todo.map((item, index) => (
               <li key={index} className="todo-item">
-                <SafeMarkdown>{item}</SafeMarkdown>
+                <SafeMarkdown messageId={messageId + "-todo" + "-" + index}>{item}</SafeMarkdown>
               </li>
             ))}
           </ol>
@@ -215,7 +225,7 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
       );
     }
 
-    return <SafeMarkdown>{processedContent}</SafeMarkdown>;
+    return <SafeMarkdown messageId={messageId + "-report"}>{processedContent}</SafeMarkdown>;
   };
 
   const renderMessageContent = () => {
@@ -369,9 +379,18 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
         icon = "📖";
       } else if ((message.content as ToolCallMessage).toolName == "search") {
         icon = "🔍";
+      } else if ((message.content as ToolCallMessage).toolName == "ask_user") {
+        icon = "💬";
+      } else if ((message.content as ToolCallMessage).toolName == "final_answer") {
+        icon = "💡";
       }
+
+      // if ask_user or final answer, don't open
+
+      let shouldHide = (message.content as ToolCallMessage).toolName == "ask_user";
+
       return (
-        <details className="message-detail tool-call-message" open>
+        <details className="message-detail tool-call-message" open={!shouldHide}>
           <summary
             className="message-detail-summary"
             {...(message.inprogress ? { 'data-inprogress': 'true' } : {})}
@@ -396,14 +415,14 @@ const MessageComponent: React.FC<MessageComponentProps> = ({
             <span>{getStatusText()}</span>
           </summary>
           <div className="message-detail-content">
-            <SafeMarkdown>{String(message.content)}</SafeMarkdown>
+            <SafeMarkdown messageId={messageId + "-" + message.type}>{String(message.content)}</SafeMarkdown>
           </div>
         </details>
       );
     }
     
     // Text message
-    return <SafeMarkdown>{String(message.content)}</SafeMarkdown>;
+    return <SafeMarkdown messageId={messageId}>{String(message.content)}</SafeMarkdown>;
   };
 
   const [confirmedStatus, setConfirmedStatus] = useState<'confirmed' | 'rejected' | undefined>(message.confirmedStatus);

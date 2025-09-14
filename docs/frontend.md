@@ -51,8 +51,8 @@ By default, the WebUI uses port `8848` and IP `127.0.0.1`. You can customize the
 # =============================================
 # frontend
 # =============================================
-FRONTEND_PORT=8848
-FRONTEND_IP=127.0.0.1
+UTU_WEBUI_PORT=8848
+UTU_WEBUI_IP=127.0.0.1
 ```
 
 If you change the default port or IP, make sure to update the WebSocket URL in your frontend configuration to match the new settings. The default WebSocket URL is `ws://localhost:8848/ws`, and you can find and modify this setting in the right top corner of the frontend page.
@@ -63,10 +63,10 @@ We ship the static web pages in the `utu_agent_ui` package, which can be install
 
 ### Installing the Prebuilt `*.whl` file
 
-Download prebuilt wheel file (`utu_agent_ui-0.1.6-py3-none-any.whl`) from [releases](https://github.com/TencentCloudADP/youtu-agent/releases) and run the following command:
+Download prebuilt wheel file (`utu_agent_ui-0.2.0-py3-none-any.whl`) from [releases](https://github.com/TencentCloudADP/youtu-agent/releases) and run the following command:
 
 ```bash
-uv pip install utu_agent_ui-0.1.6-py3-none-any.whl
+uv pip install utu_agent_ui-0.2.0-py3-none-any.whl
 ```
 
 ### Compiling from Source
@@ -89,4 +89,6 @@ The `WebUIChatbot` class is basically a tornado based WebSocket server, which tr
 
 The frontend (in `utu/ui/frontend`, or installed as `utu_agent_ui` package) is a React application, which visualizes the events, and provides a simple UI for users to interact with the agent.
 
-By default, the `WebUIChatbot` will listen on `127.0.0.1:8848` and the front end will try to connect to `ws://127.0.0.1:8848/ws`.
+You can customize the port and IP of `WebUIChatbot` by setting the `UTU_WEBUI_PORT` and `UTU_WEBUI_IP` environment variables (default: `127.0.0.1:8848`). The default WebSocket URL is `ws://localhost:8848/ws`, and you can find and modify this setting in the right top corner of the frontend page.
+
+For development, you can set `UTU_WEBUI_AUTOLOAD=true` to enable auto reload for tornado server.

@@ -6,12 +6,11 @@ https://www.mediawiki.org/wiki/API:Main_page
 
 import calendar
 import datetime
-from collections.abc import Callable
 
 import requests
 
 from ..config import ToolkitConfig
-from .base import AsyncBaseToolkit
+from .base import AsyncBaseToolkit, register_tool
 
 
 class WikipediaSearchTool(AsyncBaseToolkit):
@@ -55,6 +54,7 @@ class WikipediaSearchTool(AsyncBaseToolkit):
             user_agent=self.user_agent, language=self.language, extract_format=self.extract_format
         )
 
+    @register_tool
     async def wikipedia_search(self, query: str) -> str:
         """Searches Wikipedia and returns a summary or full text of the given topic, along with the page URL.
 
@@ -82,6 +82,7 @@ class WikipediaSearchTool(AsyncBaseToolkit):
         except Exception as e:  # pylint: disable=broad-except
             return f"Error fetching Wikipedia summary: {str(e)}"
 
+    @register_tool
     async def search_wikipedia_revisions(self, entity: str, year: int, month: int) -> str:
         """Get the revisions of a Wikipedia entity in a given month, return the revision url.
 
@@ -127,9 +128,3 @@ class WikipediaSearchTool(AsyncBaseToolkit):
                     rev_url = f"https://en.wikipedia.org/w/index.php?title={entity}&oldid={oldid}"
                     revisions_list.append({"timestamp": timestamp, "oldid": oldid, "url": rev_url})
         return str(revisions_list)
-
-    async def get_tools_map(self) -> dict[str, Callable]:
-        return {
-            "wikipedia_search": self.wikipedia_search,
-            "search_wikipedia_revisions": self.search_wikipedia_revisions,
-        }

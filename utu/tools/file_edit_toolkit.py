@@ -4,13 +4,12 @@ by @ianxxu
 
 import re
 import shutil
-from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
 from ..config import ToolkitConfig
 from ..utils import get_logger
-from .base import AsyncBaseToolkit
+from .base import AsyncBaseToolkit, register_tool
 
 logger = get_logger(__name__)
 
@@ -78,6 +77,7 @@ class FileEditToolkit(AsyncBaseToolkit):
         shutil.copy2(file_path, backup_path)
         logger.info(f"Created backup at {backup_path}")
 
+    @register_tool
     async def edit_file(self, file_name: str, diff: str) -> None:  # TODO: return edit result!
         r"""Edit a file by applying the provided diff.
 
@@ -119,8 +119,3 @@ class FileEditToolkit(AsyncBaseToolkit):
             logger.info(f"Successfully edited file: {resolved_path}")
         except Exception as e:  # pylint: disable=broad-except
             logger.error(f"Error editing file {resolved_path}: {str(e)}")
-
-    async def get_tools_map(self) -> dict[str, Callable]:
-        return {
-            "edit_file": self.edit_file,
-        }

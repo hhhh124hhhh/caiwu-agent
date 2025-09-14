@@ -1,7 +1,12 @@
 import asyncio
+import importlib.util
+import sys
+from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, Template
 from pydantic import BaseModel, Field
+
+from .path import DIR_ROOT
 
 
 def get_event_loop() -> asyncio.AbstractEventLoop:
@@ -63,3 +68,25 @@ def schema_to_basemodel(schema: dict, class_name: str = None) -> type[BaseModel]
     class_name = class_name or schema.get("title", "GeneratedModel")
     ModelClass = type(class_name, (BaseModel,), attrs)
     return ModelClass
+
+
+def load_class_from_file(filepath: str, class_name: str) -> type:
+    """Load class from file."""
+    if not filepath.startswith("/"):
+        filepath = str(DIR_ROOT / filepath)
+
+    filepath = Path(filepath).absolute()
+    module_name = filepath.stem
+    spec = importlib.util.spec_from_file_location(module_name, filepath)
+    if spec is None:
+        raise ImportError(f"Could not load spec from file '{filepath}'")
+
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = module
+
+    spec.loader.exec_module(module)
+
+    if hasattr(module, class_name):
+        return getattr(module, class_name)
+    else:
+        raise AttributeError(f"Class '{class_name}' not found in module '{module_name}'")

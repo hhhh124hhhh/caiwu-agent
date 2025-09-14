@@ -1,4 +1,7 @@
 import re
+from collections.abc import Callable
+
+from agents.function_schema import FuncSchema, function_schema
 
 
 class ContentFilter:
@@ -18,3 +21,24 @@ class ContentFilter:
             if len(res) >= limit:
                 break
         return res
+
+
+def get_tools_map(cls: type) -> dict[str, Callable]:
+    """Get tools map from a class, without instance the class."""
+    tools_map = {}
+    # Iterate through all methods of the class and register @tool
+    for attr_name in dir(cls):
+        attr = getattr(cls, attr_name)
+        if callable(attr) and getattr(attr, "_is_tool", False):
+            tools_map[attr._tool_name] = attr
+    return tools_map
+
+
+def get_tools_schema(cls: type) -> dict[str, FuncSchema]:
+    """Get tools schema from a class, without instance the class."""
+    tools_map = {}
+    for attr_name in dir(cls):
+        attr = getattr(cls, attr_name)
+        if callable(attr) and getattr(attr, "_is_tool", False):
+            tools_map[attr._tool_name] = function_schema(attr)
+    return tools_map

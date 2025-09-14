@@ -5,7 +5,6 @@ https://platform.openai.com/docs/guides/images-vision?api-mode=chat
 """
 
 import base64
-from collections.abc import Callable
 from io import BytesIO
 from urllib.parse import urlparse
 
@@ -14,7 +13,7 @@ from PIL import Image
 
 from ..config import ToolkitConfig
 from ..utils import EnvUtils, SimplifiedAsyncOpenAI, get_logger
-from .base import TOOL_PROMPTS, AsyncBaseToolkit
+from .base import TOOL_PROMPTS, AsyncBaseToolkit, register_tool
 
 logger = get_logger(__name__)
 
@@ -24,7 +23,7 @@ class ImageToolkit(AsyncBaseToolkit):
         super().__init__(config)
         image_llm_config = {
             "type": EnvUtils.get_env("UTU_IMAGE_LLM_TYPE", "chat.completions"),
-            "model": EnvUtils.get_env("UTU_IMAGE_LLM_MODEL"),
+            "model": EnvUtils.get_env("UTU_IMAGE_LLM_MODEL"),  # NOTE: you should set these envs in .env
             "api_key": EnvUtils.get_env("UTU_IMAGE_LLM_API_KEY"),
             "base_url": EnvUtils.get_env("UTU_IMAGE_LLM_BASE_URL"),
         }
@@ -59,6 +58,7 @@ class ImageToolkit(AsyncBaseToolkit):
         image_string = f"data:image/jpeg;base64,{base64_image}"
         return image_string
 
+    @register_tool
     async def image_qa(self, image_path: str, question: str | None = None) -> str:
         """Generate textual description or answer questions about attached image.
 
@@ -87,8 +87,3 @@ class ImageToolkit(AsyncBaseToolkit):
             ]
             output = await self.llm.query_one(messages=messages, **self.config.config_llm.model_params.model_dump())
         return output
-
-    async def get_tools_map(self) -> dict[str, Callable]:
-        return {
-            "image_qa": self.image_qa,
-        }

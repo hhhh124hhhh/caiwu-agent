@@ -1,9 +1,8 @@
 import asyncio
-from collections.abc import Callable
 
 from ..config import ToolkitConfig
 from ..utils import SimplifiedAsyncOpenAI, get_logger, oneline_object
-from .base import TOOL_PROMPTS, AsyncBaseToolkit
+from .base import TOOL_PROMPTS, AsyncBaseToolkit, register_tool
 
 logger = get_logger(__name__)
 
@@ -59,6 +58,7 @@ class SearchToolkit(AsyncBaseToolkit):
         )
         self.summary_token_limit = self.config.config.get("summary_token_limit", 1_000)
 
+    @register_tool
     async def search(self, query: str, num_results: int = 5) -> dict:
         """web search to gather information from the web.
 
@@ -82,6 +82,7 @@ class SearchToolkit(AsyncBaseToolkit):
         logger.info(oneline_object(res))
         return res
 
+    @register_tool
     async def web_qa(self, url: str, query: str) -> str:
         """Ask question to a webpage, you will get the answer and related links from the specified url.
 
@@ -114,9 +115,3 @@ class SearchToolkit(AsyncBaseToolkit):
         return await self.llm.query_one(
             messages=[{"role": "user", "content": template}], **self.config.config_llm.model_params.model_dump()
         )
-
-    async def get_tools_map(self) -> dict[str, Callable]:
-        return {
-            "search": self.search,
-            "web_qa": self.web_qa,
-        }

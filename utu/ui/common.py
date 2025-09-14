@@ -1,65 +1,138 @@
-from dataclasses import dataclass
 from typing import Literal
 
 import agents as ag
+from pydantic import BaseModel
 
 from utu.agents.orchestra import OrchestraStreamEvent
+from utu.meta.simple_agent_generator import SimpleAgentGeneratedEvent
 
 
-@dataclass
-class TextDeltaContent:
-    type: Literal["reason", "tool_call_argument", "tool_call_output", "text"]
+class WorkerDescription(BaseModel):
+    name: str
+    desc: str
+    strengths: list[str]
+    weaknesses: list[str]
+
+
+class OrchestraDescription(BaseModel):
+    workers: list[WorkerDescription]
+    planner: str
+    reporter: str
+
+
+class TextDeltaContent(BaseModel):
+    type: Literal["reason", "tool_call", "tool_call_argument", "tool_call_output", "text"]
     delta: str
     inprogress: bool = False
     callid: str | None = None
     argument: str | None = None
 
 
-@dataclass
-class PlanItem:
+class PlanItem(BaseModel):
     analysis: str
     todo: list[str]
 
 
-@dataclass
-class WorkerItem:
+class WorkerItem(BaseModel):
     task: str
     output: str
 
 
-@dataclass
-class ReportItem:
+class ReportItem(BaseModel):
     output: str
 
 
-@dataclass
-class OrchestraContent:
+class OrchestraContent(BaseModel):
     type: Literal["plan", "worker", "report"]
     item: PlanItem | WorkerItem | ReportItem
 
 
-@dataclass
-class ExampleContent:
-    type: Literal["example"]
+class ExampleContent(BaseModel):
+    type: Literal["example"] = "example"
     query: str
 
 
-@dataclass
-class NewAgentContent:
-    type: Literal["new"]
+class NewAgentContent(BaseModel):
+    type: Literal["new"] = "new"
     name: str
 
 
-@dataclass
-class Event:
-    type: Literal["raw", "orchestra", "finish", "example", "new"]
-    data: TextDeltaContent | OrchestraContent | ExampleContent | NewAgentContent | None = None
+class ListAgentsContent(BaseModel):
+    type: Literal["list_agents"] = "list_agents"
+    agents: list[str]
 
 
-@dataclass
-class UserQuery:
-    type: Literal["query"]
+class SwitchAgentContent(BaseModel):
+    type: Literal["switch_agent"] = "switch_agent"
+    ok: bool
+    name: str
+    agent_type: Literal["simple", "orchestra", "other"]
+    sub_agents: list[str] | None = None
+
+
+class InitContent(BaseModel):
+    type: Literal["init"] = "init"
+    default_agent: str
+    agent_type: Literal["simple", "orchestra", "other"]
+    sub_agents: list[str] | None = None
+
+
+class AskContent(BaseModel):
+    type: Literal["ask"] = "ask"
+    question: str
+    ask_id: str
+
+
+class GeneratedAgentContent(BaseModel):
+    type: Literal["generated_agent_config"] = "generated_agent_config"
+    filename: str
+    config_content: str
+
+
+class Event(BaseModel):
+    type: Literal[
+        "raw",
+        "init",
+        "orchestra",
+        "finish",
+        "example",
+        "new",
+        "list_agents",
+        "switch_agent",
+        "ask",
+        "gen_agent",
+        "generated_agent_config",
+    ]
+    data: (
+        TextDeltaContent
+        | OrchestraContent
+        | GeneratedAgentContent
+        | ExampleContent
+        | NewAgentContent
+        | ListAgentsContent
+        | SwitchAgentContent
+        | InitContent
+        | AskContent
+        | None
+    ) = None
+
+
+class UserQuery(BaseModel):
     query: str
+
+
+class SwitchAgentRequest(BaseModel):
+    config_file: str
+
+
+class UserAnswer(BaseModel):
+    answer: str
+    ask_id: str
+
+
+class UserRequest(BaseModel):
+    type: Literal["query", "list_agents", "switch_agent", "answer", "gen_agent"]
+    content: UserQuery | SwitchAgentRequest | UserAnswer | None = None
 
 
 async def handle_raw_stream_events(event: ag.RawResponsesStreamEvent) -> Event | None:
@@ -155,7 +228,7 @@ async def handle_tool_call_output(event: ag.RunItemStreamEvent) -> Event | None:
             type="raw",
             data=TextDeltaContent(
                 type="tool_call_output",
-                delta=item.output,
+                delta=str(item.output),
                 callid=item.raw_item["call_id"],
                 inprogress=False,
             ),
@@ -177,4 +250,12 @@ async def handle_new_agent(event: ag.AgentUpdatedStreamEvent) -> Event | None:
         )
     else:
         pass
+    return event_to_send
+
+
+async def handle_generated_agent(event: SimpleAgentGeneratedEvent) -> Event | None:
+    event_to_send = Event(
+        type="generated_agent_config",
+        data=GeneratedAgentContent(filename=event.filename, config_content=event.config_content),
+    )
     return event_to_send

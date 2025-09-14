@@ -10,6 +10,7 @@ from agents import (
     HandoffOutputItem,
     ItemHelpers,
     MessageOutputItem,
+    Model,
     ModelSettings,
     ModelTracing,
     OpenAIChatCompletionsModel,
@@ -109,11 +110,11 @@ class AgentsUtils:
 
     @staticmethod
     def get_agents_model(
-        type: Literal["responses", "chat.completions"] = None,
+        type: Literal["responses", "chat.completions", "litellm"] = None,
         model: str = None,
         base_url: str = None,
         api_key: str = None,
-    ) -> OpenAIChatCompletionsModel | OpenAIResponsesModel:
+    ) -> Model:
         type = type or os.getenv("UTU_LLM_TYPE", "chat.completions")
         model = model or os.getenv("UTU_LLM_MODEL")
         base_url = base_url or os.getenv("UTU_LLM_BASE_URL")
@@ -129,6 +130,13 @@ class AgentsUtils:
             return OpenAIChatCompletionsModel(model=model, openai_client=openai_client)
         elif type == "responses":
             return OpenAIResponsesModel(model=model, openai_client=openai_client)
+        elif type == "litellm":
+            # Ref: https://docs.litellm.ai/docs/providers
+            # NOTE: should set .evn properly! e.g. AZURE_API_KEY, AZURE_API_BASE, AZURE_API_VERSION for Azure
+            #   https://docs.litellm.ai/docs/providers/azure/
+            from agents.extensions.models.litellm_model import LitellmModel
+
+            return LitellmModel(model=model)
         else:
             raise ValueError("Invalid type: " + type)
 
@@ -170,7 +178,7 @@ class AgentsUtils:
             if isinstance(event, RawResponsesStreamEvent):
                 # event.data -- ResponseStreamEvent
                 if event.data.type == "response.output_text.delta":
-                    PrintUtils.print_info(f"{event.data.delta}", end="")
+                    PrintUtils.print_bot(f"{event.data.delta}", end="")
                 elif event.data.type == "response.reasoning_text.delta":
                     PrintUtils.print_info(f"{event.data.delta}", end="")
                 elif event.data.type == "response.reasoning_text.done":
@@ -195,7 +203,8 @@ class AgentsUtils:
             elif isinstance(event, RunItemStreamEvent):
                 item: RunItem = event.item
                 if item.type == "message_output_item":
-                    PrintUtils.print_bot(f"<{item.agent.name}> {ItemHelpers.text_message_output(item).strip()}")
+                    pass  # do not print twice to avoid duplicate! (already handled `response.output_text.delta`)
+                    # PrintUtils.print_bot(f"<{item.agent.name}> {ItemHelpers.text_message_output(item).strip()}")
                 elif item.type == "handoff_call_item":  # same as `ToolCallItem`
                     PrintUtils.print_bot(f"[handoff_call] {item.raw_item.name}({item.raw_item.arguments})")
                 elif item.type == "handoff_output_item":
