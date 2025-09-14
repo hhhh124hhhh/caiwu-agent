@@ -1,6 +1,6 @@
 # How to Contribute
 
-First off, thank you for considering contributing to uTu-agent! It's people like you that make our community and software better. We welcome any and all contributions.
+First off, thank you for considering contributing to Youtu-Agent 财务分析智能体! It's people like you that make our community and software better. We welcome any and all contributions.
 
 We use GitHub [pull requests](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/about-pull-requests) to accept contributions.
 
@@ -19,11 +19,18 @@ To ensure a smooth and effective contribution process, please adhere to the foll
 
 ### Environment Setup
 
-For a complete guide on setting up your development environment, please refer to our [Quick Start](https://tencentcloudadp.github.io/youtu-agent/quickstart/) documentation. Here are the essential steps:
+For a complete guide on setting up your development environment, please refer to our [Quick Start](https://tencentcloudadp.github.io/youtu-agent/quickstart/) documentation. Here are the essential steps for the financial analysis project:
 
 ```sh
-# Install all dependencies
-make sync
+# 克隆项目
+git clone <repository-url>
+cd youtu-agent
+
+# 安装依赖
+uv sync --all-extras --all-packages --group dev
+
+# 激活虚拟环境
+source ./.venv/bin/activate
 
 # Install pre-commit hooks to automatically check your code before committing
 pre-commit install
@@ -45,10 +52,15 @@ make format
 
 ### Testing
 
-Ensure your changes are covered by tests. If you've modified a specific component, like the search toolkit, you can run its specific tests:
+Ensure your changes are covered by tests. If you've modified a specific component, like the financial analysis toolkit, you can run its specific tests:
 
 ```sh
-pytest tests/tools/test_search_toolkit.py
+# 运行财务分析工具的特定测试
+cd examples/stock_analysis
+python test_standardized_analysis.py
+
+# 或者运行单元测试
+pytest tests/tools/test_financial_tools.py
 ```
 
 To run the entire test suite:
@@ -57,8 +69,23 @@ To run the entire test suite:
 pytest
 ```
 
+### Financial Analysis Specific Guidelines
+
+When contributing to the financial analysis components, please follow these additional guidelines:
+
+1. **Data Accuracy**: Ensure all financial calculations are accurate and follow standard financial formulas.
+2. **Cache Handling**: Be mindful of the smart caching mechanism when adding new data sources.
+3. **Error Handling**: Implement proper error handling for financial data retrieval and processing.
+4. **Performance**: Consider the performance impact of new features on financial data processing.
+5. **Documentation**: Update the [STANDARDIZED_ANALYSIS_GUIDE.md](examples/stock_analysis/STANDARDIZED_ANALYSIS_GUIDE.md) when adding new features or modifying existing ones.
+
 ### Submitting Your Pull Request
 
 Once your changes are ready, tested, and linted, commit your code and open a pull request on GitHub. The maintainers will review it as soon as possible.
+
+If you have any questions or need assistance during the contribution process, please contact us via the following methods:
+- 📧 **Email**: hhhh124hhhh@qq.com
+- 🐛 **Bug反馈**: 请提供详细的错误日志和复现步骤
+- 💡 **功能建议**: 欢迎提出新的分析需求或改进建议
 
 Thank you for your contribution!
