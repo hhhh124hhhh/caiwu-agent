@@ -143,6 +143,11 @@ python -m pytest tests/
 
 MIT License
 
+## 📞 Contact
+
+If you have any questions or need assistance, please contact:
+- Email: hhhh124hhhh@qq.com
+
 ## 🙏 Acknowledgments
 
 - [AKShare](https://github.com/akfamily/akshare) - For providing excellent financial data

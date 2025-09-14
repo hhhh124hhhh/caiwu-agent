@@ -79,7 +79,7 @@
 
 `Youtu-Agent`的突出优势在于其**自动化生成智能体及其配置**的能力。在其他框架中，定义特定任务的智能体通常需要编写代码或是精心设计提示词，而`Youtu-Agent`采用基于 YAML 的简洁配置方案，实现了高效自动化：内置的“元智能体”与用户对话并捕获需求，然后自动生成并保存配置。
 
-```bash
+```
 # Interactively clarify your requirements and auto-generate a config
 python scripts/gen_simple_agent.py
 
@@ -202,7 +202,7 @@ UTU_LLM_API_KEY=<替换为你的 API Key>
 
 Youtu-Agent 内置了配置文件。例如，默认配置文件 (`configs/agents/default.yaml`) 定义了一个带有搜索工具的简单 Agent：
 
-```yaml
+```
 defaults:
   - /model/base
   - /tools/search@toolkits.search
@@ -228,7 +228,7 @@ python scripts/cli_chat.py --stream --config base
 
 本仓库提供了多个可直接运行的示例。某些示例要求 Agent 具备联网搜索功能，因此需要在 tools 模块下的 `.env` 文件中配置工具 API：
 
-```bash
+```
 # tools
 # serper api key, ref https://serper.dev/playground
 SERPER_API_KEY=<Access the URL in the comments to get the API Key>
@@ -238,13 +238,13 @@ JINA_API_KEY=<Access the URL in the comments to get the API Key>
 
 例如希望Agent围绕"DeepSeek V3.1 新特性"主题，自动联网检索信息并生成SVG介绍图片，可以直接运行下面的代码：
 
-```bash
+```
 python examples/svg_generator/main_web.py
 ```
 
 如果想要借助 web-ui 以可视化方式预览 Agent 的运行情况，你可以在 Youtu-Agent 的 [releases](https:////github.com/Tencent/Youtu-agent/releases/tag/frontend%2Fv0.1.5) 中下载前端 ui 的打包文件并安装到本地：
 
-```bash
+```
 # fetch and download the frontend package
 curl -LO https://github.com/Tencent/Youtu-agent/releases/download/frontend%2Fv0.1.5/utu_agent_ui-0.1.5-py3-none-any.whl
 
@@ -254,13 +254,13 @@ uv pip install utu_agent_ui-0.1.5-py3-none-any.whl
 
 然后运行web版本的SVG图片生成命令：
 
-```bash
+```
 python examples/svg_generator/main_web.py
 ```
 
 当终端出现以下提示时，说明部署成功。点击本地链接访问项目：
 
-```bash
+```
 Server started at http://127.0.0.1:8848/
 ```
 
@@ -276,7 +276,7 @@ Server started at http://127.0.0.1:8848/
 
 Youtu-agent 还支持在标准数据集上进行基准测试。例如，在 **WebWalkerQA** 上运行评测：
 
-```bash
+```
 # 数据集预处理. 该脚本会下载并处理 WebWalkerQA 数据集，然后保存到数据库中。
 python scripts/data/process_web_walker_qa.py
 
@@ -312,11 +312,14 @@ python scripts/run_eval.py --config_name ww --exp_id <your_exp_id> --dataset Web
 
 我们欢迎来自社区的贡献！如果您希望帮助改进 Youtu-Agent，请阅读我们的 [**贡献指南**](./CONTRIBUTING.md) 开始。
 
+如果您有任何问题或需要帮助，可以通过以下方式联系我们：
+- 邮箱：hhhh124hhhh@qq.com
+
 ## 📚 引用
 
 如果您觉得这项工作有帮助，请考虑引用：
 
-```bibtex
+```
 @misc{youtu-agent-2025,
   title={Youtu-agent: A Simple yet Powerful Agent Framework},
   author={Tencent Youtu Lab},

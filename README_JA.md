@@ -78,7 +78,7 @@
 
 `Youtu-Agent`の顕著な利点は、**エージェントとその設定を自動生成**する機能にあります。他のフレームワークでは、特定のタスクを実行するエージェントを定義するために通常コードを記述するかプロンプトを慎重に設計する必要がありますが、Youtu-AgentはYAMLベースのシンプルな設定方式を採用しており、効率的な自動化を実現します。内蔵のメタエージェントがユーザーと対話して要望を把握すると、自動的にエージェント設定を生成して保存します。
 
-```bash
+```
 # インタラクティブに要件を明確にし、設定を自動生成します
 python scripts/gen_simple_agent.py
 
@@ -185,7 +185,7 @@ cp.env.example.env  # NOTE: 関連する環境変数を設定する必要があ�
 
 Youtu-Agent には設定ファイルが内蔵されています。例えば、デフォルトの設定ファイル (`configs/agents/default.yaml`) では、検索ツールを備えたシンプルなエージェントが定義されています：
 
-```yaml
+```
 defaults:
   - /model/base
   - /tools/search@toolkits.search
@@ -198,7 +198,7 @@ agent:
 
 以下のコマンドを使用してインタラクティブな CLI チャットボットを起動できます：
 
-```bash
+```
 # NOTE: `.env` に `SERPER_API_KEY` と `JINA_API_KEY` を設定する必要があります（将来的には無料のツールに置き換える予定です）
 python scripts/cli_chat.py --stream --config default
 # 検索ツールを使用しない場合は、以下のコマンドを実行できます
@@ -211,7 +211,7 @@ python scripts/cli_chat.py --stream --config base
 
 このリポジトリには直接実行できる複数のサンプルがあります。例えば、特定の研究トピックに基づいて自動的に **SVG インフォグラフィック** を生成することができます：
 
-```bash
+```
 python examples/svg_generator/main_web.py
 ```
 
@@ -230,7 +230,7 @@ python examples/svg_generator/main_web.py
 
 Youtu-Agent では標準データセットでのベンチマークテストもサポートしています。例えば、**WebWalkerQA** 上で評価を実行するには：
 
-```bash
+```
 # データセットの前処理。このスクリプトは WebWalkerQA データセットをダウンロードして処理し、データベースに保存します。
 python scripts/data/process_web_walker_qa.py
 
@@ -270,7 +270,7 @@ python scripts/run_eval.py --config_name ww --exp_id <your_exp_id> --dataset Web
 
 この研究が役立つと思われる場合は、引用を検討してください：
 
-```bibtex
+```
 @misc{youtu-agent-2025,
   title={Youtu-agent: A Simple yet Powerful Agent Framework},
   author={Tencent Youtu Lab},
