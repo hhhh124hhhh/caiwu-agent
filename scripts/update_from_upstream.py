@@ -5,6 +5,7 @@ Update script to sync changes from upstream Youtu-Agent repository
 
 import subprocess
 import sys
+import os
 
 def run_command(command):
     """Run a shell command and return the result"""
@@ -17,6 +18,18 @@ def run_command(command):
         print(f"Error running command: {command}")
         print(f"Error message: {e.stderr}")
         return None
+
+def check_for_conflicts():
+    """Check if there are merge conflicts"""
+    try:
+        result = subprocess.run("git diff --name-only --diff-filter=U", 
+                              shell=True, check=True, 
+                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, 
+                              text=True)
+        conflicts = result.stdout.strip().split('\n') if result.stdout.strip() else []
+        return [f for f in conflicts if f]  # Remove empty strings
+    except subprocess.CalledProcessError:
+        return []
 
 def main():
     print("Updating from upstream Youtu-Agent repository...")
@@ -38,10 +51,23 @@ def main():
     current_branch = branch_result
     print(f"   Current branch: {current_branch}")
     
-    # Merge upstream changes
+    # Try to merge upstream changes
     print("3. Merging upstream changes...")
     merge_result = run_command(f"git merge upstream/main")
-    if merge_result is None:
+    
+    # Check for conflicts
+    conflicts = check_for_conflicts()
+    if conflicts:
+        print("WARNING: Merge conflicts detected!")
+        print("Conflicting files:")
+        for conflict in conflicts:
+            print(f"  - {conflict}")
+        print("\nPlease resolve conflicts manually, then run:")
+        print("  git add <resolved-files>")
+        print("  git commit")
+        print("  git push origin main")
+        sys.exit(1)
+    elif merge_result is None:
         print("Failed to merge upstream changes")
         print("You may need to resolve conflicts manually")
         sys.exit(1)
