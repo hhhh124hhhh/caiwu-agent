@@ -62,10 +62,10 @@ export UTU_LLM_BASE_URL="your_base_url"
 # 进入示例目录
 cd examples/stock_analysis
 
-# 启动财务分析智能体
-python main.py
+# 启动财务分析智能体（支持流式输出）【适合深度分析】
+python main.py --stream
 
-# 或者使用uv运行交互式模式（推荐）
+# 或者使用uv运行chat模式（快速模式）【适合快速分析】
 uv run scripts/cli_chat.py --stream --config_name agents/examples/stock_analysis_final
 
 # 启动Web模式
@@ -93,7 +93,7 @@ youtu-agent/
 │       └── financial_analysis.yaml            # 财务分析工具配置
 ├── examples/
 │   └── stock_analysis/
-│       ├── main.py                             # 主程序入口
+│       ├── main.py                             # 主程序入口（支持流式输出）
 │       ├── stock_analysis_examples.json         # 分析任务示例
 │       ├── test_standardized_analysis.py       # 集成测试
 │       └── STANDARDIZED_ANALYSIS_GUIDE.md     # 详细使用指南
@@ -437,3 +437,57 @@ recommendations = health['recommendations']
 | 依赖数据质量 | 多重数据验证 | ✅ 数据可靠性高 |
 
 **立即体验标准化财务分析的魅力！** 🚀
+
+## 🔄 最新更新
+
+### 📊 main.py 支持流式输出
+在最新版本中，我们为 [main.py](file:///D:/youtu-agent/examples/stock_analysis/main.py) 添加了流式输出功能，可以实时显示分析过程的详细执行步骤：
+
+```
+# 使用 --stream 参数启用流式输出
+python main.py --stream
+
+# 输出示例：
+>> 计划阶段:
+   分析: 需要分析陕西建工(600248.SH)的最新财报数据，包括财务比率、趋势分析和健康评估
+   任务列表:
+     1. 获取陕西建工的财务数据 (负责智能体: DataAgent)
+     2. 分析财务数据 (负责智能体: DataAnalysisAgent)
+     3. 生成最终报告 (负责智能体: FinancialAnalysisAgent)
+>> 工作阶段 - 任务: 获取陕西建工的财务数据
+   输出: 已成功获取陕西建工(600248.SH)的财务数据
+>> 工作阶段 - 任务: 分析财务数据
+   输出: 已完成财务数据分析，包括比率计算、趋势分析和健康评估
+>> 报告阶段:
+   最终报告: 陕西建工(600248.SH)的财务分析已完成...
+```
+
+### 💬 cli_chat.py 保持单一智能体模式
+为了便于快速上下文切换，[cli_chat.py](file:///D:/youtu-agent/scripts/cli_chat.py) 现在保持单一智能体模式，专注于提供简洁高效的交互体验：
+
+```
+# 使用单一智能体模式，支持快速上下文切换
+uv run scripts/cli_chat.py --stream --config_name agents/examples/stock_analysis_final
+
+# 输出示例：
+财务分析智能体已启动，输入 'exit', 'quit' 或 'q' 退出。
+请输入您的问题: 分析陕西建工的最新财报
+>> 工具调用: get_financial_reports
+>> 工具调用: calculate_ratios
+>> 工具调用: analyze_trends
+>> 工具调用: assess_health
+分析完成，陕西建工的综合评分为78.5分，属于中等风险水平。
+请输入您的问题: 
+```
+
+### 💾 新增独立报告保存工具
+为了更好地处理AI分析结果的保存，我们创建了独立的报告保存工具类 [report_saver_toolkit.py](file:///D:/youtu-agent/utu/tools/report_saver_toolkit.py)，支持多种格式的报告保存：
+
+- **MD文档保存**：支持保存分析报告为Markdown格式
+- **JSON数据保存**：支持保存结构化数据为JSON格式
+- **图像报告保存**：支持保存图表和图像为多种格式
+- **对比报告保存**：支持保存多公司对比分析报告
+
+ReportAgent现在集成了report_saver工具，可以将AI生成的最终分析结果保存到文件中，解决了之前财务分析工具中只能保存单一企业财务报告的问题。
+
+这些改进使得系统既能够提供详细的分析过程展示，又能够保持简洁高效的交互体验，同时增强了结果保存的灵活性。

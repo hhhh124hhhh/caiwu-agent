@@ -10,6 +10,7 @@ activated_tools:
   - "generate_report"
   - "generate_text_report"
   - "save_text_report"
+  - "save_analysis_result"
 
 config:
   timeout: 30

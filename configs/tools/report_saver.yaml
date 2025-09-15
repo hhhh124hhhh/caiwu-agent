@@ -1,0 +1,47 @@
+# @package _global_
+# 报告保存工具配置
+name: "report_saver"
+description: "独立的报告保存工具，用于保存AI分析结果到各种格式的文件"
+
+activated_tools:
+  - "save_analysis_report"
+  - "save_comparison_report"
+  - "save_json_report"
+  - "save_image_report"
+
+config:
+  timeout: 30
+  workspace_root: "./run_workdir"
+  cache_enabled: false
+  
+# 支持的保存类型
+supported_formats:
+  text_formats:
+    - "md"
+    - "txt"
+    - "html"
+  data_formats:
+    - "json"
+    - "csv"
+  image_formats:
+    - "png"
+    - "jpg"
+    - "svg"
+
+# 文件命名配置
+naming_convention:
+  include_date: true
+  date_format: "%Y%m%d"
+  separator: "_"
+
+# 工作目录配置
+workspace:
+  default_dir: "./run_workdir"
+  auto_create: true
+  max_file_size_mb: 100
+
+# 错误处理
+error_handling:
+  retry_attempts: 3
+  fallback_action: "log_error"
+  log_level: "INFO"

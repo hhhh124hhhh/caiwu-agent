@@ -1070,6 +1070,53 @@ class StandardFinancialAnalyzer(AsyncBaseToolkit):
         except Exception as e:
             return f"保存报告时出错: {str(e)}"
 
+    @register_tool()
+    def save_analysis_result(self, analysis_result: str, 
+                           stock_name: str = "目标公司",
+                           file_path: Optional[str] = None,
+                           file_prefix: str = "./run_workdir") -> str:
+        """
+        保存AI分析结果到MD文件
+        
+        Args:
+            analysis_result: AI生成的分析结果文本
+            stock_name: 公司名称
+            file_path: 保存文件的完整路径（可选，如果提供则忽略file_prefix）
+            file_prefix: 保存文件的目录前缀（默认为"./run_workdir"）
+            
+        Returns:
+            保存结果信息
+        """
+        import os
+        from datetime import datetime
+        try:
+            # 如果没有提供完整文件路径，则根据公司名称和日期生成文件名
+            if file_path is None:
+                # 清理公司名称中的特殊字符，确保文件名合法
+                safe_stock_name = "".join(c for c in stock_name if c.isalnum() or c in (' ', '-', '_')).rstrip()
+                # 生成带日期的文件名
+                current_date = datetime.now().strftime("%Y%m%d")
+                file_name = f"{safe_stock_name}{current_date}财务分析报告.md"
+                file_path = os.path.join(file_prefix, file_name)
+            
+            # 确保目录存在
+            directory = os.path.dirname(file_path)
+            if directory:
+                os.makedirs(directory, exist_ok=True)
+            
+            # 保存到文件，确保正确处理换行符和特殊字符
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(analysis_result)
+            
+            # 验证文件是否保存成功
+            if os.path.exists(file_path):
+                file_size = os.path.getsize(file_path)
+                return f"分析结果已成功保存到: {file_path} (文件大小: {file_size} 字节)"
+            else:
+                return f"保存分析结果时出错: 文件未成功创建"
+        except Exception as e:
+            return f"保存分析结果时出错: {str(e)}"
+
 # 全局实例
 _analyzer = None
 

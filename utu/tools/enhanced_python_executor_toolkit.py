@@ -170,20 +170,20 @@ for lib_import in optional_libs:
             pass
 
         result = {
-            "success": False
+            "成功": False
             if "Error" in stderr_result or ("Error" in stdout_result and "Traceback" in stdout_result)
             else True,
-            "message": f"Code execution completed\nOutput:\n{stdout_result.strip()}"
+            "消息": f"代码执行完成\n输出:\n{stdout_result.strip()}"
             if stdout_result.strip()
-            else "Code execution completed, no output",
-            "status": True,
-            "files": new_files,
-            "error": stderr_result.strip() if stderr_result.strip() else "",
+            else "代码执行完成，无输出",
+            "状态": True,
+            "文件": new_files,
+            "错误": stderr_result.strip() if stderr_result.strip() else "",
         }
         
         # 如果成功保存了代码文件，将其添加到结果中
         if code_file_path and os.path.exists(code_file_path):
-            result["code_file"] = code_file_path
+            result["代码文件"] = code_file_path
 
         return result
     except Exception as e:  # pylint: disable=broad-except

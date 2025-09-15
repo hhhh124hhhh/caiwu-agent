@@ -3,12 +3,19 @@ import pathlib
 import re
 import os
 from typing import Optional
+import argparse
 
 from utu.agents import OrchestraAgent
 from utu.config import ConfigLoader
+from utu.utils.agents_utils import AgentsUtils
 
 
 async def main():
+    # 添加命令行参数解析
+    parser = argparse.ArgumentParser(description="A股财报分析智能体")
+    parser.add_argument("--stream", action="store_true", help="启用流式输出")
+    args = parser.parse_args()
+    
     # 检查是否设置了必要的环境变量
     llm_type = os.environ.get("UTU_LLM_TYPE")
     llm_model = os.environ.get("UTU_LLM_MODEL")
@@ -73,8 +80,16 @@ async def main():
     
     print(f"\n开始分析: {question}")
     
-    # Run the analysis
-    result = await runner.run(question)
+    # Run the analysis with or without streaming
+    if args.stream:
+        # 使用流式输出
+        result = runner.run_streamed(question)
+        await AgentsUtils.print_stream_events(result.stream_events())
+        final_output = result.final_output
+    else:
+        # 使用普通输出
+        result = await runner.run(question)
+        final_output = result.final_output
 
     # Extract and save the result
     final_output = result.final_output
