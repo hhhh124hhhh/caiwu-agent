@@ -210,7 +210,7 @@ class TabularDataToolkit(AsyncBaseToolkit):
         }
 
     @register_tool()
-    def generate_charts(self, data_json: str, chart_type: str = "bar", output_dir: str = "./charts") -> dict:
+    def generate_charts(self, data_json: str, chart_type: str = "bar", output_dir: str = "./run_workdir/sxjg_charts") -> dict:
         """Generate charts from financial data.
         
         Args:
@@ -245,130 +245,173 @@ class TabularDataToolkit(AsyncBaseToolkit):
             # 生成图表
             chart_files = []
             
-            if chart_type == "bar":
-                # 生成柱状图
-                fig, ax = plt.subplots(figsize=(10, 6))
+            # 检查是否是公司对比数据并生成分组图表
+            if 'companies' in data and isinstance(data.get('revenue'), list):
+                companies = data['companies']
+                # 生成公司对比图表
+                fig, ax = plt.subplots(figsize=(12, 8))
                 
-                # 提取数据
-                keys = list(flattened_data.keys())
-                values = list(flattened_data.values())
+                # 获取要绘制的指标
+                metrics = {}
+                metric_names = {
+                    'revenue': '营业收入',
+                    'net_profit': '净利润',
+                    'total_assets': '总资产',
+                    'debt_ratio': '资产负债率',
+                    'roe': 'ROE'
+                }
                 
-                # 创建柱状图
-                bars = ax.bar(keys, values, color=['#2E86AB', '#A23B72', '#F18F01', '#C73E1D'])
-                ax.set_title("财务数据图表")
-                ax.set_ylabel("数值")
+                for metric_key, metric_name in metric_names.items():
+                    if metric_key in data and isinstance(data[metric_key], list):
+                        metrics[metric_name] = data[metric_key]
                 
-                # 添加数值标签
-                y_max = ax.get_ylim()[1]
-                for bar, value in zip(bars, values):
-                    # 计算标签位置，确保不会超出图表上边界
-                    label_y = bar.get_height() + (y_max * 0.02)
-                    if label_y > y_max * 0.9:  # 如果标签位置过高
-                        label_y = bar.get_height() - (y_max * 0.05)  # 放在柱子内部，增加偏移量
-                        va = 'top'
-                    else:
-                        va = 'bottom'
-                    ax.text(bar.get_x() + bar.get_width() / 2, label_y, f'{value:.2f}', ha='center', va=va,
-                            bbox=dict(boxstyle="square,pad=0.3", fc="white", alpha=0.7))  # 添加背景框
-                
-                # 保存图表
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                chart_file = os.path.join(output_dir, f"bar_chart_{timestamp}.png")
-                plt.savefig(chart_file, dpi=300, bbox_inches='tight')
-                plt.close()
-                chart_files.append(chart_file)
-                
-            elif chart_type == "line":
-                # 生成折线图
-                fig, ax = plt.subplots(figsize=(10, 6))
-                
-                # 提取数据
-                keys = list(flattened_data.keys())
-                values = list(flattened_data.values())
-                
-                # 创建折线图
-                ax.plot(keys, values, marker='o', linewidth=2, markersize=8, color='#2E86AB')
-                ax.set_title("财务数据趋势图")
-                ax.set_ylabel("数值")
-                ax.grid(True, linestyle='--', alpha=0.5)  # 调整网格线样式
-                
-                # 添加数值标签
-                y_min, y_max = ax.get_ylim()
-                y_range = y_max - y_min
-                label_positions = []  # 用于存储已添加标签的位置，避免重叠
-                
-                for i, (key, value) in enumerate(zip(keys, values)):
-                    # 动态调整标签偏移量，避免重叠
-                    offset = min(15, max(5, y_range * 0.02))  # 偏移量在5-15之间
-                    label_y = value + offset
+                # 绘制分组柱状图
+                if metrics:
+                    x = np.arange(len(companies))
+                    width = 0.8 / len(metrics)
                     
-                    # 检查标签是否重叠
-                    if any(abs(label_y - pos) < offset for pos in label_positions):
-                        label_y = value - offset  # 如果会重叠，则放在数据点下方
+                    for i, (metric_name, values) in enumerate(metrics.items()):
+                        ax.bar(x + i*width, values, width, label=metric_name)
                     
-                    label_positions.append(label_y)
+                    ax.set_xlabel('公司')
+                    ax.set_ylabel('数值')
+                    ax.set_title('公司财务指标对比')
+                    ax.set_xticks(x + width * (len(metrics) - 1) / 2)
+                    ax.set_xticklabels(companies)
+                    ax.legend()
                     
-                    # 只在关键点显示标签（例如，最大值、最小值和起点）
-                    if i == 0 or value == max(values) or value == min(values):
-                        ax.annotate(f'{value:.2f}', (i, label_y), textcoords="offset points", 
-                                   xytext=(0, 0), ha='center', va='bottom', 
-                                   bbox=dict(boxstyle="square,pad=0.3", fc="white", alpha=0.7))
-                
-                # 保存图表
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                chart_file = os.path.join(output_dir, f"line_chart_{timestamp}.png")
-                plt.savefig(chart_file, dpi=300, bbox_inches='tight')
-                plt.close()
-                chart_files.append(chart_file)
-                
-            elif chart_type == "pie":
-                # 生成饼图
-                fig, ax = plt.subplots(figsize=(10, 8))
-                
-                # 提取数据
-                keys = list(flattened_data.keys())
-                values = list(flattened_data.values())
-                
-                # 创建饼图
-                colors = ['#2E86AB', '#A23B72', '#F18F01', '#C73E1D', '#6A994E']
-                pie_result = ax.pie(values, labels=None, autopct='%1.1f%%', 
-                                   colors=colors[:len(keys)], startangle=90,
-                                   textprops={'color': 'black'})  # 统一文本颜色
-                
-                # 获取饼图的wedges
-                wedges = pie_result[0] if isinstance(pie_result, tuple) else pie_result
-                
-                # 调整标签显示
-                label_distance = 1.1  # 标签距离圆心的距离
-                for i, wedge in enumerate(wedges):
-                    angle = (wedge.theta2 - wedge.theta1) / 2. + wedge.theta1
-                    x = np.cos(np.deg2rad(angle))
-                    y = np.sin(np.deg2rad(angle))
+                    # 保存图表
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    chart_file = os.path.join(output_dir, f"comparison_chart_{timestamp}.png")
+                    plt.savefig(chart_file, dpi=300, bbox_inches='tight')
+                    plt.close()
+                    chart_files.append(chart_file)
+            else:
+                # 原有的单公司图表生成逻辑
+                if chart_type == "bar":
+                    # 生成柱状图
+                    fig, ax = plt.subplots(figsize=(10, 6))
                     
-                    # 对于占比非常小的部分，不显示标签
-                    if values[i] / sum(values) > 0.05:  # 只显示占比大于5%的标签
-                        horizontalalignment = {-1: "right", 1: "left"}[int(np.sign(x))]
-                        connectionstyle = "angle,angleA=0,angleB={}".format(angle)
+                    # 提取数据
+                    keys = list(flattened_data.keys())
+                    values = list(flattened_data.values())
+                    
+                    # 创建柱状图
+                    bars = ax.bar(keys, values, color=['#2E86AB', '#A23B72', '#F18F01', '#C73E1D'])
+                    ax.set_title("财务数据图表")
+                    ax.set_ylabel("数值")
+                    
+                    # 添加数值标签
+                    y_max = ax.get_ylim()[1]
+                    for bar, value in zip(bars, values):
+                        # 计算标签位置，确保不会超出图表上边界
+                        label_y = bar.get_height() + (y_max * 0.02)
+                        if label_y > y_max * 0.9:  # 如果标签位置过高
+                            label_y = bar.get_height() - (y_max * 0.05)  # 放在柱子内部，增加偏移量
+                            va = 'top'
+                        else:
+                            va = 'bottom'
+                        ax.text(bar.get_x() + bar.get_width() / 2, label_y, f'{value:.2f}', ha='center', va=va,
+                                bbox=dict(boxstyle="square,pad=0.3", fc="white", alpha=0.7))  # 添加背景框
+                    
+                    # 保存图表
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    chart_file = os.path.join(output_dir, f"bar_chart_{timestamp}.png")
+                    plt.savefig(chart_file, dpi=300, bbox_inches='tight')
+                    plt.close()
+                    chart_files.append(chart_file)
+                    
+                elif chart_type == "line":
+                    # 生成折线图
+                    fig, ax = plt.subplots(figsize=(10, 6))
+                    
+                    # 提取数据
+                    keys = list(flattened_data.keys())
+                    values = list(flattened_data.values())
+                    
+                    # 创建折线图
+                    ax.plot(keys, values, marker='o', linewidth=2, markersize=8, color='#2E86AB')
+                    ax.set_title("财务数据趋势图")
+                    ax.set_ylabel("数值")
+                    ax.grid(True, linestyle='--', alpha=0.5)  # 调整网格线样式
+                    
+                    # 添加数值标签
+                    y_min, y_max = ax.get_ylim()
+                    y_range = y_max - y_min
+                    label_positions = []  # 用于存储已添加标签的位置，避免重叠
+                    
+                    for i, (key, value) in enumerate(zip(keys, values)):
+                        # 动态调整标签偏移量，避免重叠
+                        offset = min(15, max(5, y_range * 0.02))  # 偏移量在5-15之间
+                        label_y = value + offset
                         
-                        ax.annotate(
-                            keys[i], 
-                            xy=(x, y),  # 标签的坐标
-                            xytext=(label_distance * x, label_distance * y),  # 文本的坐标
-                            horizontalalignment=horizontalalignment,
-                            verticalalignment="center",
-                            fontsize=10,
-                            bbox=dict(facecolor='white', edgecolor='none', pad=5),
-                            arrowprops=dict(arrowstyle="->", connectionstyle=connectionstyle)
-                        )
-                
-                ax.set_title("财务数据占比图")
-                
-                # 保存图表
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                chart_file = os.path.join(output_dir, f"pie_chart_{timestamp}.png")
-                plt.savefig(chart_file, dpi=300, bbox_inches='tight')
-                plt.close()
-                chart_files.append(chart_file)
+                        # 检查标签是否重叠
+                        if any(abs(label_y - pos) < offset for pos in label_positions):
+                            label_y = value - offset  # 如果会重叠，则放在数据点下方
+                        
+                        label_positions.append(label_y)
+                        
+                        # 只在关键点显示标签（例如，最大值、最小值和起点）
+                        if i == 0 or value == max(values) or value == min(values):
+                            ax.annotate(f'{value:.2f}', (i, label_y), textcoords="offset points", 
+                                       xytext=(0, 0), ha='center', va='bottom', 
+                                       bbox=dict(boxstyle="square,pad=0.3", fc="white", alpha=0.7))
+                    
+                    # 保存图表
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    chart_file = os.path.join(output_dir, f"line_chart_{timestamp}.png")
+                    plt.savefig(chart_file, dpi=300, bbox_inches='tight')
+                    plt.close()
+                    chart_files.append(chart_file)
+                    
+                elif chart_type == "pie":
+                    # 生成饼图
+                    fig, ax = plt.subplots(figsize=(10, 8))
+                    
+                    # 提取数据
+                    keys = list(flattened_data.keys())
+                    values = list(flattened_data.values())
+                    
+                    # 创建饼图
+                    colors = ['#2E86AB', '#A23B72', '#F18F01', '#C73E1D', '#6A994E']
+                    pie_result = ax.pie(values, labels=None, autopct='%1.1f%%', 
+                                       colors=colors[:len(keys)], startangle=90,
+                                       textprops={'color': 'black'})  # 统一文本颜色
+                    
+                    # 获取饼图的wedges
+                    wedges = pie_result[0] if isinstance(pie_result, tuple) else pie_result
+                    
+                    # 调整标签显示
+                    label_distance = 1.1  # 标签距离圆心的距离
+                    for i, wedge in enumerate(wedges):
+                        angle = (wedge.theta2 - wedge.theta1) / 2. + wedge.theta1
+                        x = np.cos(np.deg2rad(angle))
+                        y = np.sin(np.deg2rad(angle))
+                        
+                        # 对于占比非常小的部分，不显示标签
+                        if values[i] / sum(values) > 0.05:  # 只显示占比大于5%的标签
+                            horizontalalignment = {-1: "right", 1: "left"}[int(np.sign(x))]
+                            connectionstyle = "angle,angleA=0,angleB={}".format(angle)
+                            
+                            ax.annotate(
+                                keys[i], 
+                                xy=(x, y),  # 标签的坐标
+                                xytext=(label_distance * x, label_distance * y),  # 文本的坐标
+                                horizontalalignment=horizontalalignment,
+                                verticalalignment="center",
+                                fontsize=10,
+                                bbox=dict(facecolor='white', edgecolor='none', pad=5),
+                                arrowprops=dict(arrowstyle="->", connectionstyle=connectionstyle)
+                            )
+                    
+                    ax.set_title("财务数据占比图")
+                    
+                    # 保存图表
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    chart_file = os.path.join(output_dir, f"pie_chart_{timestamp}.png")
+                    plt.savefig(chart_file, dpi=300, bbox_inches='tight')
+                    plt.close()
+                    chart_files.append(chart_file)
             
             return {
                 "success": True,
@@ -419,6 +462,27 @@ class TabularDataToolkit(AsyncBaseToolkit):
                             # 将指标名称转换为中文
                             chinese_ratio = self._translate_indicator(ratio_name)
                             flattened[f"{chinese_category}_{chinese_ratio}"] = ratio_value
+        
+        # 处理公司对比数据（新增处理逻辑）
+        if 'companies' in data and isinstance(data.get('revenue'), list):
+            companies = data['companies']
+            # 处理各种财务指标
+            for key, values in data.items():
+                if isinstance(values, list) and len(values) == len(companies):
+                    for i, value in enumerate(values):
+                        if isinstance(value, (int, float)):
+                            chinese_key = self._translate_indicator(key)
+                            flattened[f"{companies[i]}_{chinese_key}"] = value
+        
+        # 处理扁平化的公司数据（新增处理逻辑）
+        if len(data) > 0 and not flattened:
+            # 检查是否是公司数据的字典格式
+            for company_name, company_data in data.items():
+                if isinstance(company_data, dict):
+                    for key, value in company_data.items():
+                        if isinstance(value, (int, float)):
+                            chinese_key = self._translate_indicator(key)
+                            flattened[f"{company_name}_{chinese_key}"] = value
         
         # 如果没有嵌套结构，直接返回原始数据中的数值键值对
         if not flattened:

@@ -51,6 +51,19 @@
         "trend"
       ],
       "file_count": 5
+    },
+    "stock_601668": {
+      "stock_code": "601668",
+      "cached_date": "2025-09-15T13:13:22.877870",
+      "latest_report_date": "2025-06-30",
+      "data_types": [
+        "income",
+        "balance",
+        "cashflow",
+        "metrics",
+        "trend"
+      ],
+      "file_count": 5
     }
   },
   "last_cleanup": "2025-09-14T18:34:20.235196",

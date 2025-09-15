@@ -99,31 +99,70 @@ workers:
         
         注意：专注于分析和解读，不进行基础计算。
 
+  ChartGeneratorAgent:
+    agent:
+      instructions: |-
+        专业图表生成专家。基于财务分析结果生成可视化图表。
+
+        核心工具：
+        - generate_charts: 生成财务数据图表（柱状图、折线图、饼图）
+        - get_tabular_columns: 分析表格数据结构
+        - get_column_info: 智能解释表格列含义
+
+        工作流程：
+        1. 接收财务分析结果（比率、趋势、健康评估等数据）
+        2. 使用generate_charts生成可视化图表，保存到"./run_workdir"目录
+        3. 为每张图表提供说明和分析
+        4. 将图表文件路径和说明整理成报告
+
+        注意：专注于图表生成和可视化，必须使用generate_charts工具，不要使用Python代码生成图表。
+
+  ReportAgent:
+    agent:
+      instructions: |-
+        专业报告生成专家。整合所有分析结果生成完整财务分析报告。
+
+        核心工具：
+        - generate_report: 生成标准化财务分析报告
+        - generate_comparison_report: 生成公司对比分析报告
+        - save_text_report: 生成并保存MD格式的财务分析报告（支持动态文件命名）
+        - get_tabular_columns: 分析表格数据结构
+        - get_column_info: 智能解释表格列含义
+
+        工作流程：
+        1. 整合所有分析结果（数据、比率、趋势、健康评估、图表等）
+        2. 使用generate_report或generate_comparison_report生成完整分析报告
+        3. 使用save_text_report将报告保存为MD格式文件，文件名将根据公司名称和日期自动生成
+        4. 保存报告到"./run_workdir"目录
+        5. 提供报告摘要和关键洞察
+
+        注意：专注于报告整合和呈现，必须使用save_text_report工具保存报告，不要使用Python代码保存文件。
+
 # 工具配置
 toolkits:
   akshare_data:
     config:
-      workspace_root: "./stock_analysis_workspace"
+      workspace_root: "./run_workdir"
       cache_enabled: true
       timeout: 45
       
   financial_analyzer:
     config:
-      workspace_root: "./stock_analysis_workspace"
+      workspace_root: "./run_workdir"
       cache_enabled: true
       timeout: 30
       
   analysis_executor:
-    config:
-      workspace_root: "./stock_analysis_workspace"
-      save_code: true
-      timeout: 60
-      matplotlib_backend: "Agg"
-      max_output_length: 1500
-  
+  config:
+    workspace_root: "./stock_analysis_workspace"
+    save_code: true
+    timeout: 60
+    matplotlib_backend: "Agg"
+    max_output_length: 1500
+
   tabular:
     config:
-      workspace_root: "./stock_analysis_workspace"
+      workspace_root: "./run_workdir"
       cache_enabled: true
       timeout: 30
 
@@ -143,7 +182,6 @@ workers_info:
     weaknesses: 依赖数据质量
     tools:
       - financial_analysis
-      - enhanced_python_executor
       - tabular
 
   - name: FinancialAnalysisAgent
@@ -151,7 +189,7 @@ workers_info:
     strengths: 深度分析、投资评估、风险识别、表格数据解读
     weaknesses: 依赖数据质量
     tools:
-      - enhanced_python_executor
+      - financial_analysis
       - tabular
 
   - name: ChartGeneratorAgent
@@ -160,14 +198,14 @@ workers_info:
     weaknesses: 依赖数据准确性
     tools:
       - tabular
+      - financial_analysis
 
   - name: ReportAgent
     desc: 报告生成专家
     strengths: HTML报告、结果整合、专业术语
     weaknesses: 依赖前期分析质量
     tools:
-      - enhanced_python_executor
-      - document
+      - financial_analysis
 
 # 核心优化配置
 optimization_settings:
@@ -191,7 +229,7 @@ optimization_settings:
 
 # 分析配置
 analysis_config:
-  workdir: "./stock_analysis_workspace"
+  workdir: "./run_workdir"
   output_formats: ["html"]
   chart_formats: ["png"]
   

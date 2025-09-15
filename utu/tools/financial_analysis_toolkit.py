@@ -295,52 +295,71 @@ class StandardFinancialAnalyzer(AsyncBaseToolkit):
         
         # 如果有简化指标，尝试填充到DataFrame中
         if simple_metrics:
-            # 创建包含所有指标的行数据
-            income_data = {}
-            balance_data = {}
-            
-            # 映射简化指标到标准列名
-            income_metric_mapping = {
-                'revenue': 'TOTAL_OPERATE_INCOME',
-                'net_profit': 'NETPROFIT',
-                'parent_net_profit': 'PARENT_NETPROFIT'
-            }
-            
-            balance_metric_mapping = {
-                'total_assets': 'TOTAL_ASSETS',
-                'total_liabilities': 'TOTAL_LIABILITIES',
-                'total_equity': 'TOTAL_EQUITY',
-                'current_assets': 'TOTAL_CURRENT_ASSETS',  # 流动资产
-                'current_liabilities': 'TOTAL_CURRENT_LIABILITIES'  # 流动负债
-            }
-            
-            # 填充收入数据
-            for key, value in simple_metrics.items():
-                if key in income_metric_mapping:
-                    mapped_key = income_metric_mapping[key]
-                    # 对于收入和利润指标，需要转换为实际数值（亿元转为元）
-                    if key in ['revenue', 'net_profit', 'parent_net_profit']:
-                        income_data[mapped_key] = float(value) * 1e8
-                    else:
-                        income_data[mapped_key] = float(value)
-            
-            # 填充资产负债数据
-            for key, value in simple_metrics.items():
-                if key in balance_metric_mapping:
-                    mapped_key = balance_metric_mapping[key]
-                    # 对于资产、负债、权益指标，需要转换为实际数值（亿元转为元）
-                    if key in ['total_assets', 'total_liabilities', 'total_equity', 'current_assets', 'current_liabilities']:
-                        balance_data[mapped_key] = float(value) * 1e8
-                    else:
-                        balance_data[mapped_key] = float(value)
-            
-            # 创建DataFrame，确保使用正确的格式
-            if income_data:
-                # 创建包含一行数据的DataFrame
-                income_df = pd.DataFrame([income_data])
-            if balance_data:
-                # 创建包含一行数据的DataFrame
-                balance_df = pd.DataFrame([balance_data])
+            # 检查是否是嵌套结构（包含income和balance键）
+            if 'income' in simple_metrics and 'balance' in simple_metrics:
+                # 处理嵌套结构
+                income_data = simple_metrics['income']
+                balance_data = simple_metrics['balance']
+                
+                # 如果income_data是列表，取第一个元素
+                if isinstance(income_data, list) and len(income_data) > 0:
+                    income_data = income_data[0]
+                # 如果balance_data是列表，取第一个元素
+                if isinstance(balance_data, list) and len(balance_data) > 0:
+                    balance_data = balance_data[0]
+                
+                # 创建DataFrame
+                if income_data:
+                    income_df = pd.DataFrame([income_data] if isinstance(income_data, dict) else income_data)
+                if balance_data:
+                    balance_df = pd.DataFrame([balance_data] if isinstance(balance_data, dict) else balance_data)
+            else:
+                # 处理扁平化结构
+                income_data = {}
+                balance_data = {}
+                
+                # 映射简化指标到标准列名
+                income_metric_mapping = {
+                    'revenue': 'TOTAL_OPERATE_INCOME',
+                    'net_profit': 'NETPROFIT',
+                    'parent_net_profit': 'PARENT_NETPROFIT'
+                }
+                
+                balance_metric_mapping = {
+                    'total_assets': 'TOTAL_ASSETS',
+                    'total_liabilities': 'TOTAL_LIABILITIES',
+                    'total_equity': 'TOTAL_EQUITY',
+                    'current_assets': 'TOTAL_CURRENT_ASSETS',  # 流动资产
+                    'current_liabilities': 'TOTAL_CURRENT_LIABILITIES'  # 流动负债
+                }
+                
+                # 填充收入数据
+                for key, value in simple_metrics.items():
+                    if key in income_metric_mapping:
+                        mapped_key = income_metric_mapping[key]
+                        # 对于收入和利润指标，需要转换为实际数值（亿元转为元）
+                        if key in ['revenue', 'net_profit', 'parent_net_profit']:
+                            income_data[mapped_key] = float(value) * 1e8
+                        else:
+                            income_data[mapped_key] = float(value)
+                
+                # 填充资产负债数据
+                for key, value in simple_metrics.items():
+                    if key in balance_metric_mapping:
+                        mapped_key = balance_metric_mapping[key]
+                        # 对于资产、负债、权益指标，需要转换为实际数值（亿元转为元）
+                        if key in ['total_assets', 'total_liabilities', 'total_equity', 'current_assets', 'current_liabilities']:
+                            balance_data[mapped_key] = float(value) * 1e8
+                        else:
+                            balance_data[mapped_key] = float(value)
+                
+                # 创建DataFrame，确保使用正确的格式
+                if income_data:
+                    # 创建包含一行数据的DataFrame
+                    income_df = pd.DataFrame([income_data])
+                if balance_data:
+                    # 创建包含一行数据的DataFrame
+                    balance_df = pd.DataFrame([balance_data])
         
         return {
             'income': income_df,
@@ -828,6 +847,94 @@ class StandardFinancialAnalyzer(AsyncBaseToolkit):
         return summary
     
     @register_tool()
+    def generate_comparison_report(self, comparison_data_json: str) -> str:
+        """
+        生成公司对比分析报告
+        
+        Args:
+            comparison_data_json: 公司对比数据的JSON字符串表示
+            
+        Returns:
+            格式化的对比分析报告
+        """
+        import json
+        from datetime import datetime
+        try:
+            # 解析JSON数据
+            comparison_data = json.loads(comparison_data_json)
+            
+            # 生成报告标题和日期
+            report_date = datetime.now().strftime('%Y-%m-%d')
+            report_title = "公司财务数据对比分析报告"
+            
+            # 生成报告文本
+            report_text = f"""
+# {report_title}
+报告日期: {report_date}
+
+## 一、公司基本信息
+"""
+            
+            # 添加公司信息
+            companies = comparison_data.get('companies', [])
+            if companies:
+                for i, company in enumerate(companies):
+                    report_text += f"- {company}\n"
+            
+            # 添加关键财务指标对比
+            report_text += "\n## 二、关键财务指标对比\n"
+            report_text += "| 财务指标 | " + " | ".join(companies) + " |\n"
+            report_text += "|" + "|".join(["----"] * (len(companies) + 1)) + "|\n"
+            
+            # 处理各种财务指标
+            metrics = ['revenue', 'net_profit', 'total_assets', 'debt_ratio', 'roe']
+            metric_names = {
+                'revenue': '营业收入(亿元)',
+                'net_profit': '净利润(亿元)',
+                'total_assets': '总资产(亿元)',
+                'debt_ratio': '资产负债率(%)',
+                'roe': 'ROE(%)'
+            }
+            
+            for metric in metrics:
+                values = comparison_data.get(metric, [])
+                if values:
+                    row = f"| {metric_names.get(metric, metric)} |"
+                    for value in values:
+                        row += f" {value} |"
+                    report_text += row + "\n"
+            
+            # 添加分析总结
+            report_text += "\n## 三、分析总结\n"
+            if len(companies) >= 2:
+                # 简单的对比分析
+                revenues = comparison_data.get('revenue', [])
+                if len(revenues) >= 2:
+                    if revenues[0] > revenues[1]:
+                        report_text += f"1. 从营业收入来看，{companies[0]}的规模明显大于{companies[1]}\n"
+                    else:
+                        report_text += f"1. 从营业收入来看，{companies[1]}的规模明显大于{companies[0]}\n"
+                
+                profits = comparison_data.get('net_profit', [])
+                if len(profits) >= 2:
+                    if profits[0] > profits[1]:
+                        report_text += f"2. 从净利润来看，{companies[0]}的盈利能力更强\n"
+                    else:
+                        report_text += f"2. 从净利润来看，{companies[1]}的盈利能力更强\n"
+                
+                roes = comparison_data.get('roe', [])
+                if len(roes) >= 2:
+                    if roes[0] > roes[1]:
+                        report_text += f"3. 从ROE来看，{companies[0]}的股东回报率更高\n"
+                    else:
+                        report_text += f"3. 从ROE来看，{companies[1]}的股东回报率更高\n"
+            
+            return report_text
+            
+        except Exception as e:
+            return f"生成对比报告时出错: {str(e)}"
+    
+    @register_tool()
     def generate_text_report(self, financial_data_json: str, 
                            stock_name: str = "目标公司") -> str:
         """
@@ -917,6 +1024,51 @@ class StandardFinancialAnalyzer(AsyncBaseToolkit):
         report_text += f"\n摘要:\n{report.get('summary', '')}\n"
         
         return report_text
+
+    @register_tool()
+    def save_text_report(self, financial_data_json: str, 
+                        stock_name: str = "目标公司",
+                        file_path: Optional[str] = None,
+                        file_prefix: str = "./run_workdir") -> str:
+        """
+        生成并保存纯文字格式的财务分析报告为MD文件
+        
+        Args:
+            financial_data_json: 财务数据的JSON字符串表示
+            stock_name: 公司名称
+            file_path: 保存文件的完整路径（可选，如果提供则忽略file_prefix）
+            file_prefix: 保存文件的目录前缀（默认为"./run_workdir"）
+            
+        Returns:
+            保存结果信息
+        """
+        import os
+        from datetime import datetime
+        try:
+            # 生成报告文本
+            report_text = self.generate_text_report(financial_data_json, stock_name)
+            
+            # 如果没有提供完整文件路径，则根据公司名称和日期生成文件名
+            if file_path is None:
+                # 清理公司名称中的特殊字符，确保文件名合法
+                safe_stock_name = "".join(c for c in stock_name if c.isalnum() or c in (' ', '-', '_')).rstrip()
+                # 生成带日期的文件名
+                current_date = datetime.now().strftime("%Y%m%d")
+                file_name = f"{safe_stock_name}{current_date}财务分析报告.md"
+                file_path = os.path.join(file_prefix, file_name)
+            
+            # 确保目录存在
+            directory = os.path.dirname(file_path)
+            if directory:
+                os.makedirs(directory, exist_ok=True)
+            
+            # 保存到文件
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(report_text)
+            
+            return f"报告已成功保存到: {file_path}"
+        except Exception as e:
+            return f"保存报告时出错: {str(e)}"
 
 # 全局实例
 _analyzer = None
