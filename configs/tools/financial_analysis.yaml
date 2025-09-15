@@ -8,6 +8,8 @@ activated_tools:
   - "analyze_trends_tool" 
   - "assess_health"
   - "generate_report"
+  - "generate_text_report"
+  - "save_text_report"
 
 config:
   timeout: 30

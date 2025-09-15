@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.0.2 - 2025-09-15
+- 🐛 修复图表保存路径问题：更新tabular_data_toolkit中generate_charts函数的默认输出目录
+- 🛠️ 优化工具配置：将图表默认保存路径从"./run_workdir/sxjg_charts"修改为"./run_workdir"
+
+## v1.0.1 - 2025-09-15
+- 🐛 修复报告生成问题：修复ReportAgent无法正确调用save_text_report工具的问题
+- 🛠️ 优化工具配置：更新financial_analysis工具包配置，添加generate_text_report和save_text_report工具
+- 📝 完善文档：更新CHANGELOG.md记录修复内容
+
 ## v1.0.0 - 2025-09-15
 - 🚀 发布财务分析智能体(Youtu-Agent) - 专为A股市场设计的智能财务分析系统
 - 📊 核心特性：零代码生成错误、显著降低成本、完整分析能力

@@ -210,7 +210,7 @@ class TabularDataToolkit(AsyncBaseToolkit):
         }
 
     @register_tool()
-    def generate_charts(self, data_json: str, chart_type: str = "bar", output_dir: str = "./run_workdir/sxjg_charts") -> dict:
+    def generate_charts(self, data_json: str, chart_type: str = "bar", output_dir: str = "./run_workdir") -> dict:
         """Generate charts from financial data.
         
         Args:

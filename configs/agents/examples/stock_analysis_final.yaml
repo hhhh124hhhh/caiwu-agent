@@ -206,6 +206,7 @@ workers_info:
     weaknesses: 依赖前期分析质量
     tools:
       - financial_analysis
+      - tabular
 
 # 核心优化配置
 optimization_settings:
