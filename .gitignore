@@ -7,6 +7,7 @@ wheels/
 *.egg-info
 cloudbaserc.json
 CLAUDE.md
+启动指令.md
 
 
 
