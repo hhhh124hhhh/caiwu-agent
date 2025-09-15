@@ -5,7 +5,7 @@ description: "标准化财务分析工具库，提供稳定的财务比率计算
 
 activated_tools:
   - "calculate_ratios"
-  - "analyze_trends" 
+  - "analyze_trends_tool" 
   - "assess_health"
   - "generate_report"
 

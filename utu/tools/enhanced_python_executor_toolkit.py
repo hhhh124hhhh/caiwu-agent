@@ -10,15 +10,29 @@ import glob
 import io
 import os
 import re
+import json
+import warnings
 from datetime import datetime
 from typing import Callable, Dict, Any
 
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+
+# 忽略警告
+warnings.filterwarnings('ignore')
+
+# 设置中文字体支持
+try:
+    plt.rcParams['font.sans-serif'] = ['SimHei', 'DejaVu Sans', 'Arial Unicode MS']
+    plt.rcParams['axes.unicode_minus'] = False
+except:
+    pass
 
 from ..config import ToolkitConfig
-from .base import AsyncBaseToolkit
+from .base import AsyncBaseToolkit, register_tool
 
 # Used to clean ANSI escape sequences
 ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]")
@@ -79,6 +93,46 @@ def _execute_python_code_sync(code: str, workdir: str, save_code: bool = False):
         error_output = io.StringIO()
 
         with contextlib.redirect_stdout(output), contextlib.redirect_stderr(error_output):
+            # 在执行代码前确保导入必要的库
+            setup_code = """
+import warnings
+warnings.filterwarnings('ignore')
+import pandas as pd
+import numpy as np
+
+# 导入核心库
+libs_to_import = [
+    'matplotlib',
+    'matplotlib.pyplot as plt'
+]
+
+for lib_import in libs_to_import:
+    try:
+        if 'matplotlib' in lib_import:
+            import matplotlib
+            matplotlib.use("Agg")
+            import matplotlib.pyplot as plt
+        else:
+            exec(f"import {lib_import}")
+    except ImportError:
+        pass
+
+# 安全导入可选库
+optional_libs = [
+    'seaborn as sns',
+    'plotly.express as px',
+    'plotly.graph_objects as go'
+]
+
+for lib_import in optional_libs:
+    try:
+        exec(f"import {lib_import}")
+    except ImportError:
+        pass
+"""
+            # 执行设置代码
+            shell.run_cell(setup_code)
+            # 执行用户代码
             shell.run_cell(code_clean)
 
             if plt.get_fignums():
@@ -158,6 +212,7 @@ class EnhancedPythonExecutorToolkit(AsyncBaseToolkit):
             "execute_python_code_enhanced": self.execute_python_code_enhanced,
         }
 
+    @register_tool()
     async def execute_python_code_enhanced(self, code: str, workdir: str = "./run_workdir", timeout: int = 30, save_code: bool = False) -> Dict[str, Any]:
         """
         Executes Python code and returns the output with optional code saving.

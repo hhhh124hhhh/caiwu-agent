@@ -10,6 +10,7 @@ defaults:
   - /tools/akshare_financial_data@toolkits.akshare_data
   - /tools/financial_analysis@toolkits.financial_analyzer
   - /tools/enhanced_python_executor@toolkits.analysis_executor
+  - /tools/tabular@toolkits.tabular
   - _self_
 
 
@@ -44,11 +45,14 @@ workers:
         - get_financial_reports: 获取完整财务报表
         - get_key_metrics: 提取关键财务指标  
         - get_historical_trend: 获取历史趋势数据
+        - get_tabular_columns: 分析表格数据结构（用于处理CSV/Excel等文件）
+        - get_column_info: 智能解释表格列含义（用于处理CSV/Excel等文件）
         
         工作流程：
         1. 使用get_financial_reports获取数据
         2. 使用get_key_metrics提取指标
-        3. 保存结果供后续分析
+        3. 使用get_tabular_columns和get_column_info分析附加数据文件
+        4. 保存结果供后续分析
         
         注意：直接调用工具，不要写代码。
     
@@ -62,12 +66,15 @@ workers:
         - analyze_trends: 分析财务数据趋势
         - assess_health: 评估财务健康状况
         - generate_report: 生成完整分析报告
+        - get_tabular_columns: 分析表格数据结构
+        - get_column_info: 智能解释表格列含义
         
         工作流程：
         1. 使用calculate_ratios计算盈利能力、偿债能力、运营效率、成长能力指标
         2. 使用analyze_trends分析收入、利润趋势和增长率
         3. 使用assess_health评估整体财务健康状况
-        4. 汇总分析结果供后续使用
+        4. 使用get_tabular_columns和get_column_info分析附加数据文件
+        5. 汇总分析结果供后续使用
         
         重要：直接调用分析工具，不要编写Python计算代码。
         
@@ -81,12 +88,14 @@ workers:
         - 进行专业解读和洞察分析
         - 识别投资机会和风险点
         - 提供投资建议
+        - 使用get_tabular_columns和get_column_info分析附加数据文件
         
         分析重点：
         - 基于财务比率的业绩评估
         - 趋势分析的深层含义
         - 财务健康状况的专业判断
         - 行业地位和竞争力分析
+        - 附加数据文件的深度解读
         
         注意：专注于分析和解读，不进行基础计算。
 
@@ -111,37 +120,46 @@ toolkits:
       timeout: 60
       matplotlib_backend: "Agg"
       max_output_length: 1500
+  
+  tabular:
+    config:
+      workspace_root: "./stock_analysis_workspace"
+      cache_enabled: true
+      timeout: 30
 
 # Agent工作配置
 workers_info:
   - name: DataAgent
     desc: 财务数据获取专家
-    strengths: 专用AKShare工具、稳定数据获取、指标提取
+    strengths: 专用AKShare工具、稳定数据获取、指标提取、表格数据分析
     weaknesses: 依赖网络连接
     tools:
       - akshare_financial_data  # 专用财务数据工具
+      - tabular  # 表格数据处理工具
 
   - name: DataAnalysisAgent
     desc: 数据分析专家
-    strengths: 标准化分析、指标计算、趋势分析、健康评估
+    strengths: 标准化分析、指标计算、趋势分析、健康评估、表格数据分析
     weaknesses: 依赖数据质量
     tools:
       - financial_analysis
       - enhanced_python_executor
+      - tabular
 
   - name: FinancialAnalysisAgent
     desc: 财务分析专家
-    strengths: 深度分析、投资评估、风险识别
+    strengths: 深度分析、投资评估、风险识别、表格数据解读
     weaknesses: 依赖数据质量
     tools:
       - enhanced_python_executor
+      - tabular
 
   - name: ChartGeneratorAgent
     desc: 图表生成专家
     strengths: 数据可视化、趋势图、对比图
     weaknesses: 依赖数据准确性
     tools:
-      - enhanced_python_executor
+      - tabular
 
   - name: ReportAgent
     desc: 报告生成专家

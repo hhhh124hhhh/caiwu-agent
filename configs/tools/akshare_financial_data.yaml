@@ -5,8 +5,8 @@ description: "专用的A股财务数据获取工具，提供稳定可靠的财�
 
 activated_tools:
   - "get_financial_reports"
-  - "get_key_metrics" 
-  - "get_historical_trend"
+  - "get_key_metrics_from_reports" 
+  - "get_historical_trend_from_reports"
   - "save_financial_data"
 
 config:

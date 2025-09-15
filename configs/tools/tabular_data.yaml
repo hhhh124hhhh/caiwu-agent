@@ -1,0 +1,16 @@
+name: tabular_data
+mode: builtin
+activated_tools: null
+config:
+  # 表格数据分析配置
+  tabular_settings:
+    max_rows: 1000                  # 最大处理行数
+    sample_size: 5                  # 样本值数量
+    encoding_attempts:              # 编码尝试列表
+      - utf-8
+      - latin1
+      - cp1252
+      - iso-8859-1
+
+  # LLM配置将在agent配置中通过toolkits.tabular_data.config_llm提供
+  # config_llm: ${model.llm}

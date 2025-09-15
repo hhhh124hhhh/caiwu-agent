@@ -30,6 +30,7 @@ dependencies = [
     "psycopg2-binary>=2.9.10",
     "requests>=2.32.4",
     "rich>=14.1.0",
+    "seaborn>=0.13.2",
     "sqlmodel>=0.0.24",
     "tiktoken>=0.9.0",
     "toml>=0.10.2",

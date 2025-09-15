@@ -1,12 +1,12 @@
 """
-专门用于A股财报数据获取的工具
+专门用于A股财报数据获取的工具包类
 提供稳定、可靠的财务数据接口，避免智能体生成代码的错误
 包含智能缓存和增量更新功能
 """
 
 import pandas as pd
 import numpy as np
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 from datetime import datetime, timedelta
 import logging
 import traceback
@@ -16,6 +16,9 @@ import pickle
 from pathlib import Path
 import hashlib
 
+from ..config import ToolkitConfig
+from .base import AsyncBaseToolkit, register_tool
+
 # 设置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -24,13 +27,15 @@ logger = logging.getLogger(__name__)
 class FinancialDataCache:
     """财务数据缓存管理器"""
     
-    def __init__(self, cache_dir: str = None):
+    def __init__(self, cache_dir: Optional[str] = None):
         if cache_dir is None:
             # 默认缓存目录在项目根目录下
             project_root = Path(__file__).parent.parent
-            cache_dir = project_root / "financial_data_cache"
+            cache_dir = str(project_root / "financial_data_cache")
         
-        self.cache_dir = Path(cache_dir)
+        # 确保cache_dir是字符串类型
+        cache_dir_str: str = cache_dir if cache_dir is not None else ""
+        self.cache_dir = Path(cache_dir_str)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         
         # 元数据文件
@@ -120,7 +125,7 @@ class FinancialDataCache:
             return None
     
     def cache_data(self, stock_code: str, data: Dict[str, pd.DataFrame], 
-                   latest_report_date: str = None):
+                   latest_report_date: Optional[str] = None):
         """缓存数据"""
         try:
             cache_key = self.get_cache_key(stock_code)
@@ -140,7 +145,7 @@ class FinancialDataCache:
             self.metadata["stocks"][cache_key] = {
                 "stock_code": stock_code,
                 "cached_date": datetime.now().isoformat(),
-                "latest_report_date": latest_report_date,
+                "latest_report_date": latest_report_date or "",
                 "data_types": [dt for dt in data_types if dt in data and data[dt] is not None],
                 "file_count": saved_count
             }
@@ -208,12 +213,14 @@ class FinancialDataCache:
             logger.error(f"清理缓存失败: {e}")
 
 
-class AKShareFinancialDataTool:
-    """AKShare财务数据获取专用工具（带智能缓存）"""
+class AKShareFinancialDataTool(AsyncBaseToolkit):
+    """AKShare财务数据获取专用工具包类（带智能缓存）"""
     
-    def __init__(self, cache_dir: str = None):
-        self.akshare = None
+    def __init__(self, config: ToolkitConfig | dict | None = None):
+        super().__init__(config)
+        cache_dir = self.config.config.get("cache_dir") if self.config.config else None
         self.cache = FinancialDataCache(cache_dir)
+        self.akshare: Any = None
         self._setup_akshare()
         
     def _setup_akshare(self):
@@ -246,11 +253,26 @@ class AKShareFinancialDataTool:
     def _clean_financial_data(self, df: pd.DataFrame, data_type: str) -> pd.DataFrame:
         """清洗财务数据"""
         try:
+            # 确保输入是DataFrame
+            if not isinstance(df, pd.DataFrame):
+                logger.warning(f"输入数据不是DataFrame类型: {type(df)}")
+                return pd.DataFrame()
+            
             # 删除空值行
             if 'REPORT_DATE' in df.columns:
-                df = df[df['REPORT_DATE'].notna()].copy()
+                # 使用loc确保返回DataFrame而不是Series
+                mask = df['REPORT_DATE'].notna()
+                if isinstance(mask, pd.Series):
+                    df = df.loc[mask].copy()
+                else:
+                    df = df.copy()
             elif '报告期' in df.columns:
-                df = df[df['报告期'].notna()].copy()
+                # 使用loc确保返回DataFrame而不是Series
+                mask = df['报告期'].notna()
+                if isinstance(mask, pd.Series):
+                    df = df.loc[mask].copy()
+                else:
+                    df = df.copy()
             
             # 转换数值列
             exclude_cols = ['REPORT_DATE', '报告期', '报表类型', 'REPORT_TYPE', 
@@ -258,12 +280,13 @@ class AKShareFinancialDataTool:
             
             for col in df.columns:
                 if col not in exclude_cols:
-                    df[col] = pd.to_numeric(df[col], errors='coerce')
+                    # 确保转换为数值类型，无法转换的设为NaN
+                    df.loc[:, col] = pd.to_numeric(df[col], errors='coerce')
             
             # 转换日期列并排序
             date_col = 'REPORT_DATE' if 'REPORT_DATE' in df.columns else '报告期'
             if date_col in df.columns:
-                df[date_col] = pd.to_datetime(df[date_col])
+                df.loc[:, date_col] = pd.to_datetime(df[date_col])
                 df = df.sort_values(date_col, ascending=False)
             
             logger.info(f"{data_type}数据清洗完成，剩余{len(df)}行")
@@ -271,9 +294,11 @@ class AKShareFinancialDataTool:
             
         except Exception as e:
             logger.error(f"{data_type}数据清洗失败: {e}")
-            return df
+            # 返回空的DataFrame而不是原始df
+            return pd.DataFrame()
     
-    def get_financial_reports(self, stock_code: str, stock_name: str = None, force_refresh: bool = False) -> Dict[str, pd.DataFrame]:
+    @register_tool()
+    def get_financial_reports(self, stock_code: str, stock_name: Optional[str] = None, force_refresh: bool = False) -> Dict[str, pd.DataFrame]:
         """
         获取完整财务报表数据（带智能缓存）
         
@@ -300,7 +325,12 @@ class AKShareFinancialDataTool:
         symbol = self._convert_stock_code(stock_code)
         logger.info(f"股票代码转换: {stock_code} -> {symbol}")
         
-        results = {}
+        results: Dict[str, pd.DataFrame] = {}
+        
+        # 确保akshare已初始化
+        if self.akshare is None:
+            logger.error("AKShare未正确初始化")
+            return results
         
         try:
             # 1. 获取利润表
@@ -314,7 +344,7 @@ class AKShareFinancialDataTool:
                 logger.error(f"利润表获取失败: {e}")
                 # 尝试备用方法
                 try:
-                    income_df = self.akshare.stock_lrb_em(symbol=stock_code)
+                    income_df = self.akshare.stock_lrb_em(symbol=symbol)  # 使用symbol而不是stock_code
                     income_df = self._clean_financial_data(income_df, "利润表(备用)")
                     results['income'] = income_df
                     logger.info(f"利润表(备用方法)获取成功: {len(income_df)}行")
@@ -331,7 +361,7 @@ class AKShareFinancialDataTool:
             except Exception as e:
                 logger.error(f"资产负债表获取失败: {e}")
                 try:
-                    balance_df = self.akshare.stock_zcfz_em(symbol=stock_code)
+                    balance_df = self.akshare.stock_zcfz_em(symbol=symbol)  # 使用symbol而不是stock_code
                     balance_df = self._clean_financial_data(balance_df, "资产负债表(备用)")
                     results['balance'] = balance_df
                     logger.info(f"资产负债表(备用方法)获取成功: {len(balance_df)}行")
@@ -348,7 +378,7 @@ class AKShareFinancialDataTool:
             except Exception as e:
                 logger.error(f"现金流量表获取失败: {e}")
                 try:
-                    cashflow_df = self.akshare.stock_xjll_em(symbol=stock_code)
+                    cashflow_df = self.akshare.stock_xjll_em(symbol=symbol)  # 使用symbol而不是stock_code
                     cashflow_df = self._clean_financial_data(cashflow_df, "现金流量表(备用)")
                     results['cashflow'] = cashflow_df
                     logger.info(f"现金流量表(备用方法)获取成功: {len(cashflow_df)}行")
@@ -387,7 +417,7 @@ class AKShareFinancialDataTool:
     
     def get_key_metrics(self, financial_data: Dict[str, pd.DataFrame]) -> Dict[str, float]:
         """
-        提取关键财务指标
+        提取关键财务指标（内部使用）
         
         Args:
             financial_data: 财务数据字典
@@ -395,6 +425,7 @@ class AKShareFinancialDataTool:
         Returns:
             关键财务指标字典
         """
+        # 保留原来的方法实现
         logger.info("提取关键财务指标")
         
         metrics = {}
@@ -458,16 +489,100 @@ class AKShareFinancialDataTool:
             logger.error(traceback.format_exc())
             return metrics
     
+    @register_tool("get_key_metrics_from_reports")
+    def get_key_metrics_from_reports(self, stock_code: str, stock_name: Optional[str] = None) -> Dict[str, float]:
+        """
+        提取关键财务指标
+        
+        Args:
+            stock_code: 股票代码
+            stock_name: 股票名称
+            
+        Returns:
+            关键财务指标字典
+        """
+        # 先获取财务数据
+        financial_data = self.get_financial_reports(stock_code, stock_name)
+        # 调用内部方法处理
+        return self.get_key_metrics(financial_data)
+    
     def _get_value_by_col_names(self, row: pd.Series, col_names: List[str]) -> float:
         """根据可能的列名获取数值"""
         for col in col_names:
-            if col in row.index and pd.notna(row[col]):
-                return float(row[col])
+            # 检查列是否存在且不为NaN
+            if col in row.index:
+                value = row[col]
+                # 检查值是否为NaN，使用安全的方式检查
+                try:
+                    # 对于标量数值类型
+                    if isinstance(value, (int, float, np.integer, np.floating)):
+                        # 检查是否为NaN
+                        if not (isinstance(value, float) and np.isnan(value)):
+                            return float(value)
+                    elif isinstance(value, pd.Series):
+                        # 对于pandas Series对象，检查是否为空
+                        if len(value) > 0 and not pd.isna(value).all():  # 确保不为空且不全为NaN
+                            # 获取第一个非NaN值
+                            valid_values = value.dropna()
+                            if len(valid_values) > 0:
+                                val = valid_values.iloc[0]
+                                # 检查是否有item方法且可调用（仅对numpy标量）
+                                if hasattr(val, 'item') and callable(getattr(val, 'item', None)) and isinstance(val, (np.integer, np.floating)):
+                                    return float(val.item())
+                                else:
+                                    return float(val)
+                    elif isinstance(value, pd.DataFrame):
+                        # DataFrame情况
+                        if len(value) > 0 and len(value.columns) > 0:
+                            # 获取第一个值
+                            val = value.iloc[0, 0]
+                            # 检查是否有item方法且可调用（仅对numpy标量）
+                            if hasattr(val, 'item') and callable(getattr(val, 'item', None)) and isinstance(val, (np.integer, np.floating)):
+                                return float(val.item())
+                            else:
+                                return float(val)
+                    else:
+                        # 其他类型，尝试直接转换
+                        if not (isinstance(value, float) and np.isnan(value)):
+                            # 检查是否有item方法且可调用（仅对numpy标量）
+                            if hasattr(value, 'item') and callable(getattr(value, 'item', None)) and isinstance(value, (np.integer, np.floating)):
+                                return float(value.item())
+                            else:
+                                return float(value)
+                except (TypeError, ValueError, AttributeError, IndexError):
+                    # 如果检查时出错，尝试直接转换
+                    try:
+                        # 对于pandas对象，先提取值再转换
+                        if hasattr(value, 'iloc') and not isinstance(value, (int, float, np.integer, np.floating)):
+                            # 确保value有长度属性且不是numpy标量
+                            if hasattr(value, '__len__') and len(value) > 0 and not np.isscalar(value):
+                                if isinstance(value, pd.Series):
+                                    val = value.iloc[0]
+                                elif isinstance(value, pd.DataFrame) and len(value.columns) > 0:
+                                    val = value.iloc[0, 0]
+                                else:
+                                    # 对于numpy数组等，安全访问
+                                    try:
+                                        val = value[0] if len(value) > 0 else value.item() if hasattr(value, 'item') and callable(getattr(value, 'item', None)) and isinstance(value, (np.integer, np.floating)) else value
+                                    except (IndexError, TypeError):
+                                        val = value.item() if hasattr(value, 'item') and callable(getattr(value, 'item', None)) and isinstance(value, (np.integer, np.floating)) else value
+                                # 确保val不是DataFrame
+                                if not isinstance(val, pd.DataFrame):
+                                    return float(val)
+                        # 检查是否有item方法且可调用，且不是基本数值类型（仅对numpy标量）
+                        elif hasattr(value, 'item') and callable(getattr(value, 'item', None)) and isinstance(value, (np.integer, np.floating)):
+                            return float(value.item())
+                        else:
+                            # 最后尝试直接转换，但排除DataFrame
+                            if not isinstance(value, pd.DataFrame):  # DataFrame不能直接转换为float
+                                return float(value)
+                    except (TypeError, ValueError, IndexError):
+                        continue
         return 0.0
     
     def get_historical_trend(self, financial_data: Dict[str, pd.DataFrame], years: int = 4) -> pd.DataFrame:
         """
-        获取历史趋势数据
+        获取历史趋势数据（内部使用）
         
         Args:
             financial_data: 财务数据字典
@@ -476,6 +591,7 @@ class AKShareFinancialDataTool:
         Returns:
             趋势数据DataFrame
         """
+        # 保留原来的方法实现
         logger.info(f"获取最近{years}年趋势数据")
         
         try:
@@ -490,7 +606,7 @@ class AKShareFinancialDataTool:
             # 确定日期列名
             date_col = 'REPORT_DATE' if 'REPORT_DATE' in trend_data.columns else '报告期'
             if date_col in trend_data.columns:
-                trend_data['年份'] = pd.to_datetime(trend_data[date_col]).dt.year
+                trend_data.loc[:, '年份'] = pd.to_datetime(trend_data[date_col]).dt.year
             else:
                 logger.error("未找到日期列")
                 return pd.DataFrame()
@@ -500,7 +616,9 @@ class AKShareFinancialDataTool:
             profit_cols = ['NETPROFIT', '净利润', 'net_profit']
             
             result_df = pd.DataFrame()
-            result_df['年份'] = trend_data['年份']
+            # 确保从trend_data中提取的是Series
+            if '年份' in trend_data.columns:
+                result_df['年份'] = trend_data['年份'].copy()
             result_df['营业收入'] = self._get_values_by_col_names(trend_data, revenue_cols) / 1e8
             result_df['净利润'] = self._get_values_by_col_names(trend_data, profit_cols) / 1e8
             
@@ -511,21 +629,50 @@ class AKShareFinancialDataTool:
             logger.error(f"获取趋势数据失败: {e}")
             return pd.DataFrame()
     
+    @register_tool("get_historical_trend_from_reports")
+    def get_historical_trend_from_reports(self, stock_code: str, stock_name: Optional[str] = None, years: int = 4) -> str:
+        """
+        获取历史趋势数据
+        
+        Args:
+            stock_code: 股票代码
+            stock_name: 股票名称
+            years: 获取年数
+            
+        Returns:
+            趋势数据的JSON字符串
+        """
+        # 先获取财务数据
+        financial_data = self.get_financial_reports(stock_code, stock_name)
+        # 调用内部方法处理
+        trend_df = self.get_historical_trend(financial_data, years)
+        # 转换为JSON字符串返回
+        json_str = trend_df.to_json(orient='records', date_format='iso')
+        return json_str if json_str is not None else "[]"
+    
     def _get_values_by_col_names(self, df: pd.DataFrame, col_names: List[str]) -> pd.Series:
         """根据可能的列名获取数值列"""
         for col in col_names:
             if col in df.columns:
-                return df[col]
-        return pd.Series([0.0] * len(df), index=df.index)
+                series = df[col]
+                # 确保返回的是Series类型
+                if isinstance(series, pd.Series):
+                    return series.copy()
+                else:
+                    # 如果不是Series，创建一个Series
+                    return pd.Series([series], index=[0])
+        # 如果没有找到匹配的列，返回零值Series
+        return pd.Series([0.0] * len(df), index=df.index) if len(df) > 0 else pd.Series([0.0])
     
     def save_to_csv(self, financial_data: Dict[str, pd.DataFrame], filepath_prefix: str):
         """
-        保存财务数据到CSV文件
+        保存财务数据到CSV文件（内部使用）
         
         Args:
             financial_data: 财务数据字典
             filepath_prefix: 文件路径前缀
         """
+        # 保留原来的方法实现
         logger.info(f"保存财务数据到 {filepath_prefix}")
         
         try:
@@ -538,6 +685,22 @@ class AKShareFinancialDataTool:
         except Exception as e:
             logger.error(f"保存数据失败: {e}")
     
+    @register_tool("save_financial_data")
+    def save_financial_data(self, stock_code: str, stock_name: Optional[str] = None, filepath_prefix: str = "financial_data"):
+        """
+        保存财务数据到CSV文件
+        
+        Args:
+            stock_code: 股票代码
+            stock_name: 股票名称
+            filepath_prefix: 文件路径前缀
+        """
+        # 先获取财务数据
+        financial_data = self.get_financial_reports(stock_code, stock_name)
+        # 调用内部方法处理
+        self.save_to_csv(financial_data, filepath_prefix)
+    
+    @register_tool()
     def check_cache_status(self, stock_code: str) -> Dict:
         """
         检查缓存状态
@@ -568,7 +731,8 @@ class AKShareFinancialDataTool:
                 "file_count": 0
             }
     
-    def refresh_cache(self, stock_code: str, stock_name: str = None) -> bool:
+    @register_tool()
+    def refresh_cache(self, stock_code: str, stock_name: Optional[str] = None) -> bool:
         """
         强制刷新缓存
         
@@ -596,6 +760,7 @@ class AKShareFinancialDataTool:
             logger.error(f"缓存刷新失败: {e}")
             return False
     
+    @register_tool()
     def cleanup_cache(self, days: int = 30):
         """
         清理过期缓存
@@ -606,6 +771,7 @@ class AKShareFinancialDataTool:
         logger.info(f"清理{days}天前的缓存")
         self.cache.cleanup_old_cache(days)
     
+    @register_tool()
     def get_cache_info(self) -> Dict:
         """
         获取缓存整体信息
@@ -633,6 +799,7 @@ class AKShareFinancialDataTool:
             "cache_directory": str(self.cache.cache_dir)
         }
     
+    @register_tool()
     def clear_all_cache(self):
         """清除所有缓存"""
         logger.warning("清除所有缓存数据")
@@ -660,7 +827,8 @@ class AKShareFinancialDataTool:
         except Exception as e:
             logger.error(f"清除缓存失败: {e}")
     
-    def export_cache_summary(self, filepath: str = None):
+    @register_tool()
+    def export_cache_summary(self, filepath: Optional[str] = None):
         """
         导出缓存摘要
         
@@ -668,7 +836,7 @@ class AKShareFinancialDataTool:
             filepath: 导出文件路径
         """
         if filepath is None:
-            filepath = self.cache.cache_dir / "cache_summary.csv"
+            filepath = str(self.cache.cache_dir / "cache_summary.csv")
         
         try:
             summary_data = []
@@ -689,62 +857,51 @@ class AKShareFinancialDataTool:
             logger.error(f"导出缓存摘要失败: {e}")
 
 
-# 创建单例实例
-_financial_tool = None
-
-def get_financial_tool(cache_dir: str = None):
-    """获取财务工具单例"""
-    global _financial_tool
-    if _financial_tool is None:
-        _financial_tool = AKShareFinancialDataTool(cache_dir)
-    return _financial_tool
-
-
 # 便利函数
-def get_financial_reports(stock_code: str, stock_name: str = None, force_refresh: bool = False) -> Dict[str, pd.DataFrame]:
+def get_financial_reports(stock_code: str, stock_name: Optional[str] = None, force_refresh: bool = False) -> Dict[str, pd.DataFrame]:
     """获取财务报表数据的便利函数"""
-    tool = get_financial_tool()
+    tool = AKShareFinancialDataTool()
     return tool.get_financial_reports(stock_code, stock_name, force_refresh)
 
 def get_key_metrics(financial_data: Dict[str, pd.DataFrame]) -> Dict[str, float]:
     """获取关键财务指标的便利函数"""
-    tool = get_financial_tool()
+    tool = AKShareFinancialDataTool()
     return tool.get_key_metrics(financial_data)
 
 def get_historical_trend(financial_data: Dict[str, pd.DataFrame], years: int = 4) -> pd.DataFrame:
     """获取历史趋势数据的便利函数"""
-    tool = get_financial_tool()
+    tool = AKShareFinancialDataTool()
     return tool.get_historical_trend(financial_data, years)
 
 # 缓存管理便利函数
 def check_cache_status(stock_code: str) -> Dict:
     """检查缓存状态"""
-    tool = get_financial_tool()
+    tool = AKShareFinancialDataTool()
     return tool.check_cache_status(stock_code)
 
-def refresh_cache(stock_code: str, stock_name: str = None) -> bool:
+def refresh_cache(stock_code: str, stock_name: Optional[str] = None) -> bool:
     """刷新缓存"""
-    tool = get_financial_tool()
+    tool = AKShareFinancialDataTool()
     return tool.refresh_cache(stock_code, stock_name)
 
 def cleanup_cache(days: int = 30):
     """清理过期缓存"""
-    tool = get_financial_tool()
+    tool = AKShareFinancialDataTool()
     tool.cleanup_cache(days)
 
 def get_cache_info() -> Dict:
     """获取缓存信息"""
-    tool = get_financial_tool()
+    tool = AKShareFinancialDataTool()
     return tool.get_cache_info()
 
 def clear_all_cache():
     """清除所有缓存"""
-    tool = get_financial_tool()
+    tool = AKShareFinancialDataTool()
     tool.clear_all_cache()
 
-def export_cache_summary(filepath: str = None):
+def export_cache_summary(filepath: Optional[str] = None):
     """导出缓存摘要"""
-    tool = get_financial_tool()
+    tool = AKShareFinancialDataTool()
     tool.export_cache_summary(filepath)
 
 if __name__ == "__main__":

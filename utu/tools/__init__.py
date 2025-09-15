@@ -18,6 +18,12 @@ from .user_interaction_toolkit import UserInteractionToolkit as UserInteractionT
 from .utils import get_tools_map as get_tools_map, get_tools_schema as get_tools_schema
 from .video_toolkit import VideoToolkit
 from .wikipedia_toolkit import WikipediaSearchTool
+# 添加AKShare财务数据工具包的导入
+from .akshare_financial_tool import AKShareFinancialDataTool
+# 添加财务分析工具包的导入
+from .financial_analysis_toolkit import StandardFinancialAnalyzer
+# 添加增强Python执行器工具包的导入
+from .enhanced_python_executor_toolkit import EnhancedPythonExecutorToolkit
 
 TOOLKIT_MAP = {
     "search": SearchToolkit,
@@ -36,8 +42,13 @@ TOOLKIT_MAP = {
     "serper": SerperToolkit,
     "tabular": TabularDataToolkit,
     "memory_simple": SimpleMemoryToolkit,
+    # 添加AKShare财务数据工具包到映射中
+    "akshare_financial_data": AKShareFinancialDataTool,
+    # 添加财务分析工具包到映射中
+    "financial_analysis": StandardFinancialAnalyzer,
+    # 添加增强Python执行器工具包到映射中
+    "enhanced_python_executor": EnhancedPythonExecutorToolkit,
 }
-
 
 def get_toolkits_map(names: list[str] | None = None) -> dict[str, AsyncBaseToolkit]:
     """Get all the toolkits specified by names

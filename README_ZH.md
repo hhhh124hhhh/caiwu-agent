@@ -19,6 +19,7 @@
 - **趋势分析**：多年趋势分析、CAGR计算、增长率分析
 - **健康评估**：综合评分、风险等级、投资建议
 - **自动报告**：HTML格式专业分析报告
+- **表格数据分析**：专业处理CSV/Excel等表格数据
 
 ## 🎯 解决的核心问题
 
@@ -33,6 +34,7 @@
 - ✅ **标准化分析工具库**：零代码生成的财务计算
 - ✅ **智能Agent分工**：数据获取→分析计算→结果解读
 - ✅ **完整质量保证**：缓存机制、错误处理、性能优化
+- ✅ **专业表格分析**：集成专业表格数据处理工具
 
 ## 🚀 快速开始
 
@@ -65,6 +67,9 @@ cd examples/stock_analysis
 # 启动财务分析智能体
 python main.py
 
+# 或者使用uv运行交互式模式（推荐）
+uv run scripts/cli_chat.py --stream --config examples/stock_analysis/stock_analysis.yaml
+
 # 选择分析任务或输入自定义需求
 # 例如：分析陕西建工(600248.SH)最新财报数据
 ```
@@ -77,6 +82,7 @@ youtu-agent/
 │   ├── tools/
 │   │   ├── akshare_financial_tool.py          # AKShare数据获取工具（智能缓存）
 │   │   ├── financial_analysis_toolkit.py      # 标准化财务分析工具库
+│   │   ├── tabular_data_toolkit.py            # 专业表格数据分析工具
 │   │   └── enhanced_python_executor_toolkit.py # 增强代码执行器
 │   └── agents/
 ├── configs/
@@ -84,7 +90,8 @@ youtu-agent/
 │   │   └── stock_analysis.yaml                 # 智能体配置（标准化工具）
 │   └── tools/
 │       ├── akshare_financial_data.yaml        # 数据获取工具配置
-│       └── financial_analysis.yaml            # 财务分析工具配置
+│       ├── financial_analysis.yaml            # 财务分析工具配置
+│       └── tabular_data.yaml                  # 表格数据工具配置
 ├── examples/
 │   └── stock_analysis/
 │       ├── main.py                             # 主程序入口
@@ -152,16 +159,42 @@ report = generate_report(financial_data, "陕西建工")
 - 🏥 **健康评估系统**：综合评分、风险等级、个性化建议
 - 📄 **自动报告生成**：HTML格式、专业术语、投资建议
 
-### 3. 智能体系统
+### 3. 表格数据分析层：TabularDataToolkit
+**位置**：`utu/tools/tabular_data_toolkit.py`
+
+```python
+from utu.tools.tabular_data_toolkit import TabularDataToolkit
+from utu.config import ToolkitConfig
+
+# 初始化工具包
+config = ToolkitConfig()
+toolkit = TabularDataToolkit(config=config)
+
+# 分析表格数据结构
+columns_info = toolkit.get_tabular_columns("financial_data.csv")
+# 返回：表格列名、数据类型、示例值等基本信息
+
+# 智能解释表格列含义
+column_analysis = await toolkit.get_column_info("financial_data.csv")
+# 返回：AI分析的列含义解释和文件结构信息
+```
+
+**核心功能**：
+- 📋 **结构分析**：自动识别文件分隔符、列名、数据类型
+- 🤖 **智能解释**：AI解读列含义和数据结构
+- 📁 **多格式支持**：CSV、Excel、JSON、Parquet等多种格式
+- 🔍 **样本提取**：提供每列的示例值便于理解
+
+### 4. 智能体系统
 
 #### Agent分工设计
 ```
 DataAgent (数据获取专家)
-    ↓ 专用AKShare工具
+    ↓ 专用AKShare工具 + 表格数据分析工具
 DataAnalysisAgent (数据分析专家) 
-    ↓ 标准化分析工具
+    ↓ 标准化分析工具 + 表格数据分析工具
 FinancialAnalysisAgent (财务分析专家)
-    ↓ 深度解读
+    ↓ 深度解读 + 表格数据解读
 ChartGeneratorAgent & ReportAgent
     ↓ 可视化和报告
 ```
@@ -171,6 +204,7 @@ ChartGeneratorAgent & ReportAgent
 - 🔄 **标准化流程**：避免AI代码生成的不确定性
 - 📊 **结果一致**：稳定的算法确保输出质量
 - 💡 **智能协作**：Agent间无缝配合完成复杂分析
+- 📈 **专业分析**：集成专业表格数据分析能力
 
 ## 📈 分析能力详解
 
@@ -238,6 +272,38 @@ ChartGeneratorAgent & ReportAgent
 }
 ```
 
+### 表格数据分析
+```python
+# 表格结构信息
+{
+    "columns": [
+        {
+            "name": "年份",
+            "type": "int64",
+            "sample": "2020"
+        },
+        {
+            "name": "营业收入(亿元)",
+            "type": "float64",
+            "sample": "100.0"
+        }
+    ],
+    "delimiter": ","
+}
+
+# AI分析的列含义
+"""
+### File Structure
+- Delimiter: ,
+
+### Columns
+| Column Name | Type | Explanation | Sample Value |
+|-------------|------|-------------|--------------|
+| 年份 | int64 | 数据年份，表示财务数据对应的会计年度 | 2020 |
+| 营业收入(亿元) | float64 | 公司在该年度的总营业收入，单位为亿元人民币 | 100.0 |
+"""
+```
+
 ## 🔧 配置说明
 
 ### 智能体配置文件
@@ -253,6 +319,8 @@ DataAgent:
       核心工具：
       - get_financial_reports: 获取完整财务报表
       - get_key_metrics: 提取关键财务指标
+      - get_tabular_columns: 分析表格数据结构
+      - get_column_info: 智能解释表格列含义
 
 # 数据分析Agent  
 DataAnalysisAgent:
@@ -264,6 +332,8 @@ DataAnalysisAgent:
       - calculate_ratios: 计算所有标准财务比率
       - analyze_trends: 分析财务数据趋势
       - assess_health: 评估财务健康状况
+      - get_tabular_columns: 分析表格数据结构
+      - get_column_info: 智能解释表格列含义
 ```
 
 ### 工具配置文件
@@ -285,6 +355,21 @@ analysis_settings:
     growth: 0.2                     # 成长能力
 ```
 
+### 表格数据工具配置文件
+**位置**：`configs/tools/tabular_data.yaml`
+
+```yaml
+# 表格数据分析配置
+tabular_settings:
+  max_rows: 1000                  # 最大处理行数
+  sample_size: 5                  # 样本值数量
+  encoding_attempts:              # 编码尝试列表
+    - utf-8
+    - latin1
+    - cp1252
+    - iso-8859-1
+```
+
 ## 🧪 测试验证
 
 ### 集成测试
@@ -292,6 +377,12 @@ analysis_settings:
 # 运行完整集成测试
 cd examples/stock_analysis
 python test_standardized_analysis.py
+
+# 测试表格数据工具集成
+python test_tabular_integration.py
+
+# 运行综合测试
+python test_comprehensive_integration.py
 ```
 
 **测试覆盖**：
@@ -300,6 +391,7 @@ python test_standardized_analysis.py
 - ✅ 趋势分析功能完整性
 - ✅ 健康评估算法可靠性
 - ✅ 报告生成格式正确性
+- ✅ 表格数据分析功能
 - ✅ 性能对比测试
 
 ### 性能基准
@@ -359,6 +451,25 @@ health = assess_health(ratios, trends)
 recommendations = health['recommendations']
 ```
 
+### 表格数据分析
+```python
+# 分析附加的财务数据文件
+from utu.tools.tabular_data_toolkit import TabularDataToolkit
+from utu.config import ToolkitConfig
+
+# 初始化工具
+config = ToolkitConfig()
+toolkit = TabularDataToolkit(config=config)
+
+# 分析CSV文件结构
+columns_info = toolkit.get_tabular_columns("additional_data.csv")
+print("表格结构:", columns_info)
+
+# 获取AI解释的列含义
+column_analysis = await toolkit.get_column_info("additional_data.csv")
+print("列含义分析:", column_analysis)
+```
+
 ## 🔍 支持的市场
 
 ### A股市场全覆盖
@@ -372,6 +483,7 @@ recommendations = health['recommendations']
 - **AKShare**：主要数据源，提供全面的A股财务数据
 - **智能缓存**：本地缓存系统，支持增量更新
 - **备用机制**：多重数据源保障，确保分析连续性
+- **表格数据**：支持CSV、Excel等格式的附加数据文件
 
 ## 🛡️ 质量保证
 
@@ -429,5 +541,6 @@ recommendations = health['recommendations']
 | 分析不一致 | 统一算法标准 | ✅ 结果稳定性高 |
 | 处理速度慢 | 智能缓存优化 | ✅ 速度提升50-60% |
 | 依赖数据质量 | 多重数据验证 | ✅ 数据可靠性高 |
+| 表格数据处理困难 | 专业表格分析工具 | ✅ 数据理解能力提升 |
 
 **立即体验标准化财务分析的魅力！** 🚀

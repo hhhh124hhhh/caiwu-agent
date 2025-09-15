@@ -12,7 +12,7 @@ import pandas as pd
 
 from ..config import ToolkitConfig
 from ..utils import SimplifiedAsyncOpenAI, async_file_cache, get_logger
-from .base import AsyncBaseToolkit
+from .base import AsyncBaseToolkit, register_tool
 
 logger = get_logger(__name__)
 
@@ -40,13 +40,14 @@ TEMPLATE_COLUMN_QA = (
 
 
 class TabularDataToolkit(AsyncBaseToolkit):
-    def __init__(self, config: ToolkitConfig = None):
+    def __init__(self, config: ToolkitConfig | None = None):
         super().__init__(config)
         self.llm = SimplifiedAsyncOpenAI(
             **self.config.config_llm.model_provider.model_dump() if self.config.config_llm else {}
         )
 
-    def get_tabular_columns(self, file_path: str, return_feat: list[str] = None) -> str:
+    @register_tool()
+    def get_tabular_columns(self, file_path: str, return_feat: list[str] | None = None) -> str:
         """Extract raw column metadata from tabular data files.
 
         Directly reads file and returns basic column information:
@@ -104,6 +105,7 @@ class TabularDataToolkit(AsyncBaseToolkit):
             logger.error(error_msg)
             return self._stringify_column_info([{"error": error_msg}], return_feat=return_feat)
 
+    @register_tool()
     @async_file_cache(mode="file", expire_time=None)
     async def get_column_info(self, file_path: str) -> str:
         """Intelligently analyze and interpret column information.
@@ -184,7 +186,7 @@ class TabularDataToolkit(AsyncBaseToolkit):
 
         return df
 
-    def _stringify_column_info(self, column_info: list[dict], return_feat: list[str] = None) -> str:
+    def _stringify_column_info(self, column_info: list[dict], return_feat: list[str] | None = None) -> str:
         """Convert column information to a formatted string."""
         if "error" in column_info[0]:
             return column_info[0]["error"]
@@ -202,6 +204,127 @@ class TabularDataToolkit(AsyncBaseToolkit):
     async def get_tools_map(self) -> dict[str, Callable]:
         """Return a mapping of tool names to their corresponding methods."""
         return {
-            # "get_tabular_columns": self.get_tabular_columns,
-            # "get_column_info": self.get_column_info,
+            "get_tabular_columns": self.get_tabular_columns,
+            "get_column_info": self.get_column_info,
+            "generate_charts": self.generate_charts,
         }
+
+    @register_tool()
+    def generate_charts(self, data_json: str, chart_type: str = "bar", output_dir: str = "./charts") -> dict:
+        """Generate charts from financial data.
+        
+        Args:
+            data_json (str): Financial data in JSON format
+            chart_type (str): Type of chart to generate (bar, line, pie)
+            output_dir (str): Directory to save charts
+            
+        Returns:
+            dict: Information about generated charts
+        """
+        import json
+        import matplotlib.pyplot as plt
+        import seaborn as sns
+        import os
+        from datetime import datetime
+        
+        # 设置中文字体
+        plt.rcParams['font.sans-serif'] = ['SimHei', 'DejaVu Sans']
+        plt.rcParams['axes.unicode_minus'] = False
+        
+        try:
+            # 解析数据
+            data = json.loads(data_json)
+            
+            # 创建输出目录
+            os.makedirs(output_dir, exist_ok=True)
+            
+            # 生成图表
+            chart_files = []
+            
+            if chart_type == "bar":
+                # 生成柱状图
+                fig, ax = plt.subplots(figsize=(10, 6))
+                
+                # 提取数据
+                keys = list(data.keys())
+                values = list(data.values())
+                
+                # 创建柱状图
+                bars = ax.bar(keys, values, color=['#2E86AB', '#A23B72', '#F18F01', '#C73E1D'])
+                ax.set_title("财务数据图表")
+                ax.set_ylabel("数值")
+                
+                # 添加数值标签
+                for bar, value in zip(bars, values):
+                    ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + max(values)*0.01,
+                           f'{value:.2f}', ha='center', va='bottom')
+                
+                # 保存图表
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                chart_file = os.path.join(output_dir, f"bar_chart_{timestamp}.png")
+                plt.savefig(chart_file, dpi=300, bbox_inches='tight')
+                plt.close()
+                chart_files.append(chart_file)
+                
+            elif chart_type == "line":
+                # 生成折线图
+                fig, ax = plt.subplots(figsize=(10, 6))
+                
+                # 提取数据
+                keys = list(data.keys())
+                values = list(data.values())
+                
+                # 创建折线图
+                ax.plot(keys, values, marker='o', linewidth=2, markersize=8, color='#2E86AB')
+                ax.set_title("财务数据趋势图")
+                ax.set_ylabel("数值")
+                ax.grid(True, alpha=0.3)
+                
+                # 添加数值标签
+                for i, (key, value) in enumerate(zip(keys, values)):
+                    ax.annotate(f'{value:.2f}', (key, value), textcoords="offset points", 
+                               xytext=(0,10), ha='center')
+                
+                # 保存图表
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                chart_file = os.path.join(output_dir, f"line_chart_{timestamp}.png")
+                plt.savefig(chart_file, dpi=300, bbox_inches='tight')
+                plt.close()
+                chart_files.append(chart_file)
+                
+            elif chart_type == "pie":
+                # 生成饼图
+                fig, ax = plt.subplots(figsize=(10, 8))
+                
+                # 提取数据
+                keys = list(data.keys())
+                values = list(data.values())
+                
+                # 创建饼图
+                colors = ['#2E86AB', '#A23B72', '#F18F01', '#C73E1D', '#6A994E']
+                pie_result = ax.pie(values, labels=keys, autopct='%1.1f%%', 
+                                   colors=colors[:len(keys)], startangle=90)
+                ax.set_title("财务数据占比图")
+                
+                # 保存图表
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                chart_file = os.path.join(output_dir, f"pie_chart_{timestamp}.png")
+                plt.savefig(chart_file, dpi=300, bbox_inches='tight')
+                plt.close()
+                chart_files.append(chart_file)
+            
+            return {
+                "success": True,
+                "chart_files": chart_files,
+                "chart_type": chart_type,
+                "message": f"成功生成{len(chart_files)}个图表"
+            }
+            
+        except Exception as e:
+            logger.error(f"生成图表时出错: {str(e)}")
+            return {
+                "success": False,
+                "chart_files": [],
+                "chart_type": chart_type,
+                "error": str(e)
+            }
