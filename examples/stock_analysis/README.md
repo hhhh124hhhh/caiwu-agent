@@ -16,6 +16,10 @@ uv add --group stock-analysis akshare>=1.12.0
 uv add --group stock-analysis tushare>=1.2.0
 uv add --group stock-analysis plotly>=5.0.0
 uv add --group stock-analysis seaborn>=0.11.0
+
+# 如果需要使用Web界面，还需要安装UI相关依赖
+uv add --group stock-analysis flask>=2.0.0
+uv add --group stock-analysis flask-cors>=3.0.0
 ```
 
 #### 方法二：使用pip
@@ -25,6 +29,9 @@ python examples/stock_analysis/install_deps.py
 
 # 或者手动安装
 pip install akshare>=1.12.0 tushare>=1.2.0 plotly>=5.0.0 seaborn>=0.11.0
+
+# 如果需要使用Web界面，还需要安装UI相关依赖
+pip install flask>=2.0.0 flask-cors>=3.0.0
 ```
 
 ### 2. 配置环境变量
@@ -72,6 +79,22 @@ python examples/stock_analysis/comprehensive_examples.py
 # 运行功能测试
 python examples/stock_analysis/test_akshare_tool.py
 ```
+
+### 4. 启动Web界面
+
+#### 使用uv运行Web界面（推荐）
+```bash
+# 启动Web界面
+uv run python examples/stock_analysis/main_web.py
+```
+
+#### 使用python运行Web界面
+```bash
+# 启动Web界面
+python examples/stock_analysis/main_web.py
+```
+
+启动后，您可以在浏览器中访问 `http://127.0.0.1:8848` 来使用Web界面与财务分析智能体进行交互。
 
 ## 🎯 功能特点
 

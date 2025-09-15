@@ -25,20 +25,25 @@ async def main():
         print()
 
     # Set up the stock analysis agent
-    config = ConfigLoader.load_agent_config("examples/stock_analysis")
+    # 修改：使用 stock_analysis_final 配置
+    config = ConfigLoader.load_agent_config("examples/stock_analysis_final")
     config.planner_config["examples_path"] = pathlib.Path(__file__).parent / "stock_analysis_examples.json"
     
     # Setup workspace for stock analysis
     workspace_path = pathlib.Path(__file__).parent / "stock_analysis_workspace"
     workspace_path.mkdir(exist_ok=True)
     
-    # Configure enhanced Python executor workspace
-    enhanced_executor = config.toolkits.get("enhanced_python_executor")
-    if enhanced_executor is not None and enhanced_executor.config is not None:
-        enhanced_executor.config["workspace_root"] = str(workspace_path)
-    elif enhanced_executor is not None:
-        # 如果 config 是 None，创建一个新的字典
-        enhanced_executor.config = {"workspace_root": str(workspace_path)}
+    # Configure all toolkits workspace
+    # 修改：为所有工具配置正确的工作目录
+    toolkits_to_configure = ["akshare_data", "financial_analyzer", "analysis_executor", "tabular"]
+    
+    for toolkit_name in toolkits_to_configure:
+        toolkit = config.toolkits.get(toolkit_name)
+        if toolkit is not None and toolkit.config is not None:
+            toolkit.config["workspace_root"] = str(workspace_path)
+        elif toolkit is not None:
+            # 如果 config 是 None，创建一个新的字典
+            toolkit.config = {"workspace_root": str(workspace_path)}
     
     # Initialize the agent
     runner = OrchestraAgent(config)
@@ -107,5 +112,51 @@ async def main():
             print(f"  - {file.name}")
 
 
+def main_web():
+    """启动Web界面"""
+    import argparse
+    from utu.ui import ExampleConfig
+    from utu.ui.webui_chatbot import WebUIChatbot
+    
+    # 解析命令行参数
+    env_and_args = ExampleConfig()
+    
+    # Set up the stock analysis agent
+    # 修改：使用 stock_analysis_final 配置
+    config = ConfigLoader.load_agent_config("examples/stock_analysis_final")
+    config.planner_config["examples_path"] = pathlib.Path(__file__).parent / "stock_analysis_examples.json"
+    
+    # Setup workspace for stock analysis
+    workspace_path = pathlib.Path(__file__).parent / "stock_analysis_workspace"
+    workspace_path.mkdir(exist_ok=True)
+    
+    # Configure all toolkits workspace
+    # 修改：为所有工具配置正确的工作目录
+    toolkits_to_configure = ["akshare_data", "financial_analyzer", "analysis_executor", "tabular"]
+    
+    for toolkit_name in toolkits_to_configure:
+        toolkit = config.toolkits.get(toolkit_name)
+        if toolkit is not None and toolkit.config is not None:
+            toolkit.config["workspace_root"] = str(workspace_path)
+        elif toolkit is not None:
+            # 如果 config 是 None，创建一个新的字典
+            toolkit.config = {"workspace_root": str(workspace_path)}
+    
+    runner = OrchestraAgent(config)
+    
+    # 设置示例查询
+    example_query = "分析陕西建工(600248.SH)最新财报数据，比较主要财务指标差异，绘制可视化图表出具报告"
+    
+    ui = WebUIChatbot(runner, example_query=example_query)
+    # 使用默认值或环境变量
+    port = int(env_and_args.port) if env_and_args.port else 8848
+    ip = env_and_args.ip if env_and_args.ip else "127.0.0.1"
+    ui.launch(port=port, ip=ip, autoload=env_and_args.autoload)
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "web":
+        main_web()
+    else:
+        asyncio.run(main())
