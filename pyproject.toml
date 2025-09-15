@@ -121,6 +121,7 @@ line-length = 120
 target-version = "py312"
 exclude = [
     "**/*.pyi",
+    ".*",
 ]
 
 [tool.ruff.lint]
@@ -138,9 +139,6 @@ isort = { combine-as-imports = true, known-first-party = ["utu"] }
 [tool.ruff.lint.pydocstyle]
 convention = "google"
 
-[tool.ruff.lint.per-file-ignores]
-"utu/eval/processer/prompts/*.py" = ["E501"]
-"utu/tracing/otel_agents_processor.py" = ["UP038"]
 
 [tool.mypy]
 strict = true

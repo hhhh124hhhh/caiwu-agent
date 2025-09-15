@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 
 import requests
 import yaml
+from jinja2 import Environment, FileSystemLoader, Template
 
 
 def get_package_path() -> pathlib.Path:
@@ -80,3 +81,26 @@ class FileUtils:
         assert fn.exists(), f"File {fn} does not exist!"
         with fn.open(encoding="utf-8") as f:
             return yaml.safe_load(f)
+
+    @staticmethod
+    def get_jinja_env(directory: str | pathlib.Path) -> Environment:
+        if isinstance(directory, str):
+            directory = DIR_ROOT / "utu" / "prompts" / directory
+        if not directory.exists():
+            raise FileNotFoundError(f"Directory {directory} does not exist")
+        return Environment(loader=FileSystemLoader(directory))
+
+    @staticmethod
+    def get_jinja_template(template_path: str | pathlib.Path) -> Template:
+        if isinstance(template_path, str):
+            if not template_path.endswith(".j2"):
+                template_path += ".j2"
+            template_path = DIR_ROOT / "utu" / "prompts" / template_path
+        if not template_path.exists():
+            raise FileNotFoundError(f"File {template_path} does not exist")
+        with template_path.open(encoding="utf-8") as f:
+            return Template(f.read())
+
+    @staticmethod
+    def get_jinja_template_str(template_str: str) -> Template:
+        return Template(template_str)

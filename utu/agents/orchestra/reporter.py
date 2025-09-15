@@ -1,7 +1,7 @@
 import pathlib
 
 from ...config import AgentConfig
-from ...utils import SimplifiedAsyncOpenAI, get_jinja_template
+from ...utils import FileUtils, SimplifiedAsyncOpenAI
 from .common import AnalysisResult, OrchestraTaskRecorder
 
 
@@ -20,8 +20,8 @@ class ReporterAgent:
         if template_path and pathlib.Path(template_path).exists():
             template_path = pathlib.Path(template_path)
         else:
-            template_path = pathlib.Path(__file__).parent / "prompts" / "reporter_sp.j2"
-        return get_jinja_template(template_path)
+            template_path = "agents/orchestra/reporter_sp.j2"
+        return FileUtils.get_jinja_template(template_path)
 
     async def build(self):
         pass

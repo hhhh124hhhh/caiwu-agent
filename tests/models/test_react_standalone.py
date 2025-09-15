@@ -15,7 +15,7 @@ from openai.types.chat import (
     ChatCompletionToolParam,
 )
 
-from utu.utils import SimplifiedAsyncOpenAI, get_jinja_template
+from utu.utils import FileUtils, SimplifiedAsyncOpenAI
 
 simplified_openai = SimplifiedAsyncOpenAI()
 jinja_env = jinja2.Environment()
@@ -127,7 +127,7 @@ TEMPLATE_ACTION = r"""Action:
   "name": "{{action_name}}",
   "arguments": {{action_arguments}}
 }"""
-template_action = jinja_env.from_string(TEMPLATE_ACTION)
+template_action = FileUtils.get_jinja_template_str(TEMPLATE_ACTION)
 
 
 def process_messages(messages: list[ChatCompletionMessageParam]) -> list[ChatCompletionMessageParam]:
@@ -155,7 +155,7 @@ def process_messages(messages: list[ChatCompletionMessageParam]) -> list[ChatCom
 
 
 # from https://github.com/huggingface/smolagents/blob/main/src/smolagents/prompts/toolcalling_agent.yaml
-TEMPLATE = get_jinja_template(pathlib.Path(__file__).parent / "react_sp.j2")
+TEMPLATE = FileUtils.get_jinja_template(pathlib.Path(__file__).parent / "react_sp.j2")
 
 
 def process(task: dict) -> dict:

@@ -3,7 +3,6 @@ import importlib.util
 import sys
 from pathlib import Path
 
-from jinja2 import Environment, FileSystemLoader, Template
 from pydantic import BaseModel, Field
 
 from .path import DIR_ROOT
@@ -16,15 +15,6 @@ def get_event_loop() -> asyncio.AbstractEventLoop:
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
     return loop
-
-
-def get_jinja_env(directory: str) -> Environment:
-    return Environment(loader=FileSystemLoader(directory))
-
-
-def get_jinja_template(template_path: str) -> Template:
-    with open(template_path, encoding="utf-8") as f:
-        return Template(f.read())
 
 
 def schema_to_basemodel(schema: dict, class_name: str = None) -> type[BaseModel]:

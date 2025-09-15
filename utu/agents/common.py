@@ -61,7 +61,9 @@ class DataClassWithStreamEvents:
                 # if isinstance(run_impl_exc, AgentsException) and run_impl_exc.run_data is None:
                 #     run_impl_exc.run_data = self._create_error_details()
                 logger.error(f"run_impl_exc: {run_impl_exc}")
-                logger.error(traceback.format_exc())
+                logger.error(
+                    "".join(traceback.format_exception(type(run_impl_exc), run_impl_exc, run_impl_exc.__traceback__))
+                )
                 self._stored_exception = run_impl_exc
 
     def to_dict(self):

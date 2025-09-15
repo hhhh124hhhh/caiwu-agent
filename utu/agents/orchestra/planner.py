@@ -3,7 +3,7 @@ import pathlib
 import re
 
 from ...config import AgentConfig
-from ...utils import SimplifiedAsyncOpenAI, get_jinja_env
+from ...utils import FileUtils, SimplifiedAsyncOpenAI
 from .common import AgentInfo, CreatePlanResult, OrchestraTaskRecorder, Subtask
 
 
@@ -44,7 +44,7 @@ class PlannerAgent:
         self.config = config
         self.llm = SimplifiedAsyncOpenAI(**self.config.planner_model.model_provider.model_dump())
         self.output_parser = OutputParser()
-        self.jinja_env = get_jinja_env(str(pathlib.Path(__file__).parent / "prompts"))
+        self.jinja_env = FileUtils.get_jinja_env("agents/orchestra")
         self.planner_examples = self._load_planner_examples()
         self.available_agents = self._load_available_agents()
 
@@ -84,7 +84,7 @@ class PlannerAgent:
         up = self.jinja_env.get_template("planner_up.j2").render(
             available_agents=self._format_available_agents(self.available_agents),
             question=task_recorder.task,
-            background_info="",  # TODO: add background info?
+            background_info=await self._get_background_info(task_recorder),
         )
         messages = [{"role": "system", "content": sp}, {"role": "user", "content": up}]
         response = await self.llm.query_one(messages=messages, **self.config.planner_model.model_params.model_dump())
@@ -113,3 +113,7 @@ class PlannerAgent:
                 else ""
             )
         return "\n".join(agents_str)
+
+    async def _get_background_info(self, task_recorder: OrchestraTaskRecorder) -> str:
+        """Get background information for the query. Leave empty by default."""
+        return ""

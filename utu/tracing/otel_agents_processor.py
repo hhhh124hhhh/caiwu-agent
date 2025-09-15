@@ -2,6 +2,7 @@
 https://github.com/Arize-ai/openinference/blob/main/python/instrumentation/openinference-instrumentation-openai-agents/src/openinference/instrumentation/openai_agents/_processor.py
 updated: @2025-07-31 0864c13
 """
+# ruff: noqa
 
 # from openinference.instrumentation.openai_agents._processor import OpenInferenceTracingProcessor
 from __future__ import annotations

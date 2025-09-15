@@ -1,33 +1,14 @@
-import pathlib
 import re
 
-from utu.agents.orchestra.common import CreatePlanResult, OrchestraTaskRecorder
+from utu.agents.orchestra.common import OrchestraTaskRecorder
 from utu.agents.orchestra.planner import PlannerAgent
 from utu.config import AgentConfig
 from utu.tools import TabularDataToolkit
-from utu.utils import get_jinja_env
 
 
 class DAPlannerAgent(PlannerAgent):
     def __init__(self, config: AgentConfig):
         super().__init__(config)
-        self.jinja_env = get_jinja_env(
-            pathlib.Path(__file__).parent.parent.parent / "utu" / "agents" / "orchestra" / "prompts"
-        )
-
-    async def create_plan(self, task_recorder: OrchestraTaskRecorder) -> CreatePlanResult:
-        background_info = await self._get_background_info(task_recorder)
-        sp = self.jinja_env.get_template("planner_sp.j2").render(
-            planning_examples=self._format_planner_examples(self.planner_examples)
-        )
-        up = self.jinja_env.get_template("planner_up.j2").render(
-            available_agents=self._format_available_agents(self.available_agents),
-            question=task_recorder.task,
-            background_info=background_info,
-        )
-        messages = [{"role": "system", "content": sp}, {"role": "user", "content": up}]
-        response = await self.llm.query_one(messages=messages, **self.config.planner_model.model_params.model_dump())
-        return self.output_parser.parse(response)
 
     async def _get_background_info(self, task_recorder: OrchestraTaskRecorder) -> str:
         """Get tabular column information for the task recorder."""

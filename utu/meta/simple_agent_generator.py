@@ -16,7 +16,7 @@ from pydantic import BaseModel
 
 from ..agents import SimpleAgent
 from ..tools import TOOLKIT_MAP, UserInteractionToolkit, get_tools_schema
-from ..utils import DIR_ROOT, get_jinja_env, get_logger
+from ..utils import DIR_ROOT, FileUtils, get_logger
 from .common import GeneratorTaskRecorder
 
 logger = get_logger(__name__)
@@ -59,7 +59,7 @@ def add_indented_lines(lines: str | list[str], indent: int = 2) -> str:
 
 class SimpleAgentGenerator:
     def __init__(self, ask_function=None, mode="local"):
-        self.jinja_env = get_jinja_env(DIR_ROOT / "utu/prompts/meta")
+        self.jinja_env = FileUtils.get_jinja_env("meta")
         self.output_dir = DIR_ROOT / "configs/agents/generated"
         self.output_dir.mkdir(exist_ok=True)
 
