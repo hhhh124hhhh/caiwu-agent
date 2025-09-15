@@ -24,6 +24,8 @@ from .akshare_financial_tool import AKShareFinancialDataTool
 from .financial_analysis_toolkit import StandardFinancialAnalyzer
 # 添加增强Python执行器工具包的导入
 from .enhanced_python_executor_toolkit import EnhancedPythonExecutorToolkit
+# 添加报告保存工具包的导入
+from .report_saver_toolkit import ReportSaverToolkit
 
 TOOLKIT_MAP = {
     "search": SearchToolkit,
@@ -48,6 +50,8 @@ TOOLKIT_MAP = {
     "financial_analysis": StandardFinancialAnalyzer,
     # 添加增强Python执行器工具包到映射中
     "enhanced_python_executor": EnhancedPythonExecutorToolkit,
+    # 添加报告保存工具包到映射中
+    "report_saver": ReportSaverToolkit,
 }
 
 def get_toolkits_map(names: list[str] | None = None) -> dict[str, AsyncBaseToolkit]:
