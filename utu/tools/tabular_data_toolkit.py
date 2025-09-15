@@ -226,6 +226,7 @@ class TabularDataToolkit(AsyncBaseToolkit):
         import seaborn as sns
         import os
         from datetime import datetime
+        import numpy as np
         
         # 设置中文字体
         plt.rcParams['font.sans-serif'] = ['SimHei', 'DejaVu Sans']
@@ -234,6 +235,9 @@ class TabularDataToolkit(AsyncBaseToolkit):
         try:
             # 解析数据
             data = json.loads(data_json)
+            
+            # 处理嵌套数据结构，将其扁平化
+            flattened_data = self._flatten_financial_data(data)
             
             # 创建输出目录
             os.makedirs(output_dir, exist_ok=True)
@@ -246,8 +250,8 @@ class TabularDataToolkit(AsyncBaseToolkit):
                 fig, ax = plt.subplots(figsize=(10, 6))
                 
                 # 提取数据
-                keys = list(data.keys())
-                values = list(data.values())
+                keys = list(flattened_data.keys())
+                values = list(flattened_data.values())
                 
                 # 创建柱状图
                 bars = ax.bar(keys, values, color=['#2E86AB', '#A23B72', '#F18F01', '#C73E1D'])
@@ -255,9 +259,17 @@ class TabularDataToolkit(AsyncBaseToolkit):
                 ax.set_ylabel("数值")
                 
                 # 添加数值标签
+                y_max = ax.get_ylim()[1]
                 for bar, value in zip(bars, values):
-                    ax.text(bar.get_x() + bar.get_width()/2, bar.get_height() + max(values)*0.01,
-                           f'{value:.2f}', ha='center', va='bottom')
+                    # 计算标签位置，确保不会超出图表上边界
+                    label_y = bar.get_height() + (y_max * 0.02)
+                    if label_y > y_max * 0.9:  # 如果标签位置过高
+                        label_y = bar.get_height() - (y_max * 0.05)  # 放在柱子内部，增加偏移量
+                        va = 'top'
+                    else:
+                        va = 'bottom'
+                    ax.text(bar.get_x() + bar.get_width() / 2, label_y, f'{value:.2f}', ha='center', va=va,
+                            bbox=dict(boxstyle="square,pad=0.3", fc="white", alpha=0.7))  # 添加背景框
                 
                 # 保存图表
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -271,19 +283,36 @@ class TabularDataToolkit(AsyncBaseToolkit):
                 fig, ax = plt.subplots(figsize=(10, 6))
                 
                 # 提取数据
-                keys = list(data.keys())
-                values = list(data.values())
+                keys = list(flattened_data.keys())
+                values = list(flattened_data.values())
                 
                 # 创建折线图
                 ax.plot(keys, values, marker='o', linewidth=2, markersize=8, color='#2E86AB')
                 ax.set_title("财务数据趋势图")
                 ax.set_ylabel("数值")
-                ax.grid(True, alpha=0.3)
+                ax.grid(True, linestyle='--', alpha=0.5)  # 调整网格线样式
                 
                 # 添加数值标签
+                y_min, y_max = ax.get_ylim()
+                y_range = y_max - y_min
+                label_positions = []  # 用于存储已添加标签的位置，避免重叠
+                
                 for i, (key, value) in enumerate(zip(keys, values)):
-                    ax.annotate(f'{value:.2f}', (key, value), textcoords="offset points", 
-                               xytext=(0,10), ha='center')
+                    # 动态调整标签偏移量，避免重叠
+                    offset = min(15, max(5, y_range * 0.02))  # 偏移量在5-15之间
+                    label_y = value + offset
+                    
+                    # 检查标签是否重叠
+                    if any(abs(label_y - pos) < offset for pos in label_positions):
+                        label_y = value - offset  # 如果会重叠，则放在数据点下方
+                    
+                    label_positions.append(label_y)
+                    
+                    # 只在关键点显示标签（例如，最大值、最小值和起点）
+                    if i == 0 or value == max(values) or value == min(values):
+                        ax.annotate(f'{value:.2f}', (i, label_y), textcoords="offset points", 
+                                   xytext=(0, 0), ha='center', va='bottom', 
+                                   bbox=dict(boxstyle="square,pad=0.3", fc="white", alpha=0.7))
                 
                 # 保存图表
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -297,13 +326,41 @@ class TabularDataToolkit(AsyncBaseToolkit):
                 fig, ax = plt.subplots(figsize=(10, 8))
                 
                 # 提取数据
-                keys = list(data.keys())
-                values = list(data.values())
+                keys = list(flattened_data.keys())
+                values = list(flattened_data.values())
                 
                 # 创建饼图
                 colors = ['#2E86AB', '#A23B72', '#F18F01', '#C73E1D', '#6A994E']
-                pie_result = ax.pie(values, labels=keys, autopct='%1.1f%%', 
-                                   colors=colors[:len(keys)], startangle=90)
+                pie_result = ax.pie(values, labels=None, autopct='%1.1f%%', 
+                                   colors=colors[:len(keys)], startangle=90,
+                                   textprops={'color': 'black'})  # 统一文本颜色
+                
+                # 获取饼图的wedges
+                wedges = pie_result[0] if isinstance(pie_result, tuple) else pie_result
+                
+                # 调整标签显示
+                label_distance = 1.1  # 标签距离圆心的距离
+                for i, wedge in enumerate(wedges):
+                    angle = (wedge.theta2 - wedge.theta1) / 2. + wedge.theta1
+                    x = np.cos(np.deg2rad(angle))
+                    y = np.sin(np.deg2rad(angle))
+                    
+                    # 对于占比非常小的部分，不显示标签
+                    if values[i] / sum(values) > 0.05:  # 只显示占比大于5%的标签
+                        horizontalalignment = {-1: "right", 1: "left"}[int(np.sign(x))]
+                        connectionstyle = "angle,angleA=0,angleB={}".format(angle)
+                        
+                        ax.annotate(
+                            keys[i], 
+                            xy=(x, y),  # 标签的坐标
+                            xytext=(label_distance * x, label_distance * y),  # 文本的坐标
+                            horizontalalignment=horizontalalignment,
+                            verticalalignment="center",
+                            fontsize=10,
+                            bbox=dict(facecolor='white', edgecolor='none', pad=5),
+                            arrowprops=dict(arrowstyle="->", connectionstyle=connectionstyle)
+                        )
+                
                 ax.set_title("财务数据占比图")
                 
                 # 保存图表
@@ -328,3 +385,68 @@ class TabularDataToolkit(AsyncBaseToolkit):
                 "chart_type": chart_type,
                 "error": str(e)
             }
+
+    def _flatten_financial_data(self, data: dict) -> dict:
+        """将嵌套的财务数据扁平化为简单的键值对
+        
+        Args:
+            data (dict): 原始财务数据，可能包含嵌套结构
+            
+        Returns:
+            dict: 扁平化的键值对数据
+        """
+        flattened = {}
+        
+        # 处理趋势数据
+        if 'trend_data' in data and isinstance(data['trend_data'], list):
+            for item in data['trend_data']:
+                if isinstance(item, dict) and 'year' in item:
+                    year = item['year']
+                    for key, value in item.items():
+                        if key != 'year' and isinstance(value, (int, float)):
+                            # 将指标名称转换为中文
+                            chinese_key = self._translate_indicator(key)
+                            flattened[f"{year}年{chinese_key}"] = value
+        
+        # 处理比率数据
+        if 'ratios_data' in data and isinstance(data['ratios_data'], dict):
+            for category, ratios in data['ratios_data'].items():
+                if isinstance(ratios, dict):
+                    # 将类别名称转换为中文
+                    chinese_category = self._translate_category(category)
+                    for ratio_name, ratio_value in ratios.items():
+                        if isinstance(ratio_value, (int, float)):
+                            # 将指标名称转换为中文
+                            chinese_ratio = self._translate_indicator(ratio_name)
+                            flattened[f"{chinese_category}_{chinese_ratio}"] = ratio_value
+        
+        # 如果没有嵌套结构，直接返回原始数据中的数值键值对
+        if not flattened:
+            for key, value in data.items():
+                if isinstance(value, (int, float)):
+                    flattened[key] = value
+        
+        return flattened
+
+    def _translate_indicator(self, indicator: str) -> str:
+        """将英文指标名称翻译为中文"""
+        translations = {
+            'revenue': '营收',
+            'net_profit': '净利润',
+            'net_margin': '净利率',
+            'roa': 'ROA',
+            'roe': 'ROE',
+            'debt_ratio': '资产负债率',
+            'equity_ratio': '权益比率'
+        }
+        return translations.get(indicator, indicator)
+
+    def _translate_category(self, category: str) -> str:
+        """将英文类别名称翻译为中文"""
+        translations = {
+            'profitability': '盈利能力',
+            'solvency': '偿债能力',
+            'efficiency': '运营效率',
+            'growth': '成长能力'
+        }
+        return translations.get(category, category)
