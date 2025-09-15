@@ -68,8 +68,6 @@ python main.py
 # 或者使用uv运行交互式模式（推荐）
 uv run scripts/cli_chat.py --stream --config examples/stock_analysis/stock_analysis.yaml
 
-
-
 # 选择分析任务或输入自定义需求
 # 例如：分析陕西建工(600248.SH)最新财报数据
 ```
