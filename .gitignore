@@ -13,6 +13,9 @@ CLAUDE.md
 Youtu Agent Demo_files/
 Youtu Agent Demo_files/*
 
+run_workdir/
+run_workdir/*
+
 # Virtual environments
 .venv
 
