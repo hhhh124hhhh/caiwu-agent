@@ -215,7 +215,7 @@ class TabularDataToolkit(AsyncBaseToolkit):
         
         Args:
             data_json (str): Financial data in JSON format
-            chart_type (str): Type of chart to generate (bar, line, pie)
+            chart_type (str): Type of chart to generate (bar, line, pie, scatter, heatmap, radar, boxplot, area, waterfall)
             output_dir (str): Directory to save charts
             
         Returns:
@@ -460,6 +460,20 @@ class TabularDataToolkit(AsyncBaseToolkit):
                             positive_keys.append(k)
                             positive_values.append(v)
                     
+                    # 如果没有正值数据，尝试使用原始数据
+                    if not positive_keys and keys and values:
+                        # 检查是否所有值都是数值类型
+                        numeric_keys = []
+                        numeric_values = []
+                        for k, v in zip(keys, values):
+                            if isinstance(v, (int, float)) and not (np.isnan(v) or np.isinf(v)):
+                                numeric_keys.append(k)
+                                numeric_values.append(abs(v))  # 使用绝对值
+                        
+                        if numeric_keys:
+                            positive_keys = numeric_keys
+                            positive_values = numeric_values
+                    
                     if positive_keys:  # 只有当有正值时才生成饼图
                         # 创建饼图
                         colors = ['#2E86AB', '#A23B72', '#F18F01', '#C73E1D', '#6A994E']
@@ -472,13 +486,14 @@ class TabularDataToolkit(AsyncBaseToolkit):
                         
                         # 调整标签显示
                         label_distance = 1.1  # 标签距离圆心的距离
+                        total_value = sum(positive_values)
                         for i, wedge in enumerate(wedges):
                             angle = (wedge.theta2 - wedge.theta1) / 2. + wedge.theta1
                             x = np.cos(np.deg2rad(angle))
                             y = np.sin(np.deg2rad(angle))
                             
                             # 对于占比非常小的部分，不显示标签
-                            if positive_values[i] / sum(positive_values) > 0.05:  # 只显示占比大于5%的标签
+                            if total_value > 0 and positive_values[i] / total_value > 0.02:  # 降低阈值到2%以显示更多标签
                                 horizontalalignment = {-1: "right", 1: "left"}[int(np.sign(x))]
                                 connectionstyle = "angle,angleA=0,angleB={}".format(angle)
                                 
@@ -501,13 +516,339 @@ class TabularDataToolkit(AsyncBaseToolkit):
                         plt.savefig(chart_file, dpi=300, bbox_inches='tight')
                         plt.close()
                         chart_files.append(chart_file)
-            
-            return {
-                "success": True,
-                "chart_files": chart_files,
-                "chart_type": chart_type,
-                "message": f"成功生成{len(chart_files)}个图表"
-            }
+                    else:
+                        # 如果仍然没有数据，至少生成一个简单的饼图
+                        # 这可能是数据结构问题，我们尝试另一种方式处理
+                        logger.warning("饼图数据为空，尝试处理原始数据结构")
+                        # 关闭当前图表
+                        plt.close()
+                        
+                        # 尝试直接使用传入的数据
+                        if isinstance(data, dict):
+                            # 查找可能的分类数据
+                            category_data = {}
+                            for key, value in data.items():
+                                if isinstance(value, list) and len(value) > 0:
+                                    # 检查是否是分布数据（包含标签和数值）
+                                    first_item = value[0] if len(value) > 0 else None
+                                    if isinstance(first_item, dict):
+                                        # 查找标签字段和数值字段
+                                        label_field = None
+                                        value_field = None
+                                        
+                                        # 常见的标签字段名
+                                        label_fields = ['利润率区间', '区间', '分类', '标签', 'label', 'category', 'name']
+                                        # 常见的数值字段名
+                                        value_fields = ['公司数量', '数量', '数值', 'value', 'count', 'number']
+                                        
+                                        # 查找标签字段
+                                        for field in label_fields:
+                                            if field in first_item:
+                                                label_field = field
+                                                break
+                                        
+                                        # 查找数值字段
+                                        for field in value_fields:
+                                            if field in first_item:
+                                                value_field = field
+                                                break
+                                        
+                                        # 如果找到了标签和数值字段
+                                        if label_field and value_field:
+                                            labels = []
+                                            values = []
+                                            for item in value:
+                                                if isinstance(item, dict) and label_field in item and value_field in item:
+                                                    label_value = item[label_field]
+                                                    num_value = item[value_field]
+                                                    if isinstance(label_value, (str, int, float)) and isinstance(num_value, (int, float)):
+                                                        labels.append(str(label_value))
+                                                        values.append(num_value)
+                                            
+                                            if labels and values:
+                                                category_data[key] = (labels, values)
+                                                break  # 找到第一个有效的分布数据就停止
+                                elif isinstance(value, dict):
+                                    # 如果是字典，尝试计算其大小或其他聚合值
+                                    category_data[key] = len(value)
+                            
+                            if category_data:
+                                # 使用分类数据生成饼图
+                                for key, value in category_data.items():
+                                    if isinstance(value, tuple) and len(value) == 2:
+                                        # 分布数据格式：(labels, values)
+                                        labels, values = value
+                                        if labels and values:
+                                            fig, ax = plt.subplots(figsize=(10, 8))
+                                            colors = ['#2E86AB', '#A23B72', '#F18F01', '#C73E1D', '#6A994E']
+                                            ax.pie(values, labels=labels, autopct='%1.1f%%', 
+                                                  colors=colors[:len(labels)], startangle=90)
+                                            ax.set_title(f"{key}分布图")
+                                            
+                                            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                                            chart_file = os.path.join(output_dir, f"pie_chart_{timestamp}.png")
+                                            plt.savefig(chart_file, dpi=300, bbox_inches='tight')
+                                            plt.close()
+                                            chart_files.append(chart_file)
+                                            break  # 只生成第一个有效的饼图
+                                    else:
+                                        # 原始逻辑：简单数值
+                                        cat_keys = list(category_data.keys())
+                                        cat_values = list(category_data.values())
+                                        
+                                        if cat_keys and cat_values:
+                                            fig, ax = plt.subplots(figsize=(10, 8))
+                                            colors = ['#2E86AB', '#A23B72', '#F18F01', '#C73E1D', '#6A994E']
+                                            ax.pie(cat_values, labels=cat_keys, autopct='%1.1f%%', 
+                                                  colors=colors[:len(cat_keys)], startangle=90)
+                                            ax.set_title("数据分布图")
+                                            
+                                            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                                            chart_file = os.path.join(output_dir, f"pie_chart_{timestamp}.png")
+                                            plt.savefig(chart_file, dpi=300, bbox_inches='tight')
+                                            plt.close()
+                                            chart_files.append(chart_file)
+                                            break  # 只生成第一个有效的饼图
+                
+                elif chart_type == "scatter":
+                    # 生成散点图 - 用于显示两个变量之间的相关性
+                    fig, ax = plt.subplots(figsize=(10, 6))
+                    
+                    # 提取数据 - 需要成对的数据
+                    keys = list(filtered_data.keys())
+                    values = list(filtered_data.values())
+                    
+                    # 确保有足够的数据点
+                    if len(keys) >= 2:
+                        # 使用前两个指标作为X和Y轴
+                        x_data = values[:-1]  # 所有值除了最后一个
+                        y_data = values[1:]   # 所有值除了第一个
+                        
+                        # 创建散点图
+                        scatter = ax.scatter(x_data, y_data, c='#2E86AB', s=100, alpha=0.7)
+                        ax.set_xlabel(keys[0])
+                        ax.set_ylabel(keys[1] if len(keys) > 1 else "数值")
+                        ax.set_title("财务数据相关性散点图")
+                        ax.grid(True, linestyle='--', alpha=0.5)
+                        
+                        # 添加数值标签
+                        for i, (x, y) in enumerate(zip(x_data, y_data)):
+                            if i < len(keys) - 1:
+                                ax.annotate(f'{keys[i+1]}', (x, y), xytext=(5, 5), 
+                                           textcoords='offset points', fontsize=8,
+                                           bbox=dict(boxstyle="round,pad=0.3", fc="white", alpha=0.7))
+                        
+                        # 保存图表
+                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        chart_file = os.path.join(output_dir, f"scatter_chart_{timestamp}.png")
+                        plt.savefig(chart_file, dpi=300, bbox_inches='tight')
+                        plt.close()
+                        chart_files.append(chart_file)
+                    else:
+                        logger.warning("散点图需要至少2个数据点")
+                        
+                elif chart_type == "heatmap":
+                    # 生成热力图 - 用于显示多维数据的强度
+                    fig, ax = plt.subplots(figsize=(12, 8))
+                    
+                    # 提取数据
+                    keys = list(filtered_data.keys())
+                    values = list(filtered_data.values())
+                    
+                    # 确保有足够的数据
+                    if len(keys) >= 2:
+                        # 创建数据矩阵用于热力图
+                        # 将数据重新组织为矩阵形式
+                        data_matrix = np.array(values).reshape(1, -1)
+                        
+                        # 创建热力图
+                        im = ax.imshow(data_matrix, cmap='YlOrRd', aspect='auto')
+                        
+                        # 设置标签
+                        ax.set_xticks(np.arange(len(keys)))
+                        ax.set_xticklabels(keys, rotation=45, ha='right')
+                        ax.set_yticks([])
+                        ax.set_title("财务数据热力图")
+                        
+                        # 添加颜色条
+                        cbar = plt.colorbar(im, ax=ax)
+                        cbar.set_label('数值')
+                        
+                        # 在每个单元格中添加数值
+                        for i in range(len(keys)):
+                            text = ax.text(i, 0, f'{values[i]:.2f}',
+                                          ha="center", va="center", color="black")
+                        
+                        # 保存图表
+                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        chart_file = os.path.join(output_dir, f"heatmap_chart_{timestamp}.png")
+                        plt.savefig(chart_file, dpi=300, bbox_inches='tight')
+                        plt.close()
+                        chart_files.append(chart_file)
+                    else:
+                        logger.warning("热力图需要至少2个数据点")
+                        
+                elif chart_type == "radar":
+                    # 生成雷达图 - 用于显示多维度数据的综合评估
+                    fig, ax = plt.subplots(figsize=(10, 10), subplot_kw=dict(projection='polar'))
+                    
+                    # 提取数据
+                    keys = list(filtered_data.keys())
+                    values = list(filtered_data.values())
+                    
+                    # 确保有足够的数据
+                    if len(keys) >= 3:
+                        # 归一化数据到0-1范围，便于雷达图显示
+                        normalized_values = []
+                        for v in values:
+                            if isinstance(v, (int, float)) and not np.isnan(v) and not np.isinf(v):
+                                # 简单归一化到0-1范围
+                                min_val, max_val = min(values), max(values)
+                                if max_val != min_val:
+                                    normalized_values.append((v - min_val) / (max_val - min_val))
+                                else:
+                                    normalized_values.append(0.5)
+                            else:
+                                normalized_values.append(0)
+                        
+                        # 计算角度
+                        angles = np.linspace(0, 2 * np.pi, len(keys), endpoint=False).tolist()
+                        # 完整闭环
+                        angles += angles[:1]
+                        normalized_values += normalized_values[:1]
+                        
+                        # 创建雷达图
+                        ax.plot(angles, normalized_values, 'o-', linewidth=2, color='#2E86AB')
+                        ax.fill(angles, normalized_values, alpha=0.25, color='#2E86AB')
+                        ax.set_xticks(angles[:-1])
+                        ax.set_xticklabels(keys)
+                        ax.set_title("财务数据雷达图", pad=20)
+                        
+                        # 保存图表
+                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        chart_file = os.path.join(output_dir, f"radar_chart_{timestamp}.png")
+                        plt.savefig(chart_file, dpi=300, bbox_inches='tight')
+                        plt.close()
+                        chart_files.append(chart_file)
+                    else:
+                        logger.warning("雷达图需要至少3个数据点")
+                        
+                elif chart_type == "boxplot":
+                    # 生成箱线图 - 用于显示数据分布和异常值
+                    fig, ax = plt.subplots(figsize=(10, 6))
+                    
+                    # 提取数据
+                    keys = list(filtered_data.keys())
+                    values = list(filtered_data.values())
+                    
+                    # 过滤数值数据
+                    numeric_values = [v for v in values if isinstance(v, (int, float)) and not np.isnan(v) and not np.isinf(v)]
+                    
+                    if len(numeric_values) >= 4:  # 箱线图需要足够的数据点
+                        # 创建箱线图
+                        box_plot = ax.boxplot([numeric_values], labels=["财务指标分布"], patch_artist=True)
+                        box_plot['boxes'][0].set_facecolor('#2E86AB')
+                        ax.set_ylabel("数值")
+                        ax.set_title("财务数据分布箱线图")
+                        ax.grid(True, linestyle='--', alpha=0.5)
+                        
+                        # 保存图表
+                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        chart_file = os.path.join(output_dir, f"boxplot_chart_{timestamp}.png")
+                        plt.savefig(chart_file, dpi=300, bbox_inches='tight')
+                        plt.close()
+                        chart_files.append(chart_file)
+                    else:
+                        logger.warning("箱线图需要至少4个数值数据点")
+                        
+                elif chart_type == "area":
+                    # 生成面积图 - 用于显示累积数据或占比随时间的变化
+                    fig, ax = plt.subplots(figsize=(10, 6))
+                    
+                    # 提取数据
+                    keys = list(filtered_data.keys())
+                    values = list(filtered_data.values())
+                    
+                    # 过滤数值数据
+                    numeric_values = [v for v in values if isinstance(v, (int, float)) and not np.isnan(v) and not np.isinf(v)]
+                    
+                    if len(numeric_values) >= 2:
+                        # 创建面积图
+                        x = range(len(numeric_values))
+                        ax.fill_between(x, numeric_values, alpha=0.7, color='#2E86AB')
+                        ax.plot(x, numeric_values, color='#1a4f66', linewidth=2)
+                        ax.set_xticks(x)
+                        ax.set_xticklabels(keys[:len(numeric_values)], rotation=45, ha='right')
+                        ax.set_ylabel("数值")
+                        ax.set_title("财务数据面积图")
+                        ax.grid(True, linestyle='--', alpha=0.5)
+                        
+                        # 保存图表
+                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        chart_file = os.path.join(output_dir, f"area_chart_{timestamp}.png")
+                        plt.savefig(chart_file, dpi=300, bbox_inches='tight')
+                        plt.close()
+                        chart_files.append(chart_file)
+                    else:
+                        logger.warning("面积图需要至少2个数值数据点")
+                        
+                elif chart_type == "waterfall":
+                    # 生成瀑布图 - 用于显示财务数据的构成和变化过程
+                    fig, ax = plt.subplots(figsize=(12, 6))
+                    
+                    # 提取数据
+                    keys = list(filtered_data.keys())
+                    values = list(filtered_data.values())
+                    
+                    # 过滤数值数据
+                    numeric_data = [(k, v) for k, v in zip(keys, values) 
+                                   if isinstance(v, (int, float)) and not np.isnan(v) and not np.isinf(v)]
+                    
+                    if len(numeric_data) >= 2:
+                        labels, numeric_values = zip(*numeric_data)
+                        
+                        # 计算累积值
+                        cumulative = np.cumsum(numeric_values)
+                        
+                        # 创建瀑布图
+                        colors = ['#2E86AB' if x >= 0 else '#A23B72' for x in numeric_values]
+                        colors[0] = '#F18F01'  # 起始值用不同颜色
+                        colors[-1] = '#6A994E'  # 最终值用不同颜色
+                        
+                        # 绘制柱状图
+                        x = np.arange(len(numeric_values))
+                        ax.bar(x, numeric_values, color=colors, edgecolor='black', linewidth=0.5)
+                        
+                        # 绘制连接线
+                        for i in range(1, len(cumulative)):
+                            ax.plot([i-1, i], [cumulative[i-1], cumulative[i-1]], 
+                                   color='black', linestyle='--', linewidth=1)
+                        
+                        # 添加数值标签
+                        for i, (label, value) in enumerate(numeric_data):
+                            ax.text(i, value/2 if value >= 0 else value*1.1, f'{value:.2f}', 
+                                   ha='center', va='center', fontweight='bold')
+                        
+                        ax.set_xticks(x)
+                        ax.set_xticklabels(labels, rotation=45, ha='right')
+                        ax.set_ylabel("数值")
+                        ax.set_title("财务数据瀑布图")
+                        ax.grid(True, linestyle='--', alpha=0.5)
+                        
+                        # 保存图表
+                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        chart_file = os.path.join(output_dir, f"waterfall_chart_{timestamp}.png")
+                        plt.savefig(chart_file, dpi=300, bbox_inches='tight')
+                        plt.close()
+                        chart_files.append(chart_file)
+                    else:
+                        logger.warning("瀑布图需要至少2个数值数据点")
+                return {
+                    "success": True,
+                    "chart_files": chart_files,
+                    "chart_type": chart_type,
+                    "message": f"成功生成{len(chart_files)}个图表"
+                }
             
         except Exception as e:
             logger.error(f"生成图表时出错: {str(e)}")
@@ -553,15 +894,57 @@ class TabularDataToolkit(AsyncBaseToolkit):
                             flattened[f"{chinese_category}_{chinese_ratio}"] = ratio_value
         
         # 处理公司对比数据（新增处理逻辑）
-        if 'companies' in data and isinstance(data.get('revenue'), list):
-            companies = data['companies']
+        companies_key = None
+        companies_data = None
+        
+        # 检查不同的可能键名
+        for key in ['companies', '公司对比', '公司数据', '企业对比']:
+            if key in data and isinstance(data[key], list):
+                companies_key = key
+                companies_data = data[key]
+                break
+        
+        if companies_key and companies_data:
+            # 提取公司名称列表
+            company_names = []
+            for company in companies_data:
+                if isinstance(company, dict):
+                    name = company.get('名称') or company.get('name') or company.get('公司名称', f'公司{len(company_names)+1}')
+                    company_names.append(name)
+            
             # 处理各种财务指标
-            for key, values in data.items():
-                if isinstance(values, list) and len(values) == len(companies):
-                    for i, value in enumerate(values):
+            for company_idx, company in enumerate(companies_data):
+                if isinstance(company, dict):
+                    company_name = company_names[company_idx]
+                    for key, value in company.items():
+                        # 跳过公司名称字段
+                        if key in ['名称', 'name', '公司名称']:
+                            continue
                         if isinstance(value, (int, float)):
                             chinese_key = self._translate_indicator(key)
-                            flattened[f"{companies[i]}_{chinese_key}"] = value
+                            flattened[f"{company_name}_{chinese_key}"] = value
+        
+        # 处理趋势数据
+        trend_keys = ['trend_data', '趋势数据', '趋势', '历史数据']
+        trend_data = None
+        for key in trend_keys:
+            if key in data and isinstance(data[key], list):
+                trend_data = data[key]
+                break
+        
+        if trend_data:
+            for item in trend_data:
+                if isinstance(item, dict):
+                    # 提取年份信息
+                    year = item.get('年份') or item.get('year') or item.get('时间', '未知年份')
+                    # 处理各项财务指标
+                    for key, value in item.items():
+                        # 跳过年份字段
+                        if key in ['年份', 'year', '时间']:
+                            continue
+                        if isinstance(value, (int, float)):
+                            chinese_key = self._translate_indicator(key)
+                            flattened[f"{year}年{chinese_key}"] = value
         
         # 处理扁平化的公司数据（新增处理逻辑）
         if len(data) > 0 and not flattened:

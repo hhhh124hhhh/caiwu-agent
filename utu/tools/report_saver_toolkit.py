@@ -41,6 +41,10 @@ class ReportSaverToolkit(AsyncBaseToolkit):
             else:
                 data = financial_data_json
             
+            # 检查是否是行业分析数据结构
+            if "医药行业分析" in data:
+                return self._format_industry_analysis_as_markdown(data)
+            
             # 获取基本信息 - 支持多种可能的键名
             company_name = (data.get("company_name") or 
                           data.get("公司名称") or 
@@ -282,6 +286,91 @@ class ReportSaverToolkit(AsyncBaseToolkit):
             # 如果解析失败，返回格式化的错误信息和原始数据
             error_info = f"# 财务分析报告\n\n## 原始数据\n\n```\n{financial_data_json}\n```\n\n## 错误信息\n\n{str(e)}"
             return error_info
+
+    def _format_industry_analysis_as_markdown(self, data: dict) -> str:
+        """
+        将行业分析数据格式化为Markdown报告
+        
+        Args:
+            data: 包含行业分析数据的字典
+            
+        Returns:
+            str: 格式化后的Markdown报告内容
+        """
+        try:
+            # 获取行业分析数据
+            industry_data = data.get("医药行业分析", {})
+            key_findings = data.get("关键发现", {})
+            
+            # 获取基本信息
+            analysis_time = industry_data.get("分析时间", "未知时间")
+            company_count = industry_data.get("分析公司数量", 0)
+            companies = industry_data.get("公司明细", [])
+            
+            # 生成报告标题和基本信息
+            report_content = []
+            report_content.append("# 医药行业财务分析报告")
+            report_content.append("=" * 18)
+            report_content.append(f"**分析时间**: {analysis_time}")
+            report_content.append(f"**分析公司数量**: {company_count}")
+            report_content.append(f"**报告日期**: {datetime.now().strftime('%Y-%m-%d')}")
+            report_content.append("")
+            
+            # 添加公司明细表
+            if companies and isinstance(companies, list):
+                report_content.append("## 公司明细")
+                report_content.append("")
+                report_content.append("| 公司名称 | 股票代码 | 营收(亿元) | 净利润(亿元) | 净利润率(%) | ROE(%) | 资产负债率(%) | 行业分类 |")
+                report_content.append("|---------|---------|----------|------------|------------|--------|-------------|---------|")
+                
+                for company in companies:
+                    if isinstance(company, dict):
+                        name = company.get("名称", "")
+                        code = company.get("股票代码", "")
+                        revenue = company.get("营收(亿元)", 0)
+                        net_profit = company.get("净利润(亿元)", 0)
+                        net_profit_margin = company.get("净利润率", 0)
+                        roe = company.get("ROE", 0)
+                        debt_ratio = company.get("资产负债率", 0)
+                        category = company.get("行业分类", "")
+                        
+                        # 格式化数值
+                        revenue_str = f"{revenue:.2f}" if isinstance(revenue, (int, float)) else str(revenue)
+                        net_profit_str = f"{net_profit:.2f}" if isinstance(net_profit, (int, float)) else str(net_profit)
+                        net_profit_margin_str = f"{net_profit_margin:.2f}" if isinstance(net_profit_margin, (int, float)) else str(net_profit_margin)
+                        roe_str = f"{roe:.2f}" if isinstance(roe, (int, float)) else str(roe)
+                        debt_ratio_str = f"{debt_ratio:.2f}" if isinstance(debt_ratio, (int, float)) else str(debt_ratio)
+                        
+                        report_content.append(f"| {name} | {code} | {revenue_str} | {net_profit_str} | {net_profit_margin_str} | {roe_str} | {debt_ratio_str} | {category} |")
+                report_content.append("")
+            
+            # 添加关键发现
+            if key_findings and isinstance(key_findings, dict):
+                report_content.append("## 关键发现")
+                report_content.append("")
+                for key, value in key_findings.items():
+                    # 将键名转换为更易读的中文
+                    readable_key = self._translate_key_findings_key(key)
+                    report_content.append(f"- **{readable_key}**: {value}")
+                report_content.append("")
+            
+            return "\n".join(report_content)
+        except Exception as e:
+            # 如果解析失败，返回错误信息
+            return f"# 行业分析报告格式化错误\n\n{str(e)}"
+
+    def _translate_key_findings_key(self, key: str) -> str:
+        """
+        将关键发现的键名翻译为更易读的中文
+        """
+        translations = {
+            "利润率超过10%的公司数量": "利润率超过10%的公司数量",
+            "平均净利润率": "平均净利润率",
+            "最高利润率": "最高利润率",
+            "最低利润率": "最低利润率",
+            "行业特点": "行业特点"
+        }
+        return translations.get(key, key)
 
     @register_tool()
     async def save_text_report(self,

@@ -105,17 +105,18 @@ workers:
         专业图表生成专家。基于财务分析结果生成可视化图表。
 
         核心工具：
-        - generate_charts: 生成财务数据图表（柱状图、折线图、饼图）
+        - generate_charts: 生成财务数据图表（柱状图、折线图、饼图、散点图、热力图、雷达图、箱线图、面积图、瀑布图）
+        - execute_python_code_enhanced: 增强版Python代码执行器（备用方案）
         - get_tabular_columns: 分析表格数据结构
         - get_column_info: 智能解释表格列含义
 
         工作流程：
-        1. 接收财务分析结果（比率、趋势、健康评估等数据）
-        2. 使用generate_charts生成可视化图表，保存到"./run_workdir"目录
+        1. 首先尝试使用generate_charts生成可视化图表，保存到"./run_workdir"目录
+        2. 如果generate_charts工具失败，使用execute_python_code_enhanced执行Python代码生成图表
         3. 为每张图表提供说明和分析
         4. 将图表文件路径和说明整理成报告
 
-        注意：专注于图表生成和可视化，必须使用generate_charts工具，不要使用Python代码生成图表。
+        注意：优先使用generate_charts工具，只有在工具失败时才使用execute_python_code_enhanced作为备用方案。
 
   ReportAgent:
     agent:
@@ -193,10 +194,11 @@ workers_info:
 
   - name: ChartGeneratorAgent
     desc: 图表生成专家
-    strengths: 数据可视化、趋势图、对比图
+    strengths: 数据可视化、趋势图、对比图、多维度图表
     weaknesses: 依赖数据准确性
     tools:
       - tabular
+      - enhanced_python_executor
 
   - name: ReportAgent
     desc: 报告生成专家
