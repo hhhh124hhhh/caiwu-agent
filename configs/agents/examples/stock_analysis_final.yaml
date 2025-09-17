@@ -127,16 +127,18 @@ workers:
         - generate_comparison_report: 生成公司对比分析报告
         - save_text_report: 生成并保存MD格式的财务分析报告（支持动态文件命名）
         - save_analysis_report: 保存AI分析结果到各种格式的文件
+        - save_pdf_report: 生成并保存PDF格式的财务分析报告（支持动态文件命名和图表嵌入）
         - get_tabular_columns: 分析表格数据结构
         - get_column_info: 智能解释表格列含义
 
         工作流程：
         1. 整合所有分析结果（数据、比率、趋势、健康评估、图表等）
         2. 用save_analysis_report将报告保存为MD格式文件，文件名将根据公司名称和日期自动生成
-        3. 保存报告到"./run_workdir"目录
-        4. 提供报告摘要和关键洞察
+        3. 使用save_pdf_report生成PDF格式报告，包含所有图表
+        4. 保存报告到"./run_workdir"目录
+        5. 提供报告摘要和关键洞察
 
-        注意：专注于报告整合和呈现，必须使用save_analysis_report工具保存报告，不要使用Python代码保存文件。
+        注意：专注于报告整合和呈现，必须使用save_analysis_report和save_pdf_report工具保存报告，不要使用Python代码保存文件。
 
 # 工具配置
 toolkits:
