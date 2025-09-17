@@ -227,6 +227,7 @@ class TabularDataToolkit(AsyncBaseToolkit):
         import os
         from datetime import datetime
         import numpy as np
+        import re
         
         # 设置中文字体
         plt.rcParams['font.sans-serif'] = ['SimHei', 'DejaVu Sans']
@@ -236,8 +237,65 @@ class TabularDataToolkit(AsyncBaseToolkit):
             # 解析数据
             data = json.loads(data_json)
             
+            # 数据验证和时间检查
+            current_year = datetime.now().year
+            current_month = datetime.now().month
+            current_date = datetime.now()
+            
+            # 检查数据中的时间是否合理
+            if isinstance(data, dict) and 'trend' in data:
+                filtered_trend_data = []
+                for item in data['trend']:
+                    if isinstance(item, dict) and ('年份' in item or 'year' in item or '日期' in item):
+                        # 提取时间信息
+                        time_key = None
+                        time_value = None
+                        for key in ['年份', 'year', '日期', 'date']:
+                            if key in item:
+                                time_key = key
+                                time_value = item[key]
+                                break
+                        
+                        if time_key and time_value:
+                            # 解析时间字符串
+                            year_match = re.search(r'(\d{4})', str(time_value))
+                            if year_match:
+                                year = int(year_match.group(1))
+                                # 检查是否是合理的时间
+                                if year < current_year or (year == current_year and current_month >= 6):
+                                    # 如果是过去或当前年份且已过半年，保留该数据
+                                    filtered_trend_data.append(item)
+                                else:
+                                    # 如果是未来时间或今年但还没到财报季，跳过该数据
+                                    logger.warning(f"跳过不合理的时间数据: {time_value}")
+                            else:
+                                # 如果无法解析年份，保留数据但记录警告
+                                logger.warning(f"无法解析时间字段: {time_value}")
+                                filtered_trend_data.append(item)
+                        else:
+                            # 如果没有时间字段，保留数据
+                            filtered_trend_data.append(item)
+                    else:
+                        # 如果不是趋势数据项，保留数据
+                        filtered_trend_data.append(item)
+                
+                # 更新趋势数据
+                data['trend'] = filtered_trend_data
+            
             # 处理嵌套数据结构，将其扁平化
-            flattened_data = self._flatten_financial_data(data)
+            # 确保data是字典类型，如果不是则进行转换
+            if isinstance(data, list):
+                # 如果是列表，尝试将其转换为字典格式
+                flattened_data = self._flatten_financial_list_data(data)
+            else:
+                flattened_data = self._flatten_financial_data(data)
+            
+            # 数据验证：检查毛利率等关键指标是否合理
+            for key, value in flattened_data.items():
+                if '毛利率' in key and value > 95:  # 如果毛利率超过95%，可能是数据错误
+                    logger.warning(f"检测到异常毛利率数据: {key} = {value}%，可能存在问题")
+                elif '净利率' in key and value > 50:  # 如果净利率超过50%，可能是数据错误
+                    logger.warning(f"检测到异常净利率数据: {key} = {value}%，可能存在问题")
             
             # 创建输出目录
             os.makedirs(output_dir, exist_ok=True)
@@ -246,7 +304,7 @@ class TabularDataToolkit(AsyncBaseToolkit):
             chart_files = []
             
             # 检查是否是公司对比数据并生成分组图表
-            if 'companies' in data and isinstance(data.get('revenue'), list):
+            if isinstance(data, dict) and 'companies' in data and isinstance(data.get('revenue'), list):
                 companies = data['companies']
                 # 生成公司对比图表
                 fig, ax = plt.subplots(figsize=(12, 8))
@@ -287,14 +345,36 @@ class TabularDataToolkit(AsyncBaseToolkit):
                     plt.close()
                     chart_files.append(chart_file)
             else:
+                # 过滤掉异常数据后再生成图表
+                filtered_data = {}
+                for key, value in flattened_data.items():
+                    # 过滤掉明显异常的数据
+                    if isinstance(value, (int, float)) and not (np.isnan(value) or np.isinf(value)):
+                        # 检查毛利率等关键指标
+                        if '毛利率' in key and value <= 100 and value >= 0:
+                            filtered_data[key] = value
+                        elif '净利率' in key and value <= 100 and value >= -100:
+                            filtered_data[key] = value
+                        elif '资产负债率' in key and value <= 100 and value >= 0:
+                            filtered_data[key] = value
+                        elif 'ROE' in key and abs(value) <= 100:
+                            filtered_data[key] = value
+                        elif not any(keyword in key for keyword in ['毛利率', '净利率', '资产负债率', 'ROE']):
+                            # 其他指标不做特殊限制
+                            filtered_data[key] = value
+                
+                # 如果过滤后没有数据，使用原始数据
+                if not filtered_data:
+                    filtered_data = flattened_data
+                
                 # 原有的单公司图表生成逻辑
                 if chart_type == "bar":
                     # 生成柱状图
                     fig, ax = plt.subplots(figsize=(10, 6))
                     
                     # 提取数据
-                    keys = list(flattened_data.keys())
-                    values = list(flattened_data.values())
+                    keys = list(filtered_data.keys())
+                    values = list(filtered_data.values())
                     
                     # 创建柱状图
                     bars = ax.bar(keys, values, color=['#2E86AB', '#A23B72', '#F18F01', '#C73E1D'])
@@ -326,8 +406,8 @@ class TabularDataToolkit(AsyncBaseToolkit):
                     fig, ax = plt.subplots(figsize=(10, 6))
                     
                     # 提取数据
-                    keys = list(flattened_data.keys())
-                    values = list(flattened_data.values())
+                    keys = list(filtered_data.keys())
+                    values = list(filtered_data.values())
                     
                     # 创建折线图
                     ax.plot(keys, values, marker='o', linewidth=2, markersize=8, color='#2E86AB')
@@ -369,49 +449,58 @@ class TabularDataToolkit(AsyncBaseToolkit):
                     fig, ax = plt.subplots(figsize=(10, 8))
                     
                     # 提取数据
-                    keys = list(flattened_data.keys())
-                    values = list(flattened_data.values())
+                    keys = list(filtered_data.keys())
+                    values = list(filtered_data.values())
                     
-                    # 创建饼图
-                    colors = ['#2E86AB', '#A23B72', '#F18F01', '#C73E1D', '#6A994E']
-                    pie_result = ax.pie(values, labels=None, autopct='%1.1f%%', 
-                                       colors=colors[:len(keys)], startangle=90,
-                                       textprops={'color': 'black'})  # 统一文本颜色
+                    # 过滤掉负值和零值，饼图不能显示负值
+                    positive_keys = []
+                    positive_values = []
+                    for k, v in zip(keys, values):
+                        if isinstance(v, (int, float)) and v > 0:
+                            positive_keys.append(k)
+                            positive_values.append(v)
                     
-                    # 获取饼图的wedges
-                    wedges = pie_result[0] if isinstance(pie_result, tuple) else pie_result
-                    
-                    # 调整标签显示
-                    label_distance = 1.1  # 标签距离圆心的距离
-                    for i, wedge in enumerate(wedges):
-                        angle = (wedge.theta2 - wedge.theta1) / 2. + wedge.theta1
-                        x = np.cos(np.deg2rad(angle))
-                        y = np.sin(np.deg2rad(angle))
+                    if positive_keys:  # 只有当有正值时才生成饼图
+                        # 创建饼图
+                        colors = ['#2E86AB', '#A23B72', '#F18F01', '#C73E1D', '#6A994E']
+                        pie_result = ax.pie(positive_values, labels=None, autopct='%1.1f%%', 
+                                           colors=colors[:len(positive_keys)], startangle=90,
+                                           textprops={'color': 'black'})  # 统一文本颜色
                         
-                        # 对于占比非常小的部分，不显示标签
-                        if values[i] / sum(values) > 0.05:  # 只显示占比大于5%的标签
-                            horizontalalignment = {-1: "right", 1: "left"}[int(np.sign(x))]
-                            connectionstyle = "angle,angleA=0,angleB={}".format(angle)
+                        # 获取饼图的wedges
+                        wedges = pie_result[0] if isinstance(pie_result, tuple) else pie_result
+                        
+                        # 调整标签显示
+                        label_distance = 1.1  # 标签距离圆心的距离
+                        for i, wedge in enumerate(wedges):
+                            angle = (wedge.theta2 - wedge.theta1) / 2. + wedge.theta1
+                            x = np.cos(np.deg2rad(angle))
+                            y = np.sin(np.deg2rad(angle))
                             
-                            ax.annotate(
-                                keys[i], 
-                                xy=(x, y),  # 标签的坐标
-                                xytext=(label_distance * x, label_distance * y),  # 文本的坐标
-                                horizontalalignment=horizontalalignment,
-                                verticalalignment="center",
-                                fontsize=10,
-                                bbox=dict(facecolor='white', edgecolor='none', pad=5),
-                                arrowprops=dict(arrowstyle="->", connectionstyle=connectionstyle)
-                            )
-                    
-                    ax.set_title("财务数据占比图")
-                    
-                    # 保存图表
-                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    chart_file = os.path.join(output_dir, f"pie_chart_{timestamp}.png")
-                    plt.savefig(chart_file, dpi=300, bbox_inches='tight')
-                    plt.close()
-                    chart_files.append(chart_file)
+                            # 对于占比非常小的部分，不显示标签
+                            if positive_values[i] / sum(positive_values) > 0.05:  # 只显示占比大于5%的标签
+                                horizontalalignment = {-1: "right", 1: "left"}[int(np.sign(x))]
+                                connectionstyle = "angle,angleA=0,angleB={}".format(angle)
+                                
+                                ax.annotate(
+                                    positive_keys[i], 
+                                    xy=(x, y),  # 标签的坐标
+                                    xytext=(label_distance * x, label_distance * y),  # 文本的坐标
+                                    horizontalalignment=horizontalalignment,
+                                    verticalalignment="center",
+                                    fontsize=10,
+                                    bbox=dict(facecolor='white', edgecolor='none', pad=5),
+                                    arrowprops=dict(arrowstyle="->", connectionstyle=connectionstyle)
+                                )
+                        
+                        ax.set_title("财务数据占比图")
+                        
+                        # 保存图表
+                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        chart_file = os.path.join(output_dir, f"pie_chart_{timestamp}.png")
+                        plt.savefig(chart_file, dpi=300, bbox_inches='tight')
+                        plt.close()
+                        chart_files.append(chart_file)
             
             return {
                 "success": True,
@@ -487,8 +576,56 @@ class TabularDataToolkit(AsyncBaseToolkit):
         # 如果没有嵌套结构，直接返回原始数据中的数值键值对
         if not flattened:
             for key, value in data.items():
-                if isinstance(value, (int, float)):
+                # 增加数据验证，确保数值合理
+                if isinstance(value, (int, float)) and not (isinstance(value, bool)):
+                    # 对于明显的异常值进行过滤
+                    if '毛利率' in key and (value < 0 or value > 100):
+                        logger.warning(f"跳过异常毛利率数据: {key} = {value}")
+                        continue
+                    elif '净利率' in key and (value < -100 or value > 100):
+                        logger.warning(f"跳过异常净利率数据: {key} = {value}")
+                        continue
+                    elif '资产负债率' in key and (value < 0 or value > 100):
+                        logger.warning(f"跳过异常资产负债率数据: {key} = {value}")
+                        continue
                     flattened[key] = value
+        
+        return flattened
+
+    def _flatten_financial_list_data(self, data: list) -> dict:
+        """将列表形式的财务数据扁平化为简单的键值对
+        
+        Args:
+            data (list): 原始财务数据列表
+            
+        Returns:
+            dict: 扁平化的键值对数据
+        """
+        flattened = {}
+        
+        # 处理列表数据，通常是年度数据列表
+        for i, item in enumerate(data):
+            if isinstance(item, dict):
+                # 提取年份信息
+                year = item.get('year', item.get('年份', f'数据{i+1}'))
+                
+                # 处理各项财务指标
+                for key, value in item.items():
+                    if key not in ['year', '年份'] and isinstance(value, (int, float)) and not (isinstance(value, bool)):
+                        # 数据验证
+                        if '毛利率' in key and (value < 0 or value > 100):
+                            logger.warning(f"跳过异常毛利率数据: {year}年{key} = {value}")
+                            continue
+                        elif '净利率' in key and (value < -100 or value > 100):
+                            logger.warning(f"跳过异常净利率数据: {year}年{key} = {value}")
+                            continue
+                        elif '资产负债率' in key and (value < 0 or value > 100):
+                            logger.warning(f"跳过异常资产负债率数据: {year}年{key} = {value}")
+                            continue
+                        
+                        # 将指标名称转换为中文
+                        chinese_key = self._translate_indicator(key)
+                        flattened[f"{year}年{chinese_key}"] = value
         
         return flattened
 

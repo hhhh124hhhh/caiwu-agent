@@ -38,6 +38,110 @@ from .base import AsyncBaseToolkit, register_tool
 ANSI_ESCAPE = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]")
 
 
+def _unescape_code_string(code: str) -> str:
+    """
+    处理代码字符串中的转义字符，特别是换行符和制表符
+    """
+    # 如果输入不是字符串，直接返回
+    if not isinstance(code, str):
+        return str(code)
+    
+    # 如果代码中包含三重引号，可能是多行字符串
+    if '"""' in code or "'''" in code:
+        # 尝试直接返回，可能是已经格式化的多行字符串
+        return code
+    
+    # 处理常见的转义序列
+    code = code.replace('\\n', '\n')
+    code = code.replace('\\t', '\t')
+    code = code.replace('\\r', '\r')
+    code = code.replace('\\\\', '\\')  # 处理双反斜杠
+    
+    # 处理可能的JSON转义
+    try:
+        # 如果代码看起来像JSON字符串，尝试解码
+        if code.startswith('"') and code.endswith('"') and len(code) > 1:
+            # 尝试JSON解码，处理多行字符串
+            decoded = json.loads(code)
+            # 如果解码后还是字符串，直接返回
+            if isinstance(decoded, str):
+                return decoded
+            # 如果解码后是字典且包含code键，返回code值
+            elif isinstance(decoded, dict) and 'code' in decoded:
+                return str(decoded['code'])
+            else:
+                return str(decoded)
+    except (json.JSONDecodeError, TypeError):
+        # 如果解码失败，保持原样
+        pass
+    
+    return code
+
+
+def _safe_json_parse(input_str: str) -> Any:
+    """
+    安全地解析JSON字符串，特别处理多行代码字符串
+    """
+    if not isinstance(input_str, str):
+        return input_str
+    
+    # 如果字符串不以引号开头，可能不是JSON字符串
+    if not (input_str.startswith('"') and input_str.endswith('"')):
+        return input_str
+    
+    try:
+        # 尝试解析JSON
+        return json.loads(input_str)
+    except json.JSONDecodeError:
+        # 如果解析失败，可能是包含特殊字符的普通字符串
+        # 尝试手动处理常见的转义字符
+        result = input_str
+        # 处理双反斜杠
+        result = result.replace('\\\\', '\\')
+        # 处理换行符转义
+        result = result.replace('\\n', '\n')
+        # 处理制表符转义
+        result = result.replace('\\t', '\t')
+        # 处理回车符转义
+        result = result.replace('\\r', '\r')
+        # 移除外层引号（如果存在）
+        if result.startswith('"') and result.endswith('"') and len(result) > 1:
+            result = result[1:-1]
+        return result
+
+
+def _preprocess_code_input(code_input: Any) -> str:
+    """
+    预处理代码输入，确保其为正确的字符串格式
+    """
+    try:
+        # 如果输入是字典且包含'code'键，提取代码
+        if isinstance(code_input, dict) and 'code' in code_input:
+            code = code_input['code']
+        else:
+            code = code_input
+        
+        # 转换为字符串
+        if not isinstance(code, str):
+            code = str(code)
+        
+        # 使用安全的JSON解析处理可能的转义问题
+        code = _safe_json_parse(code)
+        
+        # 如果解析后仍然是字符串，再次确保格式正确
+        if isinstance(code, str):
+            # 处理转义字符
+            code = _unescape_code_string(code)
+            return code
+        else:
+            # 如果解析后不是字符串，转换为字符串
+            return str(code)
+    except Exception as e:
+        # 如果预处理失败，返回原始输入的字符串表示
+        print(f"Warning: Code preprocessing failed: {e}")
+        return str(code_input) if code_input is not None else ""
+
+
 def _execute_python_code_sync(code: str, workdir: str, save_code: bool = False):
     """
     Synchronous execution of Python code with optional code saving.
@@ -45,8 +149,11 @@ def _execute_python_code_sync(code: str, workdir: str, save_code: bool = False):
     """
     original_dir = os.getcwd()
     try:
+        # 预处理代码输入
+        code_clean = _preprocess_code_input(code)
+        
         # Clean up code format
-        code_clean = code.strip()
+        code_clean = code_clean.strip()
         if code_clean.startswith("```python"):
             code_clean = code_clean.split("```python")[1].split("```")[0].strip()
 
@@ -226,13 +333,24 @@ class EnhancedPythonExecutorToolkit(AsyncBaseToolkit):
         Returns:
             dict: A dictionary containing the execution results.
         """
-        loop = asyncio.get_running_loop()
         try:
+            # 预处理代码输入，确保其格式正确
+            processed_code = _preprocess_code_input(code)
+            
+            # 添加调试信息
+            print(f"Debug: Original code type: {type(code)}")
+            print(f"Debug: Processed code type: {type(processed_code)}")
+            if isinstance(code, str) and len(code) < 200:
+                print(f"Debug: Original code: {code}")
+            if isinstance(processed_code, str) and len(processed_code) < 200:
+                print(f"Debug: Processed code: {processed_code}")
+            
+            loop = asyncio.get_running_loop()
             return await asyncio.wait_for(
                 loop.run_in_executor(
                     None,  # Use the default thread pool executor
                     _execute_python_code_sync,
-                    code,
+                    processed_code,
                     workdir,
                     save_code,
                 ),
@@ -241,11 +359,39 @@ class EnhancedPythonExecutorToolkit(AsyncBaseToolkit):
         except TimeoutError:
             return {
                 "success": False,
-                "message": f"Code execution timed out ({timeout} seconds)",
+                "message": f"代码执行超时 ({timeout} 秒)",
                 "stdout": "",
                 "stderr": "",
                 "status": False,
                 "output": "",
                 "files": [],
                 "error": f"Code execution timed out ({timeout} seconds)",
+            }
+        except json.JSONDecodeError as je:
+            # 特别处理JSON解析错误
+            error_msg = f"JSON解析错误: {str(je)}. 请检查输入的代码格式是否正确，特别是多行字符串和特殊字符的处理。"
+            print(f"Error: {error_msg}")
+            return {
+                "success": False,
+                "message": error_msg,
+                "stdout": "",
+                "stderr": "",
+                "status": False,
+                "output": "",
+                "files": [],
+                "error": f"JSONDecodeError: {str(je)}",
+            }
+        except Exception as e:
+            # 捕获所有其他异常并返回错误信息
+            error_msg = f"执行代码时发生错误: {str(e)}"
+            print(f"Error: {error_msg}")
+            return {
+                "success": False,
+                "message": error_msg,
+                "stdout": "",
+                "stderr": "",
+                "status": False,
+                "output": "",
+                "files": [],
+                "error": str(e),
             }

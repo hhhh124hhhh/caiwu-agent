@@ -24,6 +24,338 @@ class ReportSaverToolkit(AsyncBaseToolkit):
         super().__init__(config)
         self.workspace_root = getattr(config, 'workspace_root', './run_workdir') if config else './run_workdir'
 
+    def _format_financial_data_as_markdown(self, financial_data_json: str) -> str:
+        """
+        将财务数据格式化为Markdown报告
+        
+        Args:
+            financial_data_json: 包含财务数据的JSON字符串
+            
+        Returns:
+            str: 格式化后的Markdown报告内容
+        """
+        try:
+            # 解析JSON数据
+            if isinstance(financial_data_json, str):
+                data = json.loads(financial_data_json)
+            else:
+                data = financial_data_json
+            
+            # 获取基本信息 - 支持多种可能的键名
+            company_name = (data.get("company_name") or 
+                          data.get("公司名称") or 
+                          data.get("stock_name") or 
+                          data.get("股票名称") or 
+                          "未知公司")
+            
+            stock_code = (data.get("stock_code") or 
+                         data.get("股票代码") or 
+                         "未知代码")
+            
+            # 生成报告标题和基本信息
+            report_content = []
+            report_content.append(f"# {company_name} 财务分析报告")
+            report_content.append("=" * (len(company_name) + 12))
+            report_content.append(f"**股票代码**: {stock_code}")
+            report_content.append(f"**报告日期**: {datetime.now().strftime('%Y-%m-%d')}")
+            report_content.append("")
+            
+            # 处理财务数据 - 支持多种数据结构
+            # 检查是否有嵌套的income, balance, metrics结构
+            if "income" in data or "balance" in data or "metrics" in data:
+                # 处理嵌套结构
+                income_data = data.get("income", {})
+                balance_data = data.get("balance", {})
+                metrics_data = data.get("metrics", {})
+                cashflow_data = data.get("cashflow", {})
+                
+                # 合并所有数据到一个字典中以便处理
+                financial_data = {}
+                financial_data.update(income_data)
+                financial_data.update(balance_data)
+                financial_data.update(metrics_data)
+                financial_data.update(cashflow_data)
+            else:
+                # 处理扁平化结构
+                financial_data = data.get("financial_data") or data.get("财务数据") or data
+            
+            # 如果financial_data是字典，提取关键财务指标
+            if isinstance(financial_data, dict):
+                # 处理简化指标结构
+                revenue = (financial_data.get("revenue_billion") or 
+                          financial_data.get("营业收入") or 
+                          financial_data.get("revenue") or 
+                          0)
+                
+                net_profit = (financial_data.get("net_profit_billion") or 
+                             financial_data.get("净利润") or 
+                             financial_data.get("net_profit") or 
+                             0)
+                
+                parent_profit = (financial_data.get("parent_profit_billion") or 
+                               financial_data.get("归属于母公司净利润") or 
+                               financial_data.get("parent_net_profit") or 
+                               0)
+                
+                total_assets = (financial_data.get("total_assets_billion") or 
+                               financial_data.get("总资产") or 
+                               financial_data.get("total_assets") or 
+                               0)
+                
+                total_liabilities = (financial_data.get("total_liabilities_billion") or 
+                                   financial_data.get("总负债") or 
+                                   financial_data.get("total_liabilities") or 
+                                   0)
+                
+                total_equity = (financial_data.get("total_equity_billion") or 
+                               financial_data.get("股东权益") or 
+                               financial_data.get("total_equity") or 
+                               0)
+                
+                debt_ratio = (financial_data.get("debt_to_asset_ratio") or 
+                             financial_data.get("资产负债率") or 
+                             financial_data.get("debt_ratio") or 
+                             0)
+                
+                roe = (financial_data.get("roe") or 
+                      financial_data.get("净资产收益率") or 
+                      0)
+                
+                net_margin = (financial_data.get("net_profit_margin") or 
+                             financial_data.get("净利率") or 
+                             financial_data.get("net_margin") or 
+                             0)
+                
+                # 计算额外的财务比率
+                roa = 0
+                current_ratio = 0
+                quick_ratio = 0
+                asset_turnover = 0
+                
+                if total_assets and isinstance(total_assets, (int, float)) and total_assets > 0:
+                    if net_profit and isinstance(net_profit, (int, float)):
+                        roa = (net_profit / total_assets) * 100
+                    
+                    # 计算总资产周转率
+                    if revenue and isinstance(revenue, (int, float)):
+                        asset_turnover = revenue / total_assets
+                
+                if total_equity and isinstance(total_equity, (int, float)) and total_equity > 0:
+                    pass  # 已经有roe了，不需要重新计算
+                
+                if total_liabilities and isinstance(total_liabilities, (int, float)) and total_liabilities > 0:
+                    pass  # 流动比率和速动比率需要更多数据，这里暂时不计算
+                
+                # 创建财务数据概览
+                report_content.append("## 财务数据概览")
+                report_content.append("")
+                report_content.append(f"- **营业收入**: {revenue:,.2f} 亿元" if isinstance(revenue, (int, float)) else f"- **营业收入**: {revenue}")
+                report_content.append(f"- **净利润**: {net_profit:,.2f} 亿元" if isinstance(net_profit, (int, float)) else f"- **净利润**: {net_profit}")
+                report_content.append(f"- **归属于母公司净利润**: {parent_profit:,.2f} 亿元" if isinstance(parent_profit, (int, float)) else f"- **归属于母公司净利润**: {parent_profit}")
+                report_content.append(f"- **总资产**: {total_assets:,.2f} 亿元" if isinstance(total_assets, (int, float)) else f"- **总资产**: {total_assets}")
+                report_content.append(f"- **总负债**: {total_liabilities:,.2f} 亿元" if isinstance(total_liabilities, (int, float)) else f"- **总负债**: {total_liabilities}")
+                report_content.append(f"- **股东权益**: {total_equity:,.2f} 亿元" if isinstance(total_equity, (int, float)) else f"- **股东权益**: {total_equity}")
+                report_content.append(f"- **资产负债率**: {debt_ratio:.2f}%" if isinstance(debt_ratio, (int, float)) else f"- **资产负债率**: {debt_ratio}")
+                report_content.append(f"- **净资产收益率**: {roe:.2f}%" if isinstance(roe, (int, float)) else f"- **净资产收益率**: {roe}")
+                report_content.append(f"- **净利率**: {net_margin:.2f}%" if isinstance(net_margin, (int, float)) else f"- **净利率**: {net_margin}")
+                report_content.append(f"- **总资产收益率**: {roa:.2f}%" if isinstance(roa, (int, float)) and roa != 0 else "")
+                report_content.append("")
+                
+                # 添加财务比率分析
+                report_content.append("## 财务比率分析")
+                report_content.append("")
+                
+                # 盈利能力分析
+                report_content.append("### 盈利能力分析")
+                report_content.append(f"- 净利率: {net_margin:.2f}%" if isinstance(net_margin, (int, float)) else "N/A")
+                report_content.append(f"- 净资产收益率(ROE): {roe:.2f}%" if isinstance(roe, (int, float)) else "N/A")
+                report_content.append(f"- 总资产收益率(ROA): {roa:.2f}%" if isinstance(roa, (int, float)) and roa != 0 else "N/A")
+                report_content.append("")
+                
+                # 偿债能力分析
+                report_content.append("### 偿债能力分析")
+                report_content.append(f"- 资产负债率: {debt_ratio:.2f}%" if isinstance(debt_ratio, (int, float)) else "N/A")
+                # 可以添加流动比率、速动比率等
+                report_content.append("")
+                
+                # 运营效率分析
+                report_content.append("### 运营效率分析")
+                report_content.append(f"- 总资产周转率: {asset_turnover:.2f}" if isinstance(asset_turnover, (int, float)) and asset_turnover != 0 else "N/A")
+                report_content.append("")
+                
+                # 成长能力分析
+                report_content.append("### 成长能力分析")
+                # 这里可以添加收入增长率、利润增长率等
+                report_content.append("N/A")
+                report_content.append("")
+            
+            # 处理趋势数据
+            trend_data = data.get("trend_data") or data.get("趋势数据") or []
+            
+            if trend_data and isinstance(trend_data, list):
+                report_content.append("## 财务趋势分析")
+                report_content.append("")
+                report_content.append("| 年份 | 营业收入(亿元) | 净利润(亿元) |")
+                report_content.append("|------|---------------|-------------|")
+                
+                for item in trend_data:
+                    if isinstance(item, dict):
+                        year = item.get("year") or item.get("年份") or ""
+                        revenue = item.get("revenue") or item.get("营业收入") or 0
+                        net_profit = item.get("net_profit") or item.get("净利润") or 0
+                        
+                        # 格式化数值
+                        revenue_str = f"{revenue:,.2f}" if isinstance(revenue, (int, float)) else str(revenue)
+                        net_profit_str = f"{net_profit:,.2f}" if isinstance(net_profit, (int, float)) else str(net_profit)
+                        
+                        report_content.append(f"| {year} | {revenue_str} | {net_profit_str} |")
+                report_content.append("")
+            
+            # 处理关键洞察
+            key_insights = (data.get("key_insights") or 
+                           data.get("关键洞察") or 
+                           data.get("关键发现") or 
+                           data.get("insights") or
+                           [])
+            
+            if key_insights and isinstance(key_insights, list) and len(key_insights) > 0:
+                report_content.append("## 关键洞察")
+                report_content.append("")
+                for i, insight in enumerate(key_insights, 1):
+                    report_content.append(f"{i}. {insight}")
+                report_content.append("")
+            
+            # 添加投资建议（如果有的话）
+            investment_advice = (data.get("investment_advice") or 
+                               data.get("投资建议") or 
+                               data.get("建议") or 
+                               [])
+            
+            if investment_advice and isinstance(investment_advice, list) and len(investment_advice) > 0:
+                report_content.append("## 投资建议")
+                report_content.append("")
+                for i, advice in enumerate(investment_advice, 1):
+                    report_content.append(f"{i}. {advice}")
+                report_content.append("")
+            elif investment_advice and isinstance(investment_advice, str):
+                report_content.append("## 投资建议")
+                report_content.append("")
+                report_content.append(investment_advice)
+                report_content.append("")
+            
+            # 添加风险提示（如果有的话）
+            risks = (data.get("risks") or 
+                    data.get("风险提示") or 
+                    data.get("风险") or 
+                    [])
+            
+            if risks and isinstance(risks, list) and len(risks) > 0:
+                report_content.append("## 风险提示")
+                report_content.append("")
+                for i, risk in enumerate(risks, 1):
+                    report_content.append(f"{i}. {risk}")
+                report_content.append("")
+            elif risks and isinstance(risks, str):
+                report_content.append("## 风险提示")
+                report_content.append("")
+                report_content.append(risks)
+                report_content.append("")
+            
+            # 添加执行摘要
+            executive_summary = (data.get("executive_summary") or 
+                               data.get("执行摘要") or 
+                               data.get("摘要") or 
+                               "")
+            
+            if executive_summary:
+                report_content.append("## 执行摘要")
+                report_content.append("")
+                if isinstance(executive_summary, list):
+                    for item in executive_summary:
+                        report_content.append(f"- {item}")
+                else:
+                    report_content.append(executive_summary)
+                report_content.append("")
+            
+            return "\n".join(report_content)
+        except Exception as e:
+            # 如果解析失败，返回格式化的错误信息和原始数据
+            error_info = f"# 财务分析报告\n\n## 原始数据\n\n```\n{financial_data_json}\n```\n\n## 错误信息\n\n{str(e)}"
+            return error_info
+
+    @register_tool()
+    async def save_text_report(self,
+                             financial_data_json: str,
+                             stock_name: str = "财务分析报告",
+                             file_prefix: str = "./run_workdir") -> Dict[str, Any]:
+        """
+        生成并保存MD格式的财务分析报告
+        
+        Args:
+            financial_data_json: 包含财务数据的JSON字符串
+            stock_name: 股票名称，用于文件名
+            file_prefix: 文件路径前缀
+            
+        Returns:
+            dict: 结果信息包括成功状态和文件路径
+        """
+        try:
+            # 格式化财务数据为Markdown报告
+            report_content = self._format_financial_data_as_markdown(financial_data_json)
+            
+            # 生成文件名
+            current_date = datetime.now().strftime("%Y%m%d")
+            # 使用传入的stock_name或从JSON中提取公司名称
+            try:
+                if isinstance(financial_data_json, str):
+                    data = json.loads(financial_data_json)
+                else:
+                    data = financial_data_json
+                company_name = data.get("stock_name", data.get("company_name", data.get("公司名称", stock_name)))
+            except:
+                company_name = stock_name
+                
+            file_name = f"{company_name}{current_date}财务分析报告.md"
+            
+            # 使用workspace_root作为默认路径，如果提供了file_prefix则使用file_prefix
+            if file_prefix and file_prefix != "./run_workdir":
+                file_path = os.path.join(file_prefix, file_name)
+            else:
+                file_path = os.path.join(self.workspace_root, file_name)
+            
+            # 确保目录存在
+            directory = os.path.dirname(file_path)
+            if directory:
+                os.makedirs(directory, exist_ok=True)
+            
+            # 保存到文件
+            with open(file_path, 'w', encoding='utf-8') as f:
+                f.write(report_content)
+            
+            # 验证文件是否保存成功
+            if os.path.exists(file_path):
+                file_size = os.path.getsize(file_path)
+                return {
+                    "success": True,
+                    "message": f"财务分析报告已成功保存到: {file_path}",
+                    "file_path": file_path,
+                    "file_size": file_size
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": "保存财务分析报告时出错: 文件未成功创建",
+                    "file_path": None,
+                    "file_size": 0
+                }
+        except Exception as e:
+            return {
+                "success": False,
+                "message": f"保存财务分析报告时出错: {str(e)}",
+                "file_path": None,
+                "file_size": 0
+            }
+
     @register_tool()
     async def save_analysis_report(self, 
                                  content: str,

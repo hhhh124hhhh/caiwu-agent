@@ -80,6 +80,95 @@ class StandardFinancialAnalyzer(AsyncBaseToolkit):
             financial_data = self._convert_simple_metrics_to_financial_data(data_dict)
         return self.calculate_financial_ratios(financial_data)
     
+    def _convert_simple_metrics_to_financial_data(self, simple_metrics: Dict) -> Dict[str, pd.DataFrame]:
+        """
+        将简化指标转换为完整的财务数据结构
+        
+        Args:
+            simple_metrics: 简化指标字典
+            
+        Returns:
+            完整财务数据结构
+        """
+        # 创建空的DataFrame结构
+        income_df = pd.DataFrame()
+        balance_df = pd.DataFrame()
+        cashflow_df = pd.DataFrame()
+        
+        # 如果有简化指标，尝试填充到DataFrame中
+        if simple_metrics:
+            # 检查是否是嵌套结构（包含income和balance键）
+            if 'income' in simple_metrics and 'balance' in simple_metrics:
+                # 处理嵌套结构
+                income_data = simple_metrics['income']
+                balance_data = simple_metrics['balance']
+                
+                # 如果income_data是列表，取第一个元素
+                if isinstance(income_data, list) and len(income_data) > 0:
+                    income_data = income_data[0]
+                # 如果balance_data是列表，取第一个元素
+                if isinstance(balance_data, list) and len(balance_data) > 0:
+                    balance_data = balance_data[0]
+                
+                # 创建DataFrame
+                if income_data:
+                    income_df = pd.DataFrame([income_data] if isinstance(income_data, dict) else income_data)
+                if balance_data:
+                    balance_df = pd.DataFrame([balance_data] if isinstance(balance_data, dict) else balance_data)
+            else:
+                # 处理扁平化结构
+                income_data = {}
+                balance_data = {}
+                
+                # 映射简化指标到标准列名
+                income_metric_mapping = {
+                    'revenue': 'TOTAL_OPERATE_INCOME',
+                    'net_profit': 'NETPROFIT',
+                    'parent_net_profit': 'PARENT_NETPROFIT'
+                }
+                
+                balance_metric_mapping = {
+                    'total_assets': 'TOTAL_ASSETS',
+                    'total_liabilities': 'TOTAL_LIABILITIES',
+                    'total_equity': 'TOTAL_EQUITY',
+                    'current_assets': 'TOTAL_CURRENT_ASSETS',  # 流动资产
+                    'current_liabilities': 'TOTAL_CURRENT_LIABILITIES'  # 流动负债
+                }
+                
+                # 填充收入数据
+                for key, value in simple_metrics.items():
+                    if key in income_metric_mapping:
+                        mapped_key = income_metric_mapping[key]
+                        # 对于收入和利润指标，需要转换为实际数值（亿元转为元）
+                        if key in ['revenue', 'net_profit', 'parent_net_profit']:
+                            income_data[mapped_key] = float(value) * 1e8
+                        else:
+                            income_data[mapped_key] = float(value)
+                
+                # 填充资产负债数据
+                for key, value in simple_metrics.items():
+                    if key in balance_metric_mapping:
+                        mapped_key = balance_metric_mapping[key]
+                        # 对于资产、负债、权益指标，需要转换为实际数值（亿元转为元）
+                        if key in ['total_assets', 'total_liabilities', 'total_equity', 'current_assets', 'current_liabilities']:
+                            balance_data[mapped_key] = float(value) * 1e8
+                        else:
+                            balance_data[mapped_key] = float(value)
+                
+                # 创建DataFrame，确保使用正确的格式
+                if income_data:
+                    # 创建包含一行数据的DataFrame
+                    income_df = pd.DataFrame([income_data])
+                if balance_data:
+                    # 创建包含一行数据的DataFrame
+                    balance_df = pd.DataFrame([balance_data])
+        
+        return {
+            'income': income_df,
+            'balance': balance_df,
+            'cashflow': cashflow_df
+        }
+    
     def analyze_trends(self, financial_data: Dict[str, pd.DataFrame], years: int = 4) -> Dict:
         """
         分析财务数据趋势（内部使用）
@@ -231,142 +320,7 @@ class StandardFinancialAnalyzer(AsyncBaseToolkit):
         
         logger.info("分析报告生成完成")
         return report
-    
-    @register_tool()
-    def generate_report(self, financial_data_json: str, 
-                              stock_name: str = "目标公司") -> Dict:
-        """
-        生成完整的分析报告
-        
-        Args:
-            financial_data_json: 财务数据的JSON字符串表示
-            stock_name: 公司名称
-            
-        Returns:
-            完整分析报告
-        """
-        import json
-        try:
-            # 尝试解析financial_data_json作为完整的财务数据字典
-            financial_data = {}
-            data_dict = json.loads(financial_data_json)
-            # 检查是否是完整的财务数据结构
-            if isinstance(data_dict, dict) and any(key in data_dict for key in ['income', 'balance', 'cashflow']):
-                # 完整的财务数据结构
-                for key, df_data in data_dict.items():
-                    if isinstance(df_data, list) or isinstance(df_data, dict):
-                        financial_data[key] = pd.DataFrame(df_data)
-                    else:
-                        financial_data[key] = pd.DataFrame()
-            else:
-                # 简化的财务指标结构
-                financial_data = self._convert_simple_metrics_to_financial_data(data_dict)
-            return self.generate_analysis_report(financial_data, stock_name)
-        except Exception as e:
-            # 如果解析失败，尝试作为简化指标处理
-            try:
-                data_dict = json.loads(financial_data_json)
-                financial_data = self._convert_simple_metrics_to_financial_data(data_dict)
-                return self.generate_analysis_report(financial_data, stock_name)
-            except Exception as e2:
-                # 如果都失败了，创建一个空的财务数据结构
-                logger.warning(f"无法解析财务数据: {e}, {e2}")
-                financial_data = {
-                    'income': pd.DataFrame(),
-                    'balance': pd.DataFrame(),
-                    'cashflow': pd.DataFrame()
-                }
-                return self.generate_analysis_report(financial_data, stock_name)
-    
-    def _convert_simple_metrics_to_financial_data(self, simple_metrics: Dict) -> Dict[str, pd.DataFrame]:
-        """
-        将简化指标转换为完整的财务数据结构
-        
-        Args:
-            simple_metrics: 简化指标字典
-            
-        Returns:
-            完整财务数据结构
-        """
-        # 创建空的DataFrame结构
-        income_df = pd.DataFrame()
-        balance_df = pd.DataFrame()
-        cashflow_df = pd.DataFrame()
-        
-        # 如果有简化指标，尝试填充到DataFrame中
-        if simple_metrics:
-            # 检查是否是嵌套结构（包含income和balance键）
-            if 'income' in simple_metrics and 'balance' in simple_metrics:
-                # 处理嵌套结构
-                income_data = simple_metrics['income']
-                balance_data = simple_metrics['balance']
-                
-                # 如果income_data是列表，取第一个元素
-                if isinstance(income_data, list) and len(income_data) > 0:
-                    income_data = income_data[0]
-                # 如果balance_data是列表，取第一个元素
-                if isinstance(balance_data, list) and len(balance_data) > 0:
-                    balance_data = balance_data[0]
-                
-                # 创建DataFrame
-                if income_data:
-                    income_df = pd.DataFrame([income_data] if isinstance(income_data, dict) else income_data)
-                if balance_data:
-                    balance_df = pd.DataFrame([balance_data] if isinstance(balance_data, dict) else balance_data)
-            else:
-                # 处理扁平化结构
-                income_data = {}
-                balance_data = {}
-                
-                # 映射简化指标到标准列名
-                income_metric_mapping = {
-                    'revenue': 'TOTAL_OPERATE_INCOME',
-                    'net_profit': 'NETPROFIT',
-                    'parent_net_profit': 'PARENT_NETPROFIT'
-                }
-                
-                balance_metric_mapping = {
-                    'total_assets': 'TOTAL_ASSETS',
-                    'total_liabilities': 'TOTAL_LIABILITIES',
-                    'total_equity': 'TOTAL_EQUITY',
-                    'current_assets': 'TOTAL_CURRENT_ASSETS',  # 流动资产
-                    'current_liabilities': 'TOTAL_CURRENT_LIABILITIES'  # 流动负债
-                }
-                
-                # 填充收入数据
-                for key, value in simple_metrics.items():
-                    if key in income_metric_mapping:
-                        mapped_key = income_metric_mapping[key]
-                        # 对于收入和利润指标，需要转换为实际数值（亿元转为元）
-                        if key in ['revenue', 'net_profit', 'parent_net_profit']:
-                            income_data[mapped_key] = float(value) * 1e8
-                        else:
-                            income_data[mapped_key] = float(value)
-                
-                # 填充资产负债数据
-                for key, value in simple_metrics.items():
-                    if key in balance_metric_mapping:
-                        mapped_key = balance_metric_mapping[key]
-                        # 对于资产、负债、权益指标，需要转换为实际数值（亿元转为元）
-                        if key in ['total_assets', 'total_liabilities', 'total_equity', 'current_assets', 'current_liabilities']:
-                            balance_data[mapped_key] = float(value) * 1e8
-                        else:
-                            balance_data[mapped_key] = float(value)
-                
-                # 创建DataFrame，确保使用正确的格式
-                if income_data:
-                    # 创建包含一行数据的DataFrame
-                    income_df = pd.DataFrame([income_data])
-                if balance_data:
-                    # 创建包含一行数据的DataFrame
-                    balance_df = pd.DataFrame([balance_data])
-        
-        return {
-            'income': income_df,
-            'balance': balance_df,
-            'cashflow': cashflow_df
-        }
-    
+
     def _calculate_profitability_ratios(self, financial_data: Dict) -> Dict:
         """计算盈利能力指标"""
         income = financial_data.get('income', pd.DataFrame())
@@ -933,97 +887,6 @@ class StandardFinancialAnalyzer(AsyncBaseToolkit):
             
         except Exception as e:
             return f"生成对比报告时出错: {str(e)}"
-    
-    @register_tool()
-    def generate_text_report(self, financial_data_json: str, 
-                           stock_name: str = "目标公司") -> str:
-        """
-        生成纯文字格式的财务分析报告
-        
-        Args:
-            financial_data_json: 财务数据的JSON字符串表示
-            stock_name: 公司名称
-            
-        Returns:
-            格式化的文字报告
-        """
-        import json
-        try:
-            # 解析JSON数据
-            financial_data = {}
-            data_dict = json.loads(financial_data_json)
-            # 检查是否是完整的财务数据结构
-            if isinstance(data_dict, dict) and any(key in data_dict for key in ['income', 'balance', 'cashflow']):
-                # 完整的财务数据结构
-                for key, df_data in data_dict.items():
-                    if isinstance(df_data, list) or isinstance(df_data, dict):
-                        financial_data[key] = pd.DataFrame(df_data)
-                    else:
-                        financial_data[key] = pd.DataFrame()
-            else:
-                # 简化的财务指标结构
-                financial_data = self._convert_simple_metrics_to_financial_data(data_dict)
-        except Exception as e:
-            # 如果解析失败，创建空的财务数据结构
-            logger.warning(f"无法解析财务数据: {e}")
-            financial_data = {
-                'income': pd.DataFrame(),
-                'balance': pd.DataFrame(),
-                'cashflow': pd.DataFrame()
-            }
-        
-        # 生成结构化报告
-        report = self.generate_analysis_report(financial_data, stock_name)
-        
-        # 转换为文字格式
-        report_text = f"""
-{stock_name} 财务分析报告
-====================
-报告日期: {report['analysis_date']}
-
-一、公司概况
-公司名称: {report['company_name']}
-
-二、关键财务指标
-"""
-        
-        # 添加关键指标
-        key_metrics = report.get('key_metrics', {})
-        if key_metrics:
-            for key, value in key_metrics.items():
-                report_text += f"{key}: {value}\n"
-        
-        # 添加财务比率
-        report_text += "\n三、财务比率分析\n"
-        financial_ratios = report.get('financial_ratios', {})
-        for category, ratios in financial_ratios.items():
-            report_text += f"{category}:\n"
-            for ratio_name, ratio_value in ratios.items():
-                report_text += f"  {ratio_name}: {ratio_value}\n"
-        
-        # 添加趋势分析
-        report_text += "\n四、趋势分析\n"
-        trend_analysis = report.get('trend_analysis', {})
-        for trend_name, trend_data in trend_analysis.items():
-            report_text += f"{trend_name}: {trend_data}\n"
-        
-        # 添加健康评估
-        report_text += "\n五、财务健康评估\n"
-        health_assessment = report.get('health_assessment', {})
-        report_text += f"整体评分: {health_assessment.get('overall_score', 'N/A')}\n"
-        report_text += f"风险等级: {health_assessment.get('risk_level', 'N/A')}\n"
-        
-        # 添加建议
-        recommendations = health_assessment.get('recommendations', [])
-        if recommendations:
-            report_text += "\n建议:\n"
-            for i, rec in enumerate(recommendations, 1):
-                report_text += f"{i}. {rec}\n"
-        
-        # 添加摘要
-        report_text += f"\n摘要:\n{report.get('summary', '')}\n"
-        
-        return report_text
 
     @register_tool()
     def save_text_report(self, financial_data_json: str, 
@@ -1045,9 +908,6 @@ class StandardFinancialAnalyzer(AsyncBaseToolkit):
         import os
         from datetime import datetime
         try:
-            # 生成报告文本
-            report_text = self.generate_text_report(financial_data_json, stock_name)
-            
             # 如果没有提供完整文件路径，则根据公司名称和日期生成文件名
             if file_path is None:
                 # 清理公司名称中的特殊字符，确保文件名合法
@@ -1062,9 +922,9 @@ class StandardFinancialAnalyzer(AsyncBaseToolkit):
             if directory:
                 os.makedirs(directory, exist_ok=True)
             
-            # 保存到文件
+            # 保存到文件（直接保存financial_data_json的内容）
             with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(report_text)
+                f.write(financial_data_json)
             
             return f"报告已成功保存到: {file_path}"
         except Exception as e:
@@ -1143,11 +1003,6 @@ def assess_health(ratios: Dict, trends: Dict) -> Dict:
     analyzer = get_financial_analyzer()
     return analyzer.assess_financial_health(ratios, trends)
 
-def generate_report(financial_data: Dict[str, pd.DataFrame], stock_name: str = "目标公司") -> Dict:
-    """生成分析报告"""
-    analyzer = get_financial_analyzer()
-    return analyzer.generate_analysis_report(financial_data, stock_name)
-
 if __name__ == "__main__":
     # 测试代码
     print("=== 标准化财务分析工具库测试 ===\n")
@@ -1177,7 +1032,8 @@ if __name__ == "__main__":
     
     # 测试完整分析
     print("1. 测试完整财务分析...")
-    report = generate_report(mock_data, "测试公司")
+    analyzer = get_financial_analyzer()
+    report = analyzer.generate_analysis_report(mock_data, "测试公司")
     
     print(f"   ✓ 公司名称: {report['company_name']}")
     print(f"   ✓ 分析日期: {report['analysis_date']}")

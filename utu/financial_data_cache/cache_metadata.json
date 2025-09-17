@@ -145,7 +145,7 @@
     },
     "stock_688256": {
       "stock_code": "688256",
-      "cached_date": "2025-09-15T21:30:51.877271",
+      "cached_date": "2025-09-16T08:30:31.252684",
       "latest_report_date": "2025-06-30",
       "data_types": [
         "income",
@@ -158,7 +158,7 @@
     },
     "stock_002230": {
       "stock_code": "002230",
-      "cached_date": "2025-09-15T21:31:11.743621",
+      "cached_date": "2025-09-16T08:31:09.084371",
       "latest_report_date": "2025-06-30",
       "data_types": [
         "income",
@@ -184,7 +184,59 @@
     },
     "stock_688041": {
       "stock_code": "688041",
-      "cached_date": "2025-09-15T21:31:35.904450",
+      "cached_date": "2025-09-16T08:30:44.580989",
+      "latest_report_date": "2025-06-30",
+      "data_types": [
+        "income",
+        "balance",
+        "cashflow",
+        "metrics",
+        "trend"
+      ],
+      "file_count": 5
+    },
+    "stock_688327": {
+      "stock_code": "688327",
+      "cached_date": "2025-09-16T08:31:24.949870",
+      "latest_report_date": "2025-06-30",
+      "data_types": [
+        "income",
+        "balance",
+        "cashflow",
+        "metrics",
+        "trend"
+      ],
+      "file_count": 5
+    },
+    "stock_600170": {
+      "stock_code": "600170",
+      "cached_date": "2025-09-16T11:19:52.341601",
+      "latest_report_date": "2025-06-30",
+      "data_types": [
+        "income",
+        "balance",
+        "cashflow",
+        "metrics",
+        "trend"
+      ],
+      "file_count": 5
+    },
+    "stock_601390": {
+      "stock_code": "601390",
+      "cached_date": "2025-09-16T12:25:44.936963",
+      "latest_report_date": "2025-06-30",
+      "data_types": [
+        "income",
+        "balance",
+        "cashflow",
+        "metrics",
+        "trend"
+      ],
+      "file_count": 5
+    },
+    "stock_600399": {
+      "stock_code": "600399",
+      "cached_date": "2025-09-16T11:51:54.244141",
       "latest_report_date": "2025-06-30",
       "data_types": [
         "income",

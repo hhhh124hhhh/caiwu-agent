@@ -7,8 +7,7 @@ activated_tools:
   - "calculate_ratios"
   - "analyze_trends_tool" 
   - "assess_health"
-  - "generate_report"
-  - "generate_text_report"
+  - "generate_comparison_report"
   - "save_text_report"
   - "save_analysis_result"
 
