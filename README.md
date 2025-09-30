@@ -40,7 +40,7 @@
 
 ```bash
 # 克隆项目
-git clone <repository-url>
+git clone https://github.com/hhhh124hhhh/caiwu-agent
 cd youtu-agent
 
 # 安装依赖
