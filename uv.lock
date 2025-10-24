@@ -696,6 +696,15 @@ wheels = [
 ]
 
 [[package]]
+name = "defusedxml"
+version = "0.7.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/0f/d5/c66da9b79e5bdb124974bfe172b4daf3c984ebd9c2a06e2b8a4dc7331c72/defusedxml-0.7.1.tar.gz", hash = "sha256:1bb3032db185915b62d7c6209c5a8792be6a32ab2fedacc84e01b52c51aa3e69", size = 75520 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/07/6c/aa3f2f849e01cb6a001cd8554a88d4c77c5c1a31c95bdf1cf9301e6d9ef4/defusedxml-0.7.1-py2.py3-none-any.whl", hash = "sha256:a352e7e428770286cc899e2542b6cdaedb2b4953ff269a210103ec58f6198a61", size = 25604 },
+]
+
+[[package]]
 name = "dill"
 version = "0.3.8"
 source = { registry = "https://pypi.org/simple" }
@@ -868,6 +877,20 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/a5/84/51a69ee89ff8d1fea0c6997e946657e25a3f08513de8435fe124929f3eef/fonttools-4.59.0-cp313-cp313-win32.whl", hash = "sha256:70d6b3ceaa9cc5a6ac52884f3b3d9544e8e231e95b23f138bdb78e6d4dc0eae3", size = 2199688 },
     { url = "https://files.pythonhosted.org/packages/a0/ee/f626cd372932d828508137a79b85167fdcf3adab2e3bed433f295c596c6a/fonttools-4.59.0-cp313-cp313-win_amd64.whl", hash = "sha256:26731739daa23b872643f0e4072d5939960237d540c35c14e6a06d47d71ca8fe", size = 2248560 },
     { url = "https://files.pythonhosted.org/packages/d0/9c/df0ef2c51845a13043e5088f7bb988ca6cd5bb82d5d4203d6a158aa58cf2/fonttools-4.59.0-py3-none-any.whl", hash = "sha256:241313683afd3baacb32a6bd124d0bce7404bc5280e12e291bae1b9bba28711d", size = 1128050 },
+]
+
+[[package]]
+name = "fpdf2"
+version = "2.8.4"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "defusedxml" },
+    { name = "fonttools" },
+    { name = "pillow" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/87/ff/4a1dd414e5c5df5a11904118afdb544f3a446c9c512cc77e9741cf74fb30/fpdf2-2.8.4.tar.gz", hash = "sha256:12b1f1dd35d0c2f35284bcfe10b153d6ca4baf29377379843e73d3f971eab6b7", size = 284963 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/bf/e3/b1f6a8e864394d26ee25e90405670ba4d2cc89a7ca27b4f1d8bfe4001e45/fpdf2-2.8.4-py2.py3-none-any.whl", hash = "sha256:bce1afc437107906dcdb0b95c300c7501002fe412c2ed36fa33c8f0a2f87ef3e", size = 251700 },
 ]
 
 [[package]]
@@ -4302,6 +4325,7 @@ dependencies = [
     { name = "chunkr-ai" },
     { name = "colorlog" },
     { name = "docker" },
+    { name = "fpdf2" },
     { name = "google-genai", version = "1.26.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.13'" },
     { name = "google-genai", version = "1.31.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.13'" },
     { name = "gradio" },
@@ -4386,6 +4410,7 @@ requires-dist = [
     { name = "chunkr-ai", specifier = ">=0.1.0" },
     { name = "colorlog", specifier = ">=6.9.0" },
     { name = "docker", specifier = ">=7.1.0" },
+    { name = "fpdf2", specifier = ">=2.8.4" },
     { name = "google-genai", specifier = ">=1.26.0" },
     { name = "gradio", specifier = ">=5.42.0" },
     { name = "hydra-core", specifier = ">=1.3.2" },

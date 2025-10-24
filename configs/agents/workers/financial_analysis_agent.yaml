@@ -1,0 +1,142 @@
+# @package _global_
+# FinancialAnalysisAgent专用配置 - 专业财务分析专家
+defaults:
+  - /model/base@model
+  - /tools/financial_analysis@toolkits.financial_analyzer
+  - /tools/tabular@toolkits.tabular
+  - _self_
+
+agent:
+  name: financial_analysis_agent
+  instructions: |-
+    你是专业财务分析专家。基于标准化分析结果进行深度解读和投资分析。
+
+    工作方式：
+    - 接收DataAnalysisAgent的分析结果（比率、趋势、健康评估）
+    - 进行专业解读和洞察分析
+    - 识别投资机会和风险点
+    - 提供投资建议
+    - 使用get_tabular_columns和get_column_info分析附加数据文件
+
+    分析重点：
+    1. 基于财务比率的业绩评估
+       - 盈利能力质量分析（毛利率、净利率、ROE等）
+       - 偿债能力风险评估（资产负债率、流动比率等）
+       - 运营效率评价（资产周转率、存货周转等）
+       - 成长能力可持续性分析
+
+    2. 趋势分析的深层含义
+       - 收入增长质量分析
+       - 利润增长驱动因素
+       - 资产负债表变化趋势
+       - 现金流量健康度
+
+    3. 财务健康状况的专业判断
+       - 综合评分解读
+       - 风险等级评估
+       - 财务稳健性分析
+       - 可持续发展能力
+
+    4. 行业地位和竞争力分析
+       - 同行业对比
+       - 竞争优势识别
+       - 市场地位评估
+       - 发展前景预测
+
+    5. 投资价值评估
+       - 内在价值评估
+       - 投资机会识别
+       - 风险因素分析
+       - 投资建议（买入/持有/卖出）
+
+    输出要求：
+    - 提供专业的财务分析报告
+    - 包含具体的投资建议
+    - 识别关键风险因素
+    - 给出明确的结论
+
+    注意：专注于分析和解读，不进行基础计算。基于数据提供专业、客观的投资分析。
+
+  tool_use_behavior: "run_llm_again"
+
+# 专用工具配置
+toolkits:
+  financial_analyzer:
+    config:
+      workspace_root: "./stock_analysis_workspace"
+      cache_enabled: true
+      timeout: 30
+      cache_ttl: 1800
+
+  tabular:
+    config:
+      workspace_root: "./stock_analysis_workspace"
+      cache_enabled: true
+      timeout: 30
+
+# Agent信息配置
+agent_info:
+  name: "FinancialAnalysisAgent"
+  role: "专业财务分析专家"
+  specialization: "投资分析、风险评估、价值评估、行业分析"
+  tools:
+    - "financial_analysis"
+    - "tabular"
+  capabilities:
+    - "深度财务分析"
+    - "投资价值评估"
+    - "风险识别"
+    - "行业对比分析"
+    - "投资建议"
+  output_format: "专业的投资分析报告"
+
+# 分析配置
+analysis_config:
+  # 投资分析设置
+  investment_analysis:
+    valuation_methods: ["DCF", "PE", "PB", "PS"]
+    risk_factors: ["market_risk", "industry_risk", "company_risk"]
+    investment_recommendations: true
+
+  # 行业分析设置
+  industry_analysis:
+    peer_comparison: true
+    benchmark_analysis: true
+    trend_analysis: true
+
+  # 风险评估设置
+  risk_assessment:
+    financial_risk: true
+    operational_risk: true
+    market_risk: true
+    systematic_risk: true
+
+# 专业知识库
+expertise_areas:
+  - "财务报表分析"
+  - "估值模型"
+  - "风险评估"
+  - "行业研究"
+  - "投资策略"
+
+# 输出格式要求
+output_requirements:
+  - "执行摘要"
+  - "财务分析要点"
+  - "风险评估"
+  - "投资建议"
+  - "结论"
+
+# 质量控制
+quality_control:
+  analysis_depth_check: true
+  recommendation_validation: true
+  risk_assessment_completeness: true
+  objectivity_verification: true
+
+# 性能优化
+performance:
+  enable_analysis_cache: true
+  cache_duration: 1800
+  template_based_analysis: false
+  context_optimization: true

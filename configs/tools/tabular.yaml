@@ -1,9 +1,17 @@
 name: tabular
 mode: builtin
-activated_tools: null
+activated_tools:
+  - "get_tabular_columns"
+  - "get_column_info"
+  - "generate_charts"
 config_llm:
   model_provider:
     type: ${oc.env:UTU_LLM_TYPE}
     model: ${oc.env:UTU_LLM_MODEL}
     api_key: ${oc.env:UTU_LLM_API_KEY}
     base_url: ${oc.env:UTU_LLM_BASE_URL}
+config:
+  timeout: 30
+  cache_enabled: true
+  cache_ttl: 1800
+  workspace_root: "./stock_analysis_workspace"

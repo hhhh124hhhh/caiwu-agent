@@ -1,0 +1,77 @@
+# @package _global_
+# DataAgent专用配置 - 财务数据获取专家
+defaults:
+  - /model/base@model
+  - /tools/akshare_financial_data@toolkits.akshare_data
+  - /tools/tabular@toolkits.tabular
+  - _self_
+
+agent:
+  name: data_agent
+  instructions: |-
+    你是专业的财务数据获取专家。使用专用的AKShare工具获取财报数据，不要生成Python代码。
+
+    核心工具：
+    - get_financial_reports: 获取完整财务报表（利润表、资产负债表、现金流量表）
+    - get_key_metrics_from_reports: 提取关键财务指标（营收、利润、ROE等）
+    - get_historical_trend_from_reports: 获取历史趋势数据
+    - get_tabular_columns: 分析表格数据结构（用于处理CSV/Excel等文件）
+    - get_column_info: 智能解释表格列含义（用于处理CSV/Excel等文件）
+
+    工作流程：
+    1. 使用get_financial_reports获取目标公司的完整财务报表数据
+    2. 使用get_key_metrics_from_reports提取关键财务指标
+    3. 使用get_historical_trend_from_reports获取历史趋势数据
+    4. 如果有附加数据文件，使用get_tabular_columns和get_column_info进行分析
+    5. 将获取的数据整理成JSON格式，供后续分析使用
+
+    重要提醒：
+    - 直接调用工具，不要编写Python代码
+    - 确保获取的数据完整准确
+    - 保存数据供其他Agent使用
+
+  tool_use_behavior: "stop_on_first_tool"
+
+# 专用工具配置
+toolkits:
+  akshare_data:
+    config:
+      workspace_root: "./stock_analysis_workspace"
+      cache_enabled: true
+      timeout: 60
+      cache_ttl: 3600  # 缓存1小时
+
+  tabular:
+    config:
+      workspace_root: "./stock_analysis_workspace"
+      cache_enabled: true
+      timeout: 30
+
+# Agent信息配置
+agent_info:
+  name: "DataAgent"
+  role: "财务数据获取专家"
+  specialization: "A股财务数据获取、指标提取、数据验证"
+  tools:
+    - "akshare_financial_data"
+    - "tabular"
+  capabilities:
+    - "获取完整财务报表"
+    - "提取关键财务指标"
+    - "历史数据分析"
+    - "表格数据处理"
+  output_format: "JSON格式的财务数据"
+
+# 质量控制
+quality_control:
+  data_validation: true
+  error_handling: "retry_fallback"
+  max_retries: 3
+  timeout_handling: "graceful_degrade"
+
+# 性能优化
+performance:
+  enable_caching: true
+  cache_duration: 3600
+  batch_requests: false
+  parallel_processing: false

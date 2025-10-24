@@ -1,0 +1,122 @@
+# @package _global_
+# DataAnalysisAgent专用配置 - 财务数据分析专家
+defaults:
+  - /model/base@model
+  - /tools/financial_analysis@toolkits.financial_analyzer
+  - /tools/tabular@toolkits.tabular
+  - _self_
+
+agent:
+  name: data_analysis_agent
+  instructions: |-
+    你是财务数据分析专家。使用标准化分析工具进行财务分析，避免编写计算代码。
+
+    核心工具：
+    - calculate_ratios: 计算所有标准财务比率（盈利能力、偿债能力、运营效率、成长能力）
+    - analyze_trends_tool: 分析财务数据趋势（CAGR、增长率、趋势方向）
+    - assess_health: 评估财务健康状况（综合评分、风险等级、投资建议）
+    - get_tabular_columns: 分析表格数据结构
+    - get_column_info: 智能解释表格列含义
+
+    工作流程：
+    1. 使用calculate_ratios计算盈利能力、偿债能力、运营效率、成长能力指标
+       - 盈利能力：毛利率、净利率、ROE、ROA等
+       - 偿债能力：流动比率、资产负债率、利息覆盖倍数等
+       - 运营效率：总资产周转率、存货周转率等
+       - 成长能力：营收增长率、利润增长率等
+
+    2. 使用analyze_trends_tool分析收入、利润趋势和增长率
+       - 计算复合年增长率(CAGR)
+       - 分析趋势方向（上升/下降/稳定）
+       - 计算增长率和波动性
+
+    3. 使用assess_health评估整体财务健康状况
+       - 综合评分（0-100分）
+       - 风险等级评估（低/中/高风险）
+       - 生成投资建议
+
+    4. 如果有附加数据文件，使用get_tabular_columns和get_column_info进行分析
+
+    5. 汇总分析结果供后续使用，包括：
+       - 完整的财务比率数据
+       - 趋势分析结果
+       - 健康评估报告
+       - 关键洞察和建议
+
+    重要：直接调用分析工具，不要编写Python计算代码。确保分析结果准确、客观、有价值。
+
+  tool_use_behavior: "run_llm_again"
+
+# 专用工具配置
+toolkits:
+  financial_analyzer:
+    config:
+      workspace_root: "./stock_analysis_workspace"
+      cache_enabled: true
+      timeout: 30
+      cache_ttl: 1800  # 缓存30分钟
+
+      # 分析参数设置
+      trend_years: 4
+      health_weights:
+        profitability: 0.3    # 盈利能力
+        solvency: 0.3         # 偿债能力
+        efficiency: 0.2       # 运营效率
+        growth: 0.2           # 成长能力
+
+  tabular:
+    config:
+      workspace_root: "./stock_analysis_workspace"
+      cache_enabled: true
+      timeout: 30
+
+# Agent信息配置
+agent_info:
+  name: "DataAnalysisAgent"
+  role: "财务数据分析专家"
+  specialization: "财务比率计算、趋势分析、健康评估、风险评估"
+  tools:
+    - "financial_analysis"
+    - "tabular"
+  capabilities:
+    - "财务比率计算"
+    - "趋势分析"
+    - "财务健康评估"
+    - "投资风险分析"
+  output_format: "结构化的分析结果数据"
+
+# 分析配置
+analysis_config:
+  # 比率分析设置
+  ratio_analysis:
+    profitability_ratios: true
+    solvency_ratios: true
+    efficiency_ratios: true
+    growth_ratios: true
+
+  # 趋势分析设置
+  trend_analysis:
+    years: 4
+    cagr_calculation: true
+    growth_rate_analysis: true
+    volatility_analysis: true
+
+  # 健康评估设置
+  health_assessment:
+    scoring_enabled: true
+    risk_level_assessment: true
+    recommendation_generation: true
+
+# 质量控制
+quality_control:
+  calculation_validation: true
+  result_cross_check: true
+  error_handling: "detailed_logging"
+  sensitivity_analysis: false
+
+# 性能优化
+performance:
+  enable_caching: true
+  cache_duration: 1800
+  batch_calculations: true
+  parallel_processing: false

@@ -1,0 +1,201 @@
+# @package _global_
+# ReportAgent专用配置 - 专业报告生成专家
+defaults:
+  - /model/base@model
+  - /tools/financial_analysis@toolkits.financial_analyzer
+  - /tools/report_saver@toolkits.report_saver
+  - /tools/tabular@toolkits.tabular
+  - _self_
+
+agent:
+  name: report_agent
+  instructions: |-
+    你是专业报告生成专家。整合所有分析结果生成完整财务分析报告。
+
+    核心工具：
+    - generate_comparison_report: 生成公司对比分析报告
+    - save_text_report: 生成并保存MD格式的财务分析报告（支持动态文件命名）
+    - save_analysis_report: 保存AI分析结果到各种格式的文件
+    - save_pdf_report: 生成并保存PDF格式的财务分析报告（支持动态文件命名和图表嵌入）
+    - get_tabular_columns: 分析表格数据结构
+    - get_column_info: 智能解释表格列含义
+
+    工作流程：
+    1. 整合所有分析结果（数据、比率、趋势、健康评估、图表等）
+    2. 用save_analysis_report将报告保存为MD格式文件，文件名将根据公司名称和日期自动生成
+    3. 使用save_pdf_report生成PDF格式报告，包含所有图表
+    4. 保存报告到"./stock_analysis_workspace"目录
+    5. 提供报告摘要和关键洞察
+
+    报告结构要求：
+
+    **执行摘要**：
+    - 分析目的和范围
+    - 主要发现和结论
+    - 关键投资建议
+
+    **公司概况**：
+    - 公司基本信息
+    - 行业地位
+    - 业务模式
+
+    **财务分析**：
+    - 盈利能力分析
+    - 偿债能力分析
+    - 运营效率分析
+    - 成长能力分析
+
+    **趋势分析**：
+    - 收入趋势
+    - 利润趋势
+    - 财务健康状况趋势
+
+    **风险评估**：
+    - 财务风险因素
+    - 经营风险
+    - 行业风险
+
+    **投资建议**：
+    - 估值分析
+    - 投资评级
+    - 目标价位（如适用）
+    - 投资时间框架
+
+    **附录**：
+    - 详细财务数据
+    - 图表清单
+    - 分析方法说明
+
+    报告质量要求：
+    - 专业性强，使用标准财务术语
+    - 逻辑清晰，结构完整
+    - 数据准确，分析客观
+    - 建议明确，具有可操作性
+    - 格式规范，易于阅读
+
+    文件命名规范：
+    - MD格式：{公司名称}_财务分析报告_{日期}.md
+    - PDF格式：{公司名称}_财务分析报告_{日期}.pdf
+
+    注意：专注于报告整合和呈现，必须使用save_analysis_report和save_pdf_report工具保存报告，不要使用Python代码保存文件。
+
+  tool_use_behavior: "run_llm_again"
+
+# 专用工具配置
+toolkits:
+  financial_analyzer:
+    config:
+      workspace_root: "./stock_analysis_workspace"
+      cache_enabled: true
+      timeout: 30
+
+  report_saver:
+    config:
+      workspace_root: "./stock_analysis_workspace"
+      cache_enabled: true
+      timeout: 60
+
+  tabular:
+    config:
+      workspace_root: "./stock_analysis_workspace"
+      cache_enabled: true
+      timeout: 30
+
+# Agent信息配置
+agent_info:
+  name: "ReportAgent"
+  role: "专业报告生成专家"
+  specialization: "财务报告撰写、数据分析、投资建议、风险评估"
+  tools:
+    - "financial_analysis"
+    - "report_saver"
+    - "tabular"
+  capabilities:
+    - "专业财务报告撰写"
+    - "多格式报告生成"
+    - "数据整合分析"
+    - "投资建议制定"
+  output_format: "专业财务分析报告（MD/PDF格式）"
+
+# 报告配置
+report_config:
+  # 报告模板设置
+  template_settings:
+    use_standard_template: true
+    include_company_profile: true
+    include_executive_summary: true
+    include_detailed_analysis: true
+    include_risk_assessment: true
+    include_recommendations: true
+    include_appendix: true
+
+  # 内容质量要求
+  quality_standards:
+    professional_language: true
+    data_accuracy: true
+    logical_structure: true
+    actionable_recommendations: true
+
+  # 输出格式设置
+  output_formats:
+    markdown:
+      enabled: true
+      file_extension: ".md"
+      include_charts: true
+      include_tables: true
+
+    pdf:
+      enabled: true
+      file_extension: ".pdf"
+      include_charts: true
+      include_tables: true
+      page_orientation: "portrait"
+
+# 文件管理配置
+file_management:
+  # 文件命名规则
+  naming_convention:
+    format: "{company_name}_财务分析报告_{date}"
+    date_format: "%Y%m%d"
+    use_chinese_name: true
+
+  # 目录组织
+  directory_structure:
+    base_dir: "./stock_analysis_workspace"
+    reports_dir: "reports"
+    charts_dir: "charts"
+    data_dir: "data"
+
+# 内容生成配置
+content_generation:
+  # 报告章节
+  sections:
+    - "executive_summary"
+    - "company_overview"
+    - "financial_analysis"
+    - "trend_analysis"
+    - "risk_assessment"
+    - "investment_recommendations"
+    - "appendix"
+
+  # 分析深度
+  analysis_depth:
+    ratio_analysis: "detailed"
+    trend_analysis: "comprehensive"
+    risk_assessment: "thorough"
+    valuation: "professional"
+
+# 质量控制
+quality_control:
+  content_validation: true
+  fact_checking: true
+  consistency_check: true
+  completeness_check: true
+  formatting_check: true
+
+# 性能优化
+performance:
+  enable_template_cache: true
+  cache_duration: 3600
+  incremental_generation: false
+  parallel_processing: false

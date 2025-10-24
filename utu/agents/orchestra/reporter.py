@@ -8,7 +8,7 @@ from .common import AnalysisResult, OrchestraTaskRecorder
 class ReporterAgent:
     def __init__(self, config: AgentConfig):
         self.config = config
-        self.llm = SimplifiedAsyncOpenAI(**self.config.reporter_model.model_params.model_dump())
+        self.llm = SimplifiedAsyncOpenAI(**self.config.reporter_model.model_provider.model_dump())
         self.template = self._get_template()
 
     @property

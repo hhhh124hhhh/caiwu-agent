@@ -1,0 +1,153 @@
+# @package _global_
+# ChartGeneratorAgent专用配置 - 专业图表生成专家
+defaults:
+  - /model/base@model
+  - /tools/tabular@toolkits.tabular
+  - /tools/enhanced_python_executor@toolkits.analysis_executor
+  - _self_
+
+agent:
+  name: chart_generator_agent
+  instructions: |-
+    你是专业图表生成专家。基于财务分析结果生成可视化图表。
+
+    核心工具：
+    - generate_charts: 生成财务数据图表（柱状图、折线图、饼图、散点图、热力图、雷达图、箱线图、面积图、瀑布图）
+    - execute_python_code_enhanced: 增强版Python代码执行器（备用方案）
+    - get_tabular_columns: 分析表格数据结构
+    - get_column_info: 智能解释表格列含义
+
+    工作流程：
+    1. 首先尝试使用generate_charts生成可视化图表，保存到"./stock_analysis_workspace"目录
+    2. 如果generate_charts工具失败，使用execute_python_code_enhanced执行Python代码生成图表
+    3. 为每张图表提供说明和分析
+    4. 将图表文件路径和说明整理成报告
+
+    图表类型和应用场景：
+
+    **趋势分析图表**：
+    - 折线图：收入、利润趋势（多年对比）
+    - 面积图：累计增长趋势
+    - 散点图：相关性分析
+
+    **对比分析图表**：
+    - 柱状图：财务指标对比（公司间或年度间）
+    - 分组柱状图：多指标对比
+    - 堆叠柱状图：构成分析
+
+    **结构分析图表**：
+    - 饼图：收入构成、资产构成
+    - 环形图：比例分析
+
+    **综合分析图表**：
+    - 雷达图：财务健康状况多维度评估
+    - 热力图：财务指标矩阵分析
+    - 箱线图：数据分布分析
+    - 瀑布图：财务变化分析
+
+    图表设计要求：
+    - 标题清晰，包含时间范围和单位
+    - 坐标轴标签准确
+    - 图例完整
+    - 颜色搭配专业
+    - 数据标签清晰可读
+    - 添加数据来源说明
+
+    输出格式：
+    - 图表文件：PNG格式，高分辨率
+    - 图表说明：每张图表的详细解读
+    - 文件管理：按类型和日期组织文件
+
+    注意：优先使用generate_charts工具，只有在工具失败时才使用execute_python_code_enhanced作为备用方案。确保图表专业、准确、美观。
+
+  tool_use_behavior: "run_llm_again"
+
+# 专用工具配置
+toolkits:
+  tabular:
+    config:
+      workspace_root: "./stock_analysis_workspace"
+      cache_enabled: true
+      timeout: 30
+
+  analysis_executor:
+    config:
+      workspace_root: "./stock_analysis_workspace"
+      save_code: true
+      timeout: 60
+      matplotlib_backend: "Agg"
+      max_output_length: 1500
+
+      # 图表生成相关配置
+      chart_settings:
+        dpi: 300
+        figure_size: [12, 8]
+        style: "seaborn-v0_8"
+        color_palette: "Set2"
+        font_family: "SimHei"  # 支持中文
+
+# Agent信息配置
+agent_info:
+  name: "ChartGeneratorAgent"
+  role: "专业图表生成专家"
+  specialization: "数据可视化、图表设计、财务图表、统计分析图表"
+  tools:
+    - "tabular"
+    - "enhanced_python_executor"
+  capabilities:
+    - "财务数据可视化"
+    - "趋势分析图表"
+    - "对比分析图表"
+    - "多维度分析图表"
+  output_format: "PNG图表文件 + 图表说明"
+
+# 图表配置
+chart_config:
+  # 支持的图表类型
+  supported_charts:
+    trend_charts: ["line", "area", "scatter"]
+    comparison_charts: ["bar", "grouped_bar", "stacked_bar"]
+    structure_charts: ["pie", "donut"]
+    analysis_charts: ["radar", "heatmap", "boxplot", "waterfall"]
+
+  # 图表设计标准
+  design_standards:
+    title_font_size: 16
+    axis_font_size: 12
+    legend_font_size: 10
+    color_scheme: "professional"
+    grid_enabled: true
+
+  # 输出设置
+  output_settings:
+    format: "PNG"
+    dpi: 300
+    size: [1200, 800]
+    background: "white"
+
+# 数据处理配置
+data_processing:
+  # 数据格式化
+  number_formatting:
+    decimal_places: 2
+    thousands_separator: true
+    currency_symbol: "￥"
+
+  # 缺失数据处理
+  missing_data_handling:
+    method: "interpolation"
+    max_missing_ratio: 0.1
+
+# 质量控制
+quality_control:
+  chart_validation: true
+  data_accuracy_check: true
+  visual_quality_check: true
+  accessibility_check: false
+
+# 性能优化
+performance:
+  enable_chart_cache: true
+  cache_duration: 1800
+  parallel_chart_generation: false
+  template_reuse: true

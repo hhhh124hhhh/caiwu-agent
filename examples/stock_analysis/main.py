@@ -40,17 +40,9 @@ async def main():
     workspace_path = pathlib.Path(__file__).parent / "stock_analysis_workspace"
     workspace_path.mkdir(exist_ok=True)
     
-    # Configure all toolkits workspace
-    # 修改：为所有工具配置正确的工作目录
-    toolkits_to_configure = ["akshare_data", "financial_analyzer", "analysis_executor", "tabular"]
-    
-    for toolkit_name in toolkits_to_configure:
-        toolkit = config.toolkits.get(toolkit_name)
-        if toolkit is not None and toolkit.config is not None:
-            toolkit.config["workspace_root"] = str(workspace_path)
-        elif toolkit is not None:
-            # 如果 config 是 None，创建一个新的字典
-            toolkit.config = {"workspace_root": str(workspace_path)}
+    # 注意：工作目录现在由配置文件统一管理，不再动态覆盖
+    # 这样确保多智能体和单智能体模式使用一致的工作目录配置
+    print(f"使用工作目录: {workspace_path}")
     
     # Initialize the agent
     runner = OrchestraAgent(config)
@@ -145,17 +137,9 @@ def main_web():
     workspace_path = pathlib.Path(__file__).parent / "stock_analysis_workspace"
     workspace_path.mkdir(exist_ok=True)
     
-    # Configure all toolkits workspace
-    # 修改：为所有工具配置正确的工作目录
-    toolkits_to_configure = ["akshare_data", "financial_analyzer", "analysis_executor", "tabular"]
-    
-    for toolkit_name in toolkits_to_configure:
-        toolkit = config.toolkits.get(toolkit_name)
-        if toolkit is not None and toolkit.config is not None:
-            toolkit.config["workspace_root"] = str(workspace_path)
-        elif toolkit is not None:
-            # 如果 config 是 None，创建一个新的字典
-            toolkit.config = {"workspace_root": str(workspace_path)}
+    # 注意：工作目录现在由配置文件统一管理，不再动态覆盖
+    # 这样确保多智能体和单智能体模式使用一致的工作目录配置
+    print(f"使用工作目录: {workspace_path}")
     
     runner = OrchestraAgent(config)
     

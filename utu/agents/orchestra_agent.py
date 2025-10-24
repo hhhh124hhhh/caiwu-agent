@@ -1,5 +1,6 @@
 import asyncio
 import json
+import time
 
 from agents import AgentUpdatedStreamEvent, trace
 from agents._run_impl import QueueCompleteSentinel
@@ -20,6 +21,7 @@ from .orchestra import (
     Subtask,
     WorkerResult,
 )
+from .orchestra.logger import get_orchestra_agent_logger, OrchestraAgentLogger
 
 logger = get_logger(__name__)
 
@@ -30,6 +32,10 @@ class OrchestraAgent(BaseAgent):
         if isinstance(config, str):
             config = ConfigLoader.load_agent_config(config)
         self.config = config
+
+        # 初始化日志记录器
+        self.orchestra_logger = get_orchestra_agent_logger()
+
         # init subagents
         self.planner_agent = PlannerAgent(config)
         self.worker_agents = self._setup_workers()
@@ -62,15 +68,52 @@ class OrchestraAgent(BaseAgent):
         trace_id = trace_id or AgentsUtils.gen_trace_id()
         logger.info(f"> trace_id: {trace_id}")
 
+        # 开始orchestra会话日志记录
+        session_trace_id = self.orchestra_logger.start_session(input, trace_id)
+
         # TODO: error_tracing
         task_recorder = OrchestraTaskRecorder(task=input, trace_id=trace_id)
-        with trace(workflow_name="orchestra_agent", trace_id=trace_id):
-            await self.plan(task_recorder)
-            for task in task_recorder.plan.todo:
-                await self.work(task_recorder, task)
-            result = await self.report(task_recorder)
-            task_recorder.set_final_output(result.output)
-        return task_recorder
+
+        try:
+            with trace(workflow_name="orchestra_agent", trace_id=trace_id):
+                # 1. 计划阶段
+                await self.plan(task_recorder)
+
+                # 2. 执行阶段
+                for task in task_recorder.plan.todo:
+                    await self.work(task_recorder, task)
+
+                # 3. 报告阶段
+                result = await self.report(task_recorder)
+                task_recorder.set_final_output(result.output)
+
+                # 结束会话日志记录
+                self.orchestra_logger.end_session(
+                    final_output=result.output,
+                    status="completed"
+                )
+
+                return task_recorder
+
+        except Exception as e:
+            # 记录错误和结束会话
+            self.orchestra_logger.log_error(
+                agent_name="OrchestraAgent",
+                error=e,
+                context={
+                    "input": input[:200],
+                    "stage": "orchestra_execution",
+                    "trace_id": trace_id
+                },
+                trace_id=session_trace_id
+            )
+
+            self.orchestra_logger.end_session(
+                final_output=f"Error: {str(e)}",
+                status="failed"
+            )
+
+            raise
 
     def run_streamed(self, input: str, trace_id: str = None) -> OrchestraTaskRecorder:
         trace_id = trace_id or AgentsUtils.gen_trace_id()
@@ -109,34 +152,126 @@ class OrchestraAgent(BaseAgent):
 
     async def plan(self, task_recorder: OrchestraTaskRecorder) -> CreatePlanResult:
         """Step1: Plan"""
-        with function_span("planner") as span_planner:
-            plan = await self.planner_agent.create_plan(task_recorder)
-            assert all(t.agent_name in self.worker_agents for t in plan.todo), (
-                f"agent_name in plan.todo must be in worker_agents, get {plan.todo}"
+        # 记录计划开始
+        planning_trace_id = self.orchestra_logger.log_planning_start(task_recorder.task)
+        start_time = time.time()
+
+        try:
+            with function_span("planner") as span_planner:
+                plan = await self.planner_agent.create_plan(task_recorder)
+                assert all(t.agent_name in self.worker_agents for t in plan.todo), (
+                    f"agent_name in plan.todo must be in worker_agents, get {plan.todo}"
+                )
+                task_recorder.set_plan(plan)
+                span_planner.span_data.input = json.dumps({"input": task_recorder.task}, ensure_ascii=False)
+                span_planner.span_data.output = plan.to_dict()
+
+            # 记录计划完成
+            self.orchestra_logger.log_planning_end(
+                plan_result={
+                    "input_question": task_recorder.task,
+                    "analysis": plan.analysis[:500] if plan.analysis else "",
+                    "todo_count": len(plan.todo),
+                    "todo_items": [{"agent": t.agent_name, "task": t.task[:100]} for t in plan.todo]
+                },
+                start_time=start_time,
+                trace_id=planning_trace_id
             )
-            task_recorder.set_plan(plan)
-            span_planner.span_data.input = json.dumps({"input": task_recorder.task}, ensure_ascii=False)
-            span_planner.span_data.output = plan.to_dict()
-        return plan
+
+            return plan
+
+        except Exception as e:
+            # 记录计划失败
+            self.orchestra_logger.log_error(
+                agent_name="PlannerAgent",
+                error=e,
+                context={
+                    "input_task": task_recorder.task[:200],
+                    "stage": "planning"
+                },
+                trace_id=planning_trace_id
+            )
+            raise
 
     async def work(self, task_recorder: OrchestraTaskRecorder, task: Subtask) -> WorkerResult:
         """Step2: Work"""
-        worker_agent = self.worker_agents[task.agent_name]
-        result = await worker_agent.work(task_recorder, task)
-        task_recorder.add_worker_result(result)
-        return result
+        # 记录Worker开始
+        worker_trace_id = self.orchestra_logger.log_worker_start(task, task.agent_name)
+        start_time = time.time()
+
+        try:
+            worker_agent = self.worker_agents[task.agent_name]
+            result = await worker_agent.work(task_recorder, task)
+            task_recorder.add_worker_result(result)
+
+            # 记录Worker完成
+            self.orchestra_logger.log_worker_end(
+                subtask=task,
+                worker_name=task.agent_name,
+                result=result,
+                start_time=start_time,
+                trace_id=worker_trace_id
+            )
+
+            return result
+
+        except Exception as e:
+            # 记录Worker失败
+            self.orchestra_logger.log_worker_error(
+                subtask=task,
+                worker_name=task.agent_name,
+                error=e,
+                start_time=start_time,
+                trace_id=worker_trace_id
+            )
+            raise
 
     async def report(self, task_recorder: OrchestraTaskRecorder) -> AnalysisResult:
         """Step3: Report"""
-        with function_span("reporter") as span_fn:
-            analysis_result = await self.reporter_agent.report(task_recorder)
-            task_recorder.add_reporter_result(analysis_result)
-            span_fn.span_data.input = json.dumps(
-                {
-                    "input": task_recorder.task,
-                    "task_records": [{"task": r.task, "output": r.output} for r in task_recorder.task_records],
-                },
-                ensure_ascii=False,
+        # 记录报告开始
+        reporting_trace_id = self.orchestra_logger.log_reporting_start(task_recorder)
+        start_time = time.time()
+
+        try:
+            with function_span("reporter") as span_fn:
+                analysis_result = await self.reporter_agent.report(task_recorder)
+                task_recorder.add_reporter_result(analysis_result)
+                span_fn.span_data.input = json.dumps(
+                    {
+                        "input": task_recorder.task,
+                        "task_records": [{"task": r.task, "output": r.output} for r in task_recorder.task_records],
+                    },
+                    ensure_ascii=False,
+                )
+                span_fn.span_data.output = analysis_result.to_dict()
+
+            # 记录报告完成
+            self.orchestra_logger.log_reporting_end(
+                final_output=analysis_result.output,
+                start_time=start_time,
+                trace_id=reporting_trace_id
             )
-            span_fn.span_data.output = analysis_result.to_dict()
-        return analysis_result
+
+            return analysis_result
+
+        except Exception as e:
+            # 记录报告失败
+            self.orchestra_logger.log_error(
+                agent_name="ReporterAgent",
+                error=e,
+                context={
+                    "input_task": task_recorder.task[:200],
+                    "task_count": len(task_recorder.task_records),
+                    "stage": "reporting"
+                },
+                trace_id=reporting_trace_id
+            )
+            raise
+
+    def get_session_summary(self) -> dict:
+        """获取当前会话的日志摘要"""
+        return self.orchestra_logger.get_session_summary()
+
+    def get_recent_logs(self, limit: int = 50) -> list:
+        """获取最近的日志记录"""
+        return self.orchestra_logger.logger.get_session_logs(limit)

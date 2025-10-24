@@ -3,15 +3,17 @@
 defaults:
   - /model/base@planner_model
   - /model/base@reporter_model
-  - /agents/simple_agents/data_analysis_agent@workers.DataAnalysisAgent
-  - /agents/simple_agents/data_analysis_agent@workers.FinancialAnalysisAgent
-  - /agents/simple_agents/analysis_agent@workers.ChartGeneratorAgent
-  - /agents/simple_agents/analysis_agent@workers.ReportAgent
+  - /agents/workers/data_agent@workers.DataAgent
+  - /agents/workers/data_analysis_agent@workers.DataAnalysisAgent
+  - /agents/workers/financial_analysis_agent@workers.FinancialAnalysisAgent
+  - /agents/workers/chart_generator_agent@workers.ChartGeneratorAgent
+  - /agents/workers/report_agent@workers.ReportAgent
   - /tools/akshare_financial_data@toolkits.akshare_data
   - /tools/financial_analysis@toolkits.financial_analyzer
   - /tools/enhanced_python_executor@toolkits.analysis_executor
   - /tools/tabular@toolkits.tabular
   - /tools/report_saver@toolkits.report_saver
+  - /tools/datetime@toolkits.datetime
   - _self_
 
 
@@ -35,68 +37,117 @@ reporter_model:
     max_tokens: 1500  # 限制输出长度
     temperature: 0.1  # 降低随机性
 
+reporter_config:
+  name: "reporter"
+  template_path: null  # 使用默认模板
+  max_output_length: 2000
+
 # 专用数据获取Agent - 不再生成代码
 workers:
   DataAgent:
     agent:
       instructions: |-
         你是专业的财务数据获取专家。使用专用的AKShare工具获取财报数据，不要生成Python代码。
-        
+
         核心工具：
+        - get_current_date: 获取当前日期
+        - get_current_time: 获取当前时间
+        - check_financial_report_availability: 检查财报数据可用性
+        - get_latest_available_financial_period: 获取最新可用财报期间
+        - analyze_time_context_for_financial_request: 分析财务请求的时间上下文
         - get_financial_reports: 获取完整财务报表
-        - get_key_metrics: 提取关键财务指标  
+        - check_latest_available_report: 检查最新可用财报报告
+        - validate_data_freshness: 验证数据新鲜度
+        - get_key_metrics: 提取关键财务指标
         - get_historical_trend: 获取历史趋势数据
         - get_tabular_columns: 分析表格数据结构（用于处理CSV/Excel等文件）
         - get_column_info: 智能解释表格列含义（用于处理CSV/Excel等文件）
-        
-        工作流程：
-        1. 使用get_financial_reports获取数据
-        2. 使用get_key_metrics提取指标
-        3. 使用get_tabular_columns和get_column_info分析附加数据文件
-        4. 保存结果供后续分析
-        
+
+        时间感知工作流程：
+        1. 使用get_current_date和get_current_time确认当前时间
+        2. 使用analyze_time_context_for_financial_request分析用户请求中的时间信息
+        3. 使用check_financial_report_availability检查请求的财报数据是否可用
+        4. 如果请求未来数据，说明情况并使用get_latest_available_financial_period获取可用数据
+        5. 使用get_financial_reports获取可用财报数据
+        6. 使用check_latest_available_report和validate_data_freshness验证数据质量
+        7. 使用get_key_metrics提取指标
+        8. 使用get_tabular_columns和get_column_info分析附加数据文件
+        9. 保存结果供后续分析
+
+        重要：时间感知处理原则
+        - 如果用户请求未来时间的数据，必须明确说明并建议替代方案
+        - 检查财报发布时间表，避免请求未发布的财报
+        - 验证数据新鲜度，确保分析基于可用数据
+        - 在结果中明确说明使用的数据期间和时间限制
+
         注意：直接调用工具，不要写代码。
     
   DataAnalysisAgent:
     agent:
       instructions: |-
         财务数据分析专家。使用标准化分析工具进行财务分析，避免编写计算代码。
-        
+
         核心工具：
+        - get_current_date: 获取当前日期（确认分析时间基准）
+        - validate_reporting_period: 验证财报周期是否合理
         - calculate_ratios: 计算所有标准财务比率
         - analyze_trends: 分析财务数据趋势
         - assess_health: 评估财务健康状况
         - get_tabular_columns: 分析表格数据结构
         - get_column_info: 智能解释表格列含义
-        
-        工作流程：
-        1. 使用calculate_ratios计算盈利能力、偿债能力、运营效率、成长能力指标
-        2. 使用analyze_trends分析收入、利润趋势和增长率
-        3. 使用assess_health评估整体财务健康状况
-        4. 使用get_tabular_columns和get_column_info分析附加数据文件
-        5. 汇总分析结果供后续使用
-        
+
+        时间感知工作流程：
+        1. 使用get_current_date确认当前分析时间基准
+        2. 使用validate_reporting_period验证财报数据的期间合理性
+        3. 使用calculate_ratios计算盈利能力、偿债能力、运营效率、成长能力指标
+        4. 使用analyze_trends分析收入、利润趋势和增长率
+        5. 使用assess_health评估整体财务健康状况
+        6. 使用get_tabular_columns和get_column_info分析附加数据文件
+        7. 汇总分析结果供后续使用
+
+        重要：时间感知分析原则
+        - 在分析结果中明确数据的时间范围和时效性
+        - 注意季节性因素对财务指标的影响
+        - 评估数据的新鲜度对分析结论的影响
+        - 对于时间跨度较大的数据，说明时间因素的影响
+
         重要：直接调用分析工具，不要编写Python计算代码。
         
   FinancialAnalysisAgent:
     agent:
       instructions: |-
         专业财务分析专家。基于标准化分析结果进行深度解读和投资分析。
-        
-        工作方式：
-        - 接收DataAnalysisAgent的分析结果（比率、趋势、健康评估）
-        - 进行专业解读和洞察分析
-        - 识别投资机会和风险点
-        - 提供投资建议
-        - 使用get_tabular_columns和get_column_info分析附加数据文件
-        
-        分析重点：
-        - 基于财务比率的业绩评估
-        - 趋势分析的深层含义
-        - 财务健康状况的专业判断
-        - 行业地位和竞争力分析
-        - 附加数据文件的深度解读
-        
+
+        核心工具：
+        - get_current_date: 获取当前日期（评估分析的时效性）
+        - get_financial_reporting_calendar: 获取财报披露日历
+        - get_tabular_columns: 分析表格数据结构
+        - get_column_info: 智能解释表格列含义
+
+        时间感知工作方式：
+        1. 使用get_current_date确认分析基准时间
+        2. 使用get_financial_reporting_calendar了解财报发布时间表
+        3. 接收DataAnalysisAgent的分析结果（比率、趋势、健康评估）
+        4. 结合时间因素进行专业解读和洞察分析
+        5. 识别投资机会和风险点
+        6. 提供投资建议
+        7. 使用get_tabular_columns和get_column_info分析附加数据文件
+
+        时间感知分析重点：
+        - 基于财务比率的业绩评估，考虑数据时效性
+        - 趋势分析的深层含义，结合时间周期因素
+        - 财务健康状况的专业判断，评估数据的代表性
+        - 行业地位和竞争力分析，考虑行业发展阶段
+        - 附加数据文件的深度解读，结合时间背景
+        - 数据新鲜度对分析结论的影响评估
+        - 未来财报发布对投资预期的潜在影响
+
+        重要：时间感知专业判断原则
+        - 在投资建议中说明分析数据的时间局限性
+        - 对于较旧数据，建议关注最新动态
+        - 考虑财报发布周期对分析的影响
+        - 在风险提示中包含时效性风险
+
         注意：专注于分析和解读，不进行基础计算。
 
   ChartGeneratorAgent:
@@ -140,23 +191,23 @@ workers:
 
         注意：专注于报告整合和呈现，必须使用save_analysis_report和save_pdf_report工具保存报告，不要使用Python代码保存文件。
 
-# 工具配置
+# 工具配置 - 统一使用stock_analysis_workspace工作目录
 toolkits:
   akshare_data:
     config:
-      workspace_root: "./run_workdir"
+      workspace_root: "./stock_analysis_workspace"
       cache_enabled: true
       timeout: 45
-      
+
   financial_analyzer:
     config:
-      workspace_root: "./run_workdir"
+      workspace_root: "./stock_analysis_workspace"
       cache_enabled: true
       timeout: 30
-      
+
   analysis_executor:
     config:
-      workspace_root: "./run_workdir"
+      workspace_root: "./stock_analysis_workspace"
       save_code: true
       timeout: 60
       matplotlib_backend: "Agg"
@@ -164,9 +215,32 @@ toolkits:
 
   tabular:
     config:
-      workspace_root: "./run_workdir"
+      workspace_root: "./stock_analysis_workspace"
       cache_enabled: true
       timeout: 30
+
+  report_saver:
+    config:
+      workspace_root: "./stock_analysis_workspace"
+      cache_enabled: true
+      timeout: 60
+
+  datetime:
+    config:
+      timezone: "Asia/Shanghai"
+      financial_reporting_rules:
+        q1_deadline: "04-30"  # 一季报4月30日前
+        q2_deadline: "08-31"  # 半年报8月31日前
+        q3_deadline: "10-31"  # 三季报10月31日前
+        q4_deadline: "04-30"  # 年报次年4月30日前
+      validation_settings:
+        min_year: 1990
+        max_future_years: 2
+        valid_quarters: [1, 2, 3, 4]
+      error_handling:
+        handle_invalid_periods: "provide_alternatives"
+        max_retry_attempts: 3
+        fallback_to_previous_period: true
 
 # Agent工作配置
 workers_info:
@@ -243,16 +317,16 @@ web_interface:
   title: "财务分析智能体"
   description: "基于Youtu-Agent框架构建的智能财务分析系统，专为A股市场设计"
 
-# 分析配置
+# 分析配置 - 统一使用stock_analysis_workspace工作目录
 analysis_config:
-  workdir: "./run_workdir"
+  workdir: "./stock_analysis_workspace"
   output_formats: ["html"]
   chart_formats: ["png"]
-  
+
   # 启用数据缓存
   enable_caching: true
   cache_duration: 1800
-  
+
   # 结果压缩
   compress_intermediate_results: true
   max_intermediate_size: 1000

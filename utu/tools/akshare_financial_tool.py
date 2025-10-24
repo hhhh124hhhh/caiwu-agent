@@ -831,13 +831,13 @@ class AKShareFinancialDataTool(AsyncBaseToolkit):
     def export_cache_summary(self, filepath: Optional[str] = None):
         """
         导出缓存摘要
-        
+
         Args:
             filepath: 导出文件路径
         """
         if filepath is None:
             filepath = str(self.cache.cache_dir / "cache_summary.csv")
-        
+
         try:
             summary_data = []
             for cache_key, info in self.cache.metadata["stocks"].items():
@@ -848,13 +848,335 @@ class AKShareFinancialDataTool(AsyncBaseToolkit):
                     "data_types": ", ".join(info.get("data_types", [])),
                     "file_count": info.get("file_count", 0)
                 })
-            
+
             df = pd.DataFrame(summary_data)
             df.to_csv(filepath, index=False, encoding='utf-8-sig')
             logger.info(f"缓存摘要已导出到: {filepath}")
-            
+
         except Exception as e:
             logger.error(f"导出缓存摘要失败: {e}")
+
+    # ===== 时间感知功能增强 =====
+
+    @register_tool()
+    def check_latest_available_report(self, stock_code: str) -> Dict:
+        """
+        检查最新可用的财报报告
+
+        Args:
+            stock_code: 股票代码
+
+        Returns:
+            包含最新可用财报信息的字典
+        """
+        try:
+            # 尝试获取财务数据
+            financial_data = self.get_financial_reports(stock_code)
+
+            if not financial_data or 'income' not in financial_data or financial_data['income'].empty:
+                return {
+                    "stock_code": stock_code,
+                    "available": False,
+                    "reason": "无法获取财务数据",
+                    "suggestion": "请检查股票代码是否正确，或稍后重试"
+                }
+
+            # 获取最新报告日期
+            income_df = financial_data['income']
+            date_col = 'REPORT_DATE' if 'REPORT_DATE' in income_df.columns else '报告期'
+
+            if date_col not in income_df.columns:
+                return {
+                    "stock_code": stock_code,
+                    "available": False,
+                    "reason": "财务数据格式异常",
+                    "suggestion": "数据源可能有问题，请稍后重试"
+                }
+
+            # 提取最新报告信息
+            latest_row = income_df.iloc[0]
+            latest_date = pd.to_datetime(latest_row[date_col])
+
+            # 判断报告类型
+            month = latest_date.month
+            if month == 3:
+                quarter = 1
+                report_type = "第一季度报告"
+            elif month == 6:
+                quarter = 2
+                report_type = "半年度报告"
+            elif month == 9:
+                quarter = 3
+                report_type = "第三季度报告"
+            else:
+                quarter = 4
+                report_type = "年度报告"
+
+            return {
+                "stock_code": stock_code,
+                "available": True,
+                "latest_report_date": latest_date.strftime("%Y-%m-%d"),
+                "report_year": latest_date.year,
+                "report_quarter": quarter,
+                "report_type": report_type,
+                "period": f"{latest_date.year}Q{quarter}",
+                "data_completeness": self._check_data_completeness(financial_data),
+                "description": f"最新可用财报为{latest_date.year}年第{quarter}季度{report_type}"
+            }
+
+        except Exception as e:
+            logger.error(f"检查最新可用报告失败: {e}")
+            return {
+                "stock_code": stock_code,
+                "available": False,
+                "reason": f"处理过程中发生错误: {str(e)}",
+                "suggestion": "请稍后重试或联系技术支持"
+            }
+
+    def _check_data_completeness(self, financial_data: Dict[str, pd.DataFrame]) -> Dict:
+        """检查数据完整性"""
+        completeness = {
+            "income_statement": "income" in financial_data and not financial_data["income"].empty,
+            "balance_sheet": "balance" in financial_data and not financial_data["balance"].empty,
+            "cash_flow_statement": "cashflow" in financial_data and not financial_data["cashflow"].empty,
+        }
+
+        # 计算完整性评分
+        complete_count = sum(completeness.values())
+        total_count = len(completeness)
+        completeness_score = (complete_count / total_count) * 100 if total_count > 0 else 0
+
+        completeness["overall_score"] = completeness_score
+        completeness["complete_reports"] = complete_count
+        completeness["total_reports"] = total_count
+
+        return completeness
+
+    @register_tool()
+    def get_financial_calendar_info(self, stock_code: str) -> Dict:
+        """
+        获取财报日历信息
+
+        Args:
+            stock_code: 股票代码
+
+        Returns:
+            财报日历信息
+        """
+        current_date = datetime.now()
+        current_year = current_date.year
+
+        # 获取最新可用报告信息
+        latest_report = self.check_latest_available_report(stock_code)
+
+        # 构建基础日历
+        calendar = {
+            "stock_code": stock_code,
+            "current_date": current_date.strftime("%Y-%m-%d"),
+            "current_year": current_year,
+            "latest_available_report": latest_report,
+            "expected_schedule": self._generate_expected_schedule(current_year, stock_code),
+            "data_status": self._assess_data_status(stock_code, current_date)
+        }
+
+        return calendar
+
+    def _generate_expected_schedule(self, year: int, stock_code: str) -> List[Dict]:
+        """生成预期财报发布时间表"""
+        schedule = [
+            {
+                "quarter": 1,
+                "report_name": "第一季度报告",
+                "period": f"{year}Q1",
+                "expected_date": f"{year}-04-30",
+                "description": "预计4月30日前发布"
+            },
+            {
+                "quarter": 2,
+                "report_name": "半年度报告",
+                "period": f"{year}Q2",
+                "expected_date": f"{year}-08-31",
+                "description": "预计8月31日前发布"
+            },
+            {
+                "quarter": 3,
+                "report_name": "第三季度报告",
+                "period": f"{year}Q3",
+                "expected_date": f"{year}-10-31",
+                "description": "预计10月31日前发布"
+            },
+            {
+                "quarter": 4,
+                "report_name": "年度报告",
+                "period": f"{year}Q4",
+                "expected_date": f"{year+1}-04-30",
+                "description": f"预计{year+1}年4月30日前发布"
+            }
+        ]
+
+        # 标记已发布的报告
+        current_date = datetime.now()
+        for item in schedule:
+            expected_date = datetime.strptime(item["expected_date"], "%Y-%m-%d")
+            if current_date > expected_date:
+                item["status"] = "expected_published"
+            else:
+                item["status"] = "upcoming"
+
+        return schedule
+
+    def _assess_data_status(self, stock_code: str, current_date: datetime) -> Dict:
+        """评估数据状态"""
+        latest_report = self.check_latest_available_report(stock_code)
+
+        if not latest_report["available"]:
+            return {
+                "status": "no_data",
+                "description": "暂无可用数据",
+                "action_needed": "检查股票代码或稍后重试"
+            }
+
+        # 计算数据新鲜度
+        latest_date = datetime.strptime(latest_report["latest_report_date"], "%Y-%m-%d")
+        days_old = (current_date - latest_date).days
+
+        if days_old <= 30:
+            freshness = "very_fresh"
+            freshness_desc = "数据非常新鲜（30天内）"
+        elif days_old <= 90:
+            freshness = "fresh"
+            freshness_desc = "数据较新鲜（90天内）"
+        elif days_old <= 180:
+            freshness = "moderate"
+            freshness_desc = "数据时效性一般（180天内）"
+        else:
+            freshness = "stale"
+            freshness_desc = "数据较旧（超过180天）"
+
+        return {
+            "status": "data_available",
+            "freshness": freshness,
+            "freshness_description": freshness_desc,
+            "days_since_latest": days_old,
+            "latest_period": latest_report["period"],
+            "completeness_score": latest_report.get("data_completeness", {}).get("overall_score", 0),
+            "recommendation": self._get_data_recommendation(freshness, days_old)
+        }
+
+    def _get_data_recommendation(self, freshness: str, days_old: int) -> str:
+        """获取数据使用建议"""
+        if freshness == "very_fresh":
+            return "数据质量优秀，可以直接用于分析"
+        elif freshness == "fresh":
+            return "数据质量良好，适合大部分分析需求"
+        elif freshness == "moderate":
+            return "数据可接受，但建议关注最新动态"
+        else:
+            return "数据较旧，建议谨慎使用并寻找更新数据源"
+
+    @register_tool()
+    def validate_data_freshness(self, stock_code: str, requested_period: Dict) -> Dict:
+        """
+        验证数据新鲜度
+
+        Args:
+            stock_code: 股票代码
+            requested_period: 请求的财报期间，格式：{"year": 2024, "quarter": 3}
+
+        Returns:
+            数据新鲜度验证结果
+        """
+        try:
+            year = requested_period.get("year")
+            quarter = requested_period.get("quarter")
+
+            if not year or not quarter:
+                return {
+                    "valid": False,
+                    "reason": "请求的期间格式不正确",
+                    "suggestion": "请提供正确的年份和季度"
+                }
+
+            # 获取最新可用报告
+            latest_report = self.check_latest_available_report(stock_code)
+
+            if not latest_report["available"]:
+                return {
+                    "valid": False,
+                    "reason": "无法获取最新财报数据",
+                    "suggestion": "请检查股票代码或网络连接"
+                }
+
+            # 比较请求期间与最新可用期间
+            latest_year = latest_report["report_year"]
+            latest_quarter = latest_report["report_quarter"]
+
+            # 计算期间差
+            year_diff = year - latest_year
+            quarter_diff = quarter - latest_quarter
+            total_quarter_diff = year_diff * 4 + quarter_diff
+
+            current_date = datetime.now()
+            requested_date = datetime(year, quarter * 3, 1)  # 近似月份
+            is_future = requested_date > current_date
+
+            result = {
+                "stock_code": stock_code,
+                "requested_period": f"{year}Q{quarter}",
+                "latest_available": f"{latest_year}Q{latest_quarter}",
+                "is_future_request": is_future,
+                "quarter_difference": total_quarter_diff,
+                "data_gap_periods": max(0, total_quarter_diff)
+            }
+
+            if is_future:
+                result["valid"] = False
+                result["reason"] = f"请求的{year}Q{quarter}是未来时间，财报尚未发布"
+                result["suggestion"] = f"建议使用最新可用数据{latest_year}Q{latest_quarter}"
+            elif total_quarter_diff > 0:
+                result["valid"] = False
+                result["reason"] = f"请求的{year}Q{quarter}数据不存在，最新可用数据为{latest_year}Q{latest_quarter}"
+                result["suggestion"] = f"建议使用{latest_year}Q{latest_quarter}数据进行分析"
+            else:
+                result["valid"] = True
+                result["reason"] = "请求数据可用"
+                result["freshness"] = self._calculate_freshness(latest_report["latest_report_date"])
+
+            return result
+
+        except Exception as e:
+            logger.error(f"验证数据新鲜度失败: {e}")
+            return {
+                "valid": False,
+                "reason": f"验证过程中发生错误: {str(e)}",
+                "suggestion": "请稍后重试"
+            }
+
+    def _calculate_freshness(self, report_date_str: str) -> Dict:
+        """计算数据新鲜度"""
+        report_date = datetime.strptime(report_date_str, "%Y-%m-%d")
+        current_date = datetime.now()
+        days_old = (current_date - report_date).days
+
+        if days_old <= 30:
+            level = "excellent"
+            description = "优秀（30天内）"
+        elif days_old <= 60:
+            level = "good"
+            description = "良好（60天内）"
+        elif days_old <= 120:
+            level = "acceptable"
+            description = "可接受（120天内）"
+        else:
+            level = "outdated"
+            description = "较旧（超过120天）"
+
+        return {
+            "level": level,
+            "description": description,
+            "days_old": days_old,
+            "report_date": report_date_str
+        }
 
 
 # 便利函数

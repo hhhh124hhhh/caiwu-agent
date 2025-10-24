@@ -72,3 +72,5 @@ GEMINI.md
 
 # Environment variables
 .env.local
+.skip-template
+.claude/settings.local.json

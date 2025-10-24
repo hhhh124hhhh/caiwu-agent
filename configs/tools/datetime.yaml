@@ -1,0 +1,109 @@
+# @package _global_
+# 时间感知工具配置
+name: "datetime"
+description: "时间感知工具包，提供日期检查和财报可用性验证功能"
+
+activated_tools:
+  - "get_current_date"
+  - "get_current_time"
+  - "get_financial_year"
+  - "check_financial_report_availability"
+  - "get_latest_available_financial_period"
+  - "validate_reporting_period"
+  - "get_financial_reporting_calendar"
+  - "analyze_time_context_for_financial_request"
+
+config:
+  # 时区设置
+  timezone: "Asia/Shanghai"
+
+  # 财报披露规则（中国A股）
+  financial_reporting_rules:
+    q1_deadline: "04-30"  # 一季报4月30日前
+    q2_deadline: "08-31"  # 半年报8月31日前
+    q3_deadline: "10-31"  # 三季报10月31日前
+    q4_deadline: "04-30"  # 年报次年4月30日前
+
+  # 数据验证设置
+  validation_settings:
+    # 合理年份范围
+    min_year: 1990      # 中国股市开始年份
+    max_future_years: 2 # 最多允许未来2年
+
+    # 季度验证
+    valid_quarters: [1, 2, 3, 4]
+
+    # 缓存设置
+    cache_availability_checks: true
+    cache_ttl: 3600     # 缓存1小时
+
+  # 错误处理
+  error_handling:
+    handle_invalid_periods: "provide_alternatives"  # provide_alternatives, skip, error
+    max_retry_attempts: 3
+    fallback_to_previous_period: true
+
+  # 日志设置
+  logging:
+    log_level: "INFO"
+    log_time_checks: true
+    log_availability_results: false
+
+# 数据源特定设置
+data_source_settings:
+  # AKShare特定设置
+  akshare:
+    # 数据延迟设置（天数）
+    reporting_delay:
+      quarterly: 15      # 季报通常在季度结束后15天内发布
+      semi_annual: 30    # 半年报在6月结束后30天内发布
+      annual: 120        # 年报在年度结束后120天内发布
+
+    # 特殊股票处理
+    special_stocks:
+      # 银行、券商等可能有不同披露要求
+      financial_institutions:
+        reporting_delay_adjustment: -7  # 提前7天
+
+      # ST股票可能有额外披露要求
+      st_stocks:
+        additional_disclosure: true
+
+# 时间上下文分析设置
+context_analysis:
+  # 关键词识别
+  time_keywords:
+    latest: ["最新", "近期", "当前", "最近", "最新一期"]
+    annual: ["年度", "年报", "全年", "这一年"]
+    quarterly: ["季度", "季报", "Q1", "Q2", "Q3", "Q4", "一季度", "二季度", "三季度", "四季度"]
+
+  # 年份提取模式
+  year_patterns:
+    - "\\b(19|20)\\d{2}\\b"  # 1900-2099年
+
+  # 季度提取模式
+  quarter_patterns:
+    - "Q[1-4]"
+    - "[第]?[一二三四1234]季度"
+
+  # 建议生成策略
+  recommendation_strategy:
+    future_data: "explain_and_suggest_alternative"
+    ambiguous_time: "ask_for_clarification"
+    latest_available: "provide_specific_period"
+
+# 性能优化设置
+performance:
+  # 并发设置
+  max_concurrent_checks: 5
+
+  # 超时设置
+  timeout_settings:
+    availability_check: 10    # 秒
+    calendar_generation: 5    # 秒
+    context_analysis: 15      # 秒
+
+  # 批量操作
+  batch_operations:
+    enabled: true
+    batch_size: 10
