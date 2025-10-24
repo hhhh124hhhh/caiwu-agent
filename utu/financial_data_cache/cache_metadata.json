@@ -41,7 +41,7 @@
     },
     "stock_002594": {
       "stock_code": "002594",
-      "cached_date": "2025-09-14T18:35:23.186823",
+      "cached_date": "2025-10-24T21:47:46.734780",
       "latest_report_date": "2025-06-30",
       "data_types": [
         "income",
@@ -342,6 +342,19 @@
       "stock_code": "601318",
       "cached_date": "2025-10-24T19:34:44.359861",
       "latest_report_date": "2025-06-30",
+      "data_types": [
+        "income",
+        "balance",
+        "cashflow",
+        "metrics",
+        "trend"
+      ],
+      "file_count": 5
+    },
+    "stock_300750": {
+      "stock_code": "300750",
+      "cached_date": "2025-10-24T21:47:18.879777",
+      "latest_report_date": "2025-09-30",
       "data_types": [
         "income",
         "balance",
