@@ -47,13 +47,22 @@ cd youtu-agent
 uv sync --all-extras --all-packages --group dev
 
 # 激活虚拟环境
+# Linux/macOS:
 source ./.venv/bin/activate
+# Windows:
+.\.venv\Scripts\activate
 
 # 设置环境变量（参考 .env.example）
+# Linux/macOS:
 export UTU_LLM_TYPE="your_llm_type"
 export UTU_LLM_MODEL="your_model"
 export UTU_LLM_API_KEY="your_api_key"
 export UTU_LLM_BASE_URL="your_base_url"
+# Windows:
+set UTU_LLM_TYPE=your_llm_type
+set UTU_LLM_MODEL=your_model
+set UTU_LLM_API_KEY=your_api_key
+set UTU_LLM_BASE_URL=your_base_url
 ```
 
 ### 运行智能分析
