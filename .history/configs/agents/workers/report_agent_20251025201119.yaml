@@ -165,31 +165,35 @@ report_config:
     comprehensive_content: true
     multi_company_support: true
     ensure_data_integration: true
+    force_complete_data_collection: true
     validate_agent_data_presence: true
     require_all_data_sources: true
     ensure_date_accuracy: true
 
   # 输出格式设置
   output_formats:
-    markdown:
-      enabled: true
-      file_extension: ".md"
-      include_charts: true
-      include_tables: true
+      markdown:
+        enabled: true
+        file_extension: ".md"
+        include_charts: true
+        include_tables: true
 
-    pdf:
-      enabled: true
-      file_extension: ".pdf"
-      include_charts: true
-      include_tables: true
-      page_orientation: "portrait"
+      pdf:
+        enabled: true
+        file_extension: ".pdf"
+        include_charts: true
+        include_tables: true
+        page_orientation: "portrait"
 
-    html:
-      enabled: true
-      file_extension: ".html"
-      include_charts: true
-      include_tables: true
-      responsive_layout: true
+      html:
+        enabled: true
+        file_extension: ".html"
+        include_charts: true
+        include_tables: true
+        responsive_layout: true
+        complete_html_structure: true
+        enhanced_css: true
+        proper_date_format: true
       complete_html_structure: true
       enhanced_css: true
       proper_date_format: true
@@ -197,6 +201,7 @@ report_config:
   # 报告生成规范
   template_type: professional
   content_quality: comprehensive
+  output_formats: ["html", "pdf", "markdown"]
   report_date_format: "%Y-%m-%d %H:%M:%S"
   include_all_charts: true
   include_complete_data: true
@@ -252,6 +257,7 @@ quality_control:
   validate_html_format: true
   validate_pdf_generation: true
   validate_timestamp_accuracy: true
+  validate_agent_data_integration: true
   ensure_full_agent_data_integration: true
   verify_all_data_sources: true
   confirm_report_contains_complete_data: true

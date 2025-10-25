@@ -1464,13 +1464,8 @@ class ReportSaverToolkit(AsyncBaseToolkit):
             # 使用传入的报告日期或当前时间
             report_date_display = report_date or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             
-            # 替换HTML中的日期 - 支持多种格式
-            # 处理"分析日期:"格式
+            # 替换HTML中的日期
             html_content = re.sub(r'分析日期:.*?</p>', f'分析日期: {report_date_display}</p>', html_content)
-            # 处理"生成时间:"格式
-            html_content = re.sub(r'生成时间:.*?</p>', f'生成时间: {report_date_display}</p>', html_content)
-            # 处理更通用的格式
-            html_content = re.sub(r'[生成分析]时间[:：].*?</p>', f'生成时间: {report_date_display}</p>', html_content)
 
             file_name = f"{company_name}{current_date}财务分析报告.pdf"
 

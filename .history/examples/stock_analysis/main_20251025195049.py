@@ -302,89 +302,20 @@ async def main():
             toolkit_config = ToolkitConfig(config={"workspace_root": str(workspace_path)}, name="report_saver")
             report_saver_toolkit = ReportSaverToolkit(config=toolkit_config)
             
-            # 从任务记录中收集并整合前面智能体的所有分析结果
-            def collect_agent_results(task_records):
-                """从任务记录中收集并整合各个智能体的分析结果"""
-                results = {
-                    "basic_info": {"company_profile": "", "business_description": ""},
-                    "financial_data": {"revenue": "N/A", "net_profit": "N/A", "total_assets": "N/A", "total_liabilities": "N/A"},
-                    "ratio_analysis": {"summary": ""},
-                    "trend_analysis": {"summary": ""},
-                    "cash_flow_analysis": {},
-                    "valuation_analysis": {},
-                    "risk_assessment": {"summary": "", "risk_factors": []},
-                    "investment_advice": {"summary": "", "recommendation": "", "target_price": "N/A", "rating": "N/A"}
-                }
-                
-                # 从任务记录中提取信息
-                for task in task_records:
-                    if hasattr(task, 'output') and task.output:
-                        output_str = str(task.output)
-                        
-                        # 提取公司名称和股票代码
-                        import re
-                        stock_match = re.search(r'([^()]+)\((\d{6}\.(?:SH|SZ))\)', output_str)
-                        if stock_match:
-                            results["company_name"] = stock_match.group(1)
-                            results["stock_code"] = stock_match.group(2)
-                        
-                        # 提取财务数据
-                        if any(keyword in output_str for keyword in ["营业收入", "净利润", "总资产", "总负债"]):
-                            for key, pattern in {
-                                "revenue": r'营业收入[^\d]+([\d.]+)',
-                                "net_profit": r'净利润[^\d]+([\d.]+)',
-                                "total_assets": r'总资产[^\d]+([\d.]+)',
-                                "total_liabilities": r'总负债[^\d]+([\d.]+)'
-                            }.items():
-                                match = re.search(pattern, output_str)
-                                if match:
-                                    results["financial_data"][key] = match.group(1)
-                        
-                        # 提取投资建议
-                        if "投资建议" in output_str or "评级" in output_str:
-                            results["investment_advice"]["summary"] = output_str[:200] + "..." if len(output_str) > 200 else output_str
-                            if "买入" in output_str or "推荐" in output_str:
-                                results["investment_advice"]["recommendation"] = "推荐买入"
-                                results["investment_advice"]["rating"] = "买入"
-                            elif "持有" in output_str:
-                                results["investment_advice"]["recommendation"] = "建议持有"
-                                results["investment_advice"]["rating"] = "持有"
-                        
-                        # 提取风险因素
-                        if "风险" in output_str:
-                            results["risk_assessment"]["summary"] = output_str[:200] + "..." if len(output_str) > 200 else output_str
-                            # 尝试提取具体风险点
-                            risk_patterns = [r'[。，]([^。，]+风险[^。，]+)[。，]', r'风险：([^。]+)']
-                            for pattern in risk_patterns:
-                                for match in re.finditer(pattern, output_str):
-                                    risk_item = match.group(1)
-                                    if risk_item not in results["risk_assessment"]["risk_factors"]:
-                                        results["risk_assessment"]["risk_factors"].append(risk_item)
-                
-                # 如果没有找到公司名称，使用默认值
-                if "company_name" not in results:
-                    results["company_name"] = "目标公司"
-                    results["stock_code"] = "N/A"
-                
-                return results
-            
-            # 收集并整合智能体结果
-            agent_results = collect_agent_results(result.task_records)
-            
             # 整合前面智能体的所有分析结果
             integrated_data = {
-                "company_name": agent_results.get("company_name", "目标公司"),
-                "stock_code": agent_results.get("stock_code", "N/A"),
+                "company_name": "陕西建工",
+                "stock_code": "600248.SH",
                 "analysis_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),  # 使用当前时间
-                "basic_info": agent_results["basic_info"],
-                "financial_data": agent_results["financial_data"],
-                "ratio_analysis": agent_results["ratio_analysis"],
-                "trend_analysis": agent_results["trend_analysis"],
+                "basic_info": basic_info,  # 从前面的基本信息分析
+                "financial_data": financial_data,  # 从财务数据处理
+                "ratio_analysis": ratio_analysis,  # 从财务比率分析
+                "trend_analysis": trend_analysis,  # 从趋势分析
                 "chart_files": [str(f) for f in workspace_path.glob("*.png")],  # 包含所有生成的图表
-                "cash_flow_analysis": agent_results["cash_flow_analysis"],
-                "valuation_analysis": agent_results["valuation_analysis"],
-                "risk_assessment": agent_results["risk_assessment"],
-                "investment_advice": agent_results["investment_advice"]
+                "cash_flow_analysis": cash_flow_analysis,  # 现金流分析
+                "valuation_analysis": valuation_analysis,  # 估值分析
+                "risk_assessment": risk_assessment,  # 风险评估
+                "investment_advice": investment_advice  # 投资建议
             }
             
             # 生成完整的HTML报告
@@ -486,12 +417,8 @@ async def main():
 </html>
             """
             
-            # 设置当前时间为分析日期
-            current_date = datetime.now().strftime("%Y%m%d%H%M%S")
-            current_date_display = datetime.now().strftime("%Y年%m月%d日 %H:%M:%S")
-            integrated_data['analysis_date'] = current_date_display
-            
             # 保存HTML报告
+            current_date = datetime.now().strftime("%Y%m%d%H%M%S")
             html_file_name = f"{integrated_data['company_name']}_综合财务分析报告_{current_date}.html"
             html_file_path = workspace_path / html_file_name
             
@@ -515,29 +442,13 @@ async def main():
                 financial_data_json=financial_data_json,
                 stock_name=integrated_data['company_name'],
                 file_prefix=str(workspace_path),
-                chart_files=integrated_data['chart_files'],
-                report_date=current_date_display
-            )
-            
-            # 也使用save_html_as_pdf_report方法生成PDF报告作为备份
-            print("\n📄 正在使用HTML转PDF方法生成PDF报告...")
-            html_pdf_result = await report_saver_toolkit.save_html_as_pdf_report(
-                html_content=html_content,
-                stock_name=integrated_data['company_name'],
-                file_prefix=str(workspace_path),
-                chart_files=integrated_data['chart_files'],
-                report_date=current_date_display
+                chart_files=integrated_data['chart_files']
             )
             
             if pdf_result.get("success"):
                 print(f"✅ PDF报告已生成: {pdf_result.get('file_path')}")
             else:
                 print(f"⚠️ PDF报告生成失败: {pdf_result.get('message')}")
-                
-            if html_pdf_result.get("success"):
-                print(f"✅ HTML转PDF报告已生成: {html_pdf_result.get('file_path')}")
-            else:
-                print(f"⚠️ HTML转PDF报告生成失败: {html_pdf_result.get('message')}")
                 
             # 也生成Markdown版本报告作为备份
             md_content = f"# {integrated_data['company_name']} 综合财务分析报告\n\n"

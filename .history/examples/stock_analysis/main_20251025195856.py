@@ -486,12 +486,8 @@ async def main():
 </html>
             """
             
-            # 设置当前时间为分析日期
-            current_date = datetime.now().strftime("%Y%m%d%H%M%S")
-            current_date_display = datetime.now().strftime("%Y年%m月%d日 %H:%M:%S")
-            integrated_data['analysis_date'] = current_date_display
-            
             # 保存HTML报告
+            current_date = datetime.now().strftime("%Y%m%d%H%M%S")
             html_file_name = f"{integrated_data['company_name']}_综合财务分析报告_{current_date}.html"
             html_file_path = workspace_path / html_file_name
             
@@ -515,29 +511,13 @@ async def main():
                 financial_data_json=financial_data_json,
                 stock_name=integrated_data['company_name'],
                 file_prefix=str(workspace_path),
-                chart_files=integrated_data['chart_files'],
-                report_date=current_date_display
-            )
-            
-            # 也使用save_html_as_pdf_report方法生成PDF报告作为备份
-            print("\n📄 正在使用HTML转PDF方法生成PDF报告...")
-            html_pdf_result = await report_saver_toolkit.save_html_as_pdf_report(
-                html_content=html_content,
-                stock_name=integrated_data['company_name'],
-                file_prefix=str(workspace_path),
-                chart_files=integrated_data['chart_files'],
-                report_date=current_date_display
+                chart_files=integrated_data['chart_files']
             )
             
             if pdf_result.get("success"):
                 print(f"✅ PDF报告已生成: {pdf_result.get('file_path')}")
             else:
                 print(f"⚠️ PDF报告生成失败: {pdf_result.get('message')}")
-                
-            if html_pdf_result.get("success"):
-                print(f"✅ HTML转PDF报告已生成: {html_pdf_result.get('file_path')}")
-            else:
-                print(f"⚠️ HTML转PDF报告生成失败: {html_pdf_result.get('message')}")
                 
             # 也生成Markdown版本报告作为备份
             md_content = f"# {integrated_data['company_name']} 综合财务分析报告\n\n"

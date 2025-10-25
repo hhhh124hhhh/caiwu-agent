@@ -422,12 +422,8 @@ def main():
     # 生成趋势图
     chart_path = generate_trend_chart(cleaned_data, workspace_path)
     
-    # 设置报告日期（使用当前时间）
-    from datetime import datetime
-    report_date = datetime.now().strftime('%Y年%m月%d日 %H:%M:%S')
-    
     # 生成HTML报告
-    report_path = generate_html_report(metrics, chart_path, workspace_path, report_date)
+    report_path = generate_html_report(metrics, chart_path, workspace_path)
     
     # 总结
     print(f"\n=== 分析完成 ===")

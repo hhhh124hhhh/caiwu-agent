@@ -1419,8 +1419,7 @@ class ReportSaverToolkit(AsyncBaseToolkit):
                                      html_content: str,
                                      stock_name: str = "财务分析报告",
                                      file_prefix: str = "./stock_analysis_workspace",
-                                     chart_files: Optional[list] = None,
-                                     report_date: Optional[str] = None) -> Dict[str, Any]:
+                                     chart_files: Optional[list] = None) -> Dict[str, Any]:
         """
         将HTML内容直接转换为PDF报告
 
@@ -1429,7 +1428,6 @@ class ReportSaverToolkit(AsyncBaseToolkit):
             stock_name: 股票名称，用于文件名
             file_prefix: 文件路径前缀
             chart_files: 图表文件路径列表，用于在PDF中插入图表
-            report_date: 报告日期，如果未提供则使用当前时间
 
         Returns:
             dict: 结果信息包括成功状态和文件路径
@@ -1460,17 +1458,6 @@ class ReportSaverToolkit(AsyncBaseToolkit):
                     company_name = stock_name
             except:
                 company_name = stock_name
-            
-            # 使用传入的报告日期或当前时间
-            report_date_display = report_date or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-            
-            # 替换HTML中的日期 - 支持多种格式
-            # 处理"分析日期:"格式
-            html_content = re.sub(r'分析日期:.*?</p>', f'分析日期: {report_date_display}</p>', html_content)
-            # 处理"生成时间:"格式
-            html_content = re.sub(r'生成时间:.*?</p>', f'生成时间: {report_date_display}</p>', html_content)
-            # 处理更通用的格式
-            html_content = re.sub(r'[生成分析]时间[:：].*?</p>', f'生成时间: {report_date_display}</p>', html_content)
 
             file_name = f"{company_name}{current_date}财务分析报告.pdf"
 

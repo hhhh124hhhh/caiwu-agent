@@ -520,7 +520,6 @@ async def main():
             )
             
             # 也使用save_html_as_pdf_report方法生成PDF报告作为备份
-            print("\n📄 正在使用HTML转PDF方法生成PDF报告...")
             html_pdf_result = await report_saver_toolkit.save_html_as_pdf_report(
                 html_content=html_content,
                 stock_name=integrated_data['company_name'],
@@ -533,11 +532,6 @@ async def main():
                 print(f"✅ PDF报告已生成: {pdf_result.get('file_path')}")
             else:
                 print(f"⚠️ PDF报告生成失败: {pdf_result.get('message')}")
-                
-            if html_pdf_result.get("success"):
-                print(f"✅ HTML转PDF报告已生成: {html_pdf_result.get('file_path')}")
-            else:
-                print(f"⚠️ HTML转PDF报告生成失败: {html_pdf_result.get('message')}")
                 
             # 也生成Markdown版本报告作为备份
             md_content = f"# {integrated_data['company_name']} 综合财务分析报告\n\n"
