@@ -1,11 +1,88 @@
-# https://docs.astral.sh/ruff/integrations/#pre-commit
+# Pre-commit hooks配置文件
+# 确保代码在提交前符合质量标准
+
 repos:
-- repo: https://github.com/astral-sh/ruff-pre-commit
-  # Ruff version.
-  rev: v0.12.11
-  hooks:
-    # Run the linter.
-    - id: ruff-check
-      args: [ --fix ]
-    # Run the formatter.
-    - id: ruff-format
+  # 基础代码检查
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+        description: 移除行尾空白字符
+      - id: end-of-file-fixer
+        description: 确保文件以换行符结尾
+      - id: check-yaml
+        description: 检查YAML文件语法
+      - id: check-toml
+        description: 检查TOML文件语法
+      - id: check-json
+        description: 检查JSON文件语法
+      - id: check-merge-conflict
+        description: 检查合并冲突标记
+      - id: check-case-conflict
+        description: 检查文件名大小写冲突
+      - id: check-docstring-first
+        description: 确保docstring在函数顶部
+      - id: check-added-large-files
+        description: 防止添加大文件
+        args: ['--maxkb=1000']
+      - id: debug-statements
+        description: 检查调试语句
+
+  # Python代码格式化和检查
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.12.11
+    hooks:
+      - id: ruff-check
+        description: Python代码检查和修复
+        args: [ --fix ]
+      - id: ruff-format
+        description: Python代码格式化
+
+  # 测试相关检查
+  - repo: local
+    hooks:
+      - id: pytest-check
+        name: pytest-check
+        description: 运行快速测试检查
+        entry: uv run pytest
+        language: system
+        args: [tests/, -m, "not slow and not integration", --tb=short, -q]
+        types: [python]
+        pass_filenames: false
+        stages: [push]  # 只在push时运行，避免commit时太慢
+
+  # 安全检查
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.8.3
+    hooks:
+      - id: bandit
+        description: Python安全检查
+        args: [-c, pyproject.toml]
+        additional_dependencies:
+          - bandit[toml]
+
+  # 文档检查
+  - repo: https://github.com/pycqa/pydocstyle
+    rev: 6.3.0
+    hooks:
+      - id: pydocstyle
+        description: Python文档字符串检查
+        args: [--convention=google]
+        exclude: ^(tests/|docs/|setup.py|__pycache__/|.*\.pyi$)
+
+# 配置选项
+default_language_version:
+  python: python3.12
+
+# CI配置
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit.com hooks
+
+    for more information, see https://pre-commit.ci
+  autofix_prs: true
+  autoupdate_branch: ''
+  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_schedule: weekly
+  skip: [pytest-check]  # CI中跳过耗时的检查
+  submodules: false

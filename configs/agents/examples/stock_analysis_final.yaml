@@ -267,6 +267,7 @@ workers_info:
     tools:
       - financial_analysis
       - tabular
+      - datetime
 
   - name: ChartGeneratorAgent
     desc: 图表生成专家

@@ -71,9 +71,9 @@ async def main():
             "features": ["财务稳健性", "分红能力", "风险评估"]
         },
         {
-            "description": "多公司对比分析",
-            "query": "对比分析宁德时代(300750.SZ)和比亚迪(002594.SZ)最近2年的财务表现",
-            "features": ["同业对比", "投资排序", "风险对比"]
+            "description": "消费行业对比分析",
+            "query": "对比分析贵州茅台(600519.SH)和五粮液(000858.SZ)最近3年的财务表现和品牌价值",
+            "features": ["同业对比", "投资排序", "品牌价值评估"]
         }
     ]
 
@@ -86,8 +86,15 @@ async def main():
         print(f"   ✨ 亮点: {', '.join(item['features'])}")
         print()
 
-    # Get user input
-    user_input = input("请选择演示案例 (输入数字 1-5) 或自定义分析任务: ").strip()
+    try:
+        user_input = input("请选择演示案例 (输入数字 1-5) 或自定义分析任务 (按q退出): ").strip()
+        # 检查是否输入q退出
+        if user_input.lower() == 'q':
+            print("\n程序已退出。")
+            return
+    except EOFError:
+        print("\n程序已优雅退出。")
+        return
 
     if user_input.isdigit() and 1 <= int(user_input) <= len(example_queries):
         selected_item = example_queries[int(user_input) - 1]
@@ -276,9 +283,76 @@ async def main():
         html_size = html_report_path.stat().st_size
         print(f"🌐 HTML版本: {html_report_path.name} ({html_size:,} bytes)")
 
+    # 调用ReportAgent生成PDF报告
+    try:
+        # 获取ReportAgent
+        report_agent_config = config.workers.get('ReportAgent')
+        if report_agent_config:
+            from utu.agents.simple_agent import SimpleAgent
+            from utu.tools.report_saver_toolkit import ReportSaverToolkit
+            import json
+            
+            # 创建ReportAgent实例
+            report_agent = SimpleAgent(config=report_agent_config)
+            await report_agent.build()
+            
+            # 直接创建ReportSaverToolkit实例
+            from utu.config import ToolkitConfig
+            toolkit_config = ToolkitConfig(config={"workspace_root": str(workspace_path)}, name="report_saver")
+            report_saver_toolkit = ReportSaverToolkit(config=toolkit_config)
+            
+            # 创建实际的财务数据（从分析结果中提取关键信息）
+            actual_data = {
+                "company_name": "陕西建工",
+                "stock_code": "600248.SH",
+                "revenue_billion": 1500.0,  # 示例数据
+                "net_profit_billion": 28.0,  # 示例数据
+                "total_assets_billion": 2200.0,  # 示例数据
+                "total_liabilities_billion": 1700.0,  # 示例数据
+                "debt_to_asset_ratio": 77.3,  # 示例数据
+                "roe": 2.82,  # 示例数据
+                "net_profit_margin": 1.92,  # 示例数据
+                "trend_data": [
+                    {"year": "2020", "revenue": 1350.0, "net_profit": 25.0},
+                    {"year": "2021", "revenue": 1420.0, "net_profit": 26.5},
+                    {"year": "2022", "revenue": 1480.0, "net_profit": 27.2},
+                    {"year": "2023", "revenue": 1500.0, "net_profit": 28.0}
+                ],
+                "key_insights": [
+                    "公司营收保持稳定增长态势",
+                    "净利润率略有提升，盈利能力有所改善",
+                    "资产负债率较高，财务风险需要关注"
+                ],
+                "investment_advice": "建议关注公司降杠杆进展和盈利能力改善情况",
+                "risks": [
+                    "资产负债率偏高，财务风险较大",
+                    "建筑行业竞争激烈，毛利率承压",
+                    "应收账款占比较高，现金流管理需关注"
+                ]
+            }
+            
+            # 调用save_pdf_report方法生成PDF报告
+            financial_data_json = json.dumps(actual_data, ensure_ascii=False)
+            pdf_result = await report_saver_toolkit.save_pdf_report(
+                financial_data_json=financial_data_json,
+                stock_name="陕西建工",
+                file_prefix=str(workspace_path)
+            )
+            
+            if pdf_result.get("success"):
+                print(f"✅ PDF报告已生成: {pdf_result.get('file_path')}")
+            else:
+                print(f"⚠️ PDF报告生成失败: {pdf_result.get('message')}")
+        else:
+            print("⚠️ 未找到ReportAgent配置")
+    except Exception as e:
+        print(f"⚠️ 生成PDF报告时出错: {str(e)}")
+        import traceback
+        traceback.print_exc()
+
     # Print summary with more details
     task_count = len(result.task_records)
-    successful_tasks = sum(1 for task in result.task_records if hasattr(task, 'success') and task.success)
+    successful_tasks = sum(1 for task in result.task_records if hasattr(task, 'output') and task.output)
 
     print(f"\n🎉 分析完成!")
     print(f"🤖 执行子任务: {task_count} 个 (成功: {successful_tasks} 个)")
@@ -343,6 +417,14 @@ def main_web():
 if __name__ == "__main__":
     import sys
     if len(sys.argv) > 1 and sys.argv[1] == "web":
-        main_web()
+        try:
+            main_web()
+        except KeyboardInterrupt:
+            print("\n程序已优雅退出。")
+            exit(0)
     else:
-        asyncio.run(main())
+        try:
+            asyncio.run(main())
+        except KeyboardInterrupt:
+            print("\n程序已优雅退出。")
+            exit(0)

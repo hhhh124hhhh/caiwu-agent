@@ -1,0 +1,311 @@
+name: 测试工作流
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  PYTHON_VERSION: "3.12"
+
+jobs:
+  # 代码质量检查
+  lint:
+    name: 代码质量检查
+    runs-on: ubuntu-latest
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 设置uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        version: "latest"
+
+    - name: 创建虚拟环境
+      run: uv venv --python ${{ env.PYTHON_VERSION }}
+
+    - name: 激活虚拟环境
+      run: source .venv/bin/activate
+
+    - name: 安装依赖
+      run: uv sync --all-extras --all-packages --group dev
+
+    - name: 代码格式检查
+      run: |
+        source .venv/bin/activate
+        uv run ruff format --check
+
+    - name: 代码检查
+      run: |
+        source .venv/bin/activate
+        uv run ruff check
+
+    - name: 类型检查
+      run: |
+        source .venv/bin/activate
+        uv run mypy utu/ --ignore-missing-imports
+
+  # 单元测试
+  test-unit:
+    name: 单元测试
+    runs-on: ubuntu-latest
+    needs: lint
+
+    strategy:
+      matrix:
+        python-version: ["3.12"]
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 设置uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        version: "latest"
+
+    - name: 创建虚拟环境
+      run: uv venv --python ${{ matrix.python-version }}
+
+    - name: 激活虚拟环境
+      run: source .venv/bin/activate
+
+    - name: 安装依赖
+      run: uv sync --all-extras --all-packages --group dev
+
+    - name: 运行单元测试
+      run: |
+        source .venv/bin/activate
+        pytest tests/ -m "unit or (not integration and not performance and not slow)" --cov=utu --cov-report=xml --cov-report=html
+
+    - name: 上传覆盖率报告
+      uses: codecov/codecov-action@v4
+      if: matrix.python-version == '3.12'
+      with:
+        file: ./coverage.xml
+        flags: unittests
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  # 集成测试
+  test-integration:
+    name: 集成测试
+    runs-on: ubuntu-latest
+    needs: lint
+    if: github.event_name == 'push' || (github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'integration-test'))
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 设置uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        version: "latest"
+
+    - name: 创建虚拟环境
+      run: uv venv --python ${{ env.PYTHON_VERSION }}
+
+    - name: 激活虚拟环境
+      run: source .venv/bin/activate
+
+    - name: 安装依赖
+      run: uv sync --all-extras --all-packages --group dev
+
+    - name: 设置环境变量
+      run: |
+        echo "UTU_LLM_TYPE=chat.completions" >> $GITHUB_ENV
+        echo "UTU_LLM_MODEL=gpt-3.5-turbo" >> $GITHUB_ENV
+        echo "UTU_LLM_API_KEY=test-key" >> $GITHUB_ENV
+        echo "UTU_LLM_BASE_URL=https://api.openai.com/v1" >> $GITHUB_ENV
+        echo "UTU_LOG_LEVEL=INFO" >> $GITHUB_ENV
+
+    - name: 运行集成测试
+      run: |
+        source .venv/bin/activate
+        pytest tests/integration/ -m "integration" --cov=utu --cov-report=xml --cov-append -v
+
+    - name: 上传集成测试覆盖率
+      uses: codecov/codecov-action@v4
+      with:
+        file: ./coverage.xml
+        flags: integration
+        name: codecov-umbrella
+        fail_ci_if_error: false
+
+  # 性能测试
+  test-performance:
+    name: 性能测试
+    runs-on: ubuntu-latest
+    needs: lint
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 设置uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        version: "latest"
+
+    - name: 创建虚拟环境
+      run: uv venv --python ${{ env.PYTHON_VERSION }}
+
+    - name: 激活虚拟环境
+      run: source .venv/bin/activate
+
+    - name: 安装依赖
+      run: uv sync --all-extras --all-packages --group dev
+
+    - name: 运行性能测试
+      run: |
+        source .venv/bin/activate
+        pytest tests/performance/ -m "performance" --benchmark-only --benchmark-json=benchmark.json
+
+    - name: 上传性能测试结果
+      uses: actions/upload-artifact@v4
+      with:
+        name: benchmark-results
+        path: benchmark.json
+
+  # 边界情况测试
+  test-edge-cases:
+    name: 边界情况测试
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 设置uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        version: "latest"
+
+    - name: 创建虚拟环境
+      run: uv venv --python ${{ env.PYTHON_VERSION }}
+
+    - name: 激活虚拟环境
+      run: source .venv/bin/activate
+
+    - name: 安装依赖
+      run: uv sync --all-extras --all-packages --group dev
+
+    - name: 运行边界情况测试
+      run: |
+        source .venv/bin/activate
+        pytest tests/edge_cases/ -m "edge_case" --cov=utu --cov-report=xml --cov-append -v
+
+  # 财务分析专项测试
+  test-financial:
+    name: 财务分析测试
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 设置uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        version: "latest"
+
+    - name: 创建虚拟环境
+      run: uv venv --python ${{ env.PYTHON_VERSION }}
+
+    - name: 激活虚拟环境
+      run: source .venv/bin/activate
+
+    - name: 安装依赖
+      run: uv sync --all-extras --all-packages --group dev
+
+    - name: 运行财务分析测试
+      run: |
+        source .venv/bin/activate
+        pytest tests/tools/test_financial_analysis_toolkit.py tests/tools/test_tabular_data_toolkit.py tests/tools/test_report_saver_toolkit.py -m "financial" --cov=utu --cov-report=xml --cov-append -v
+
+  # 构建文档
+  build-docs:
+    name: 构建文档
+    runs-on: ubuntu-latest
+    needs: test-unit
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 设置uv
+      uses: astral-sh/setup-uv@v5
+      with:
+        version: "latest"
+
+    - name: 创建虚拟环境
+      run: uv venv --python ${{ env.PYTHON_VERSION }}
+
+    - name: 激活虚拟环境
+      run: source .venv/bin/activate
+
+    - name: 安装依赖
+      run: uv sync --all-extras --all-packages --group dev
+
+    - name: 构建文档
+      run: |
+        source .venv/bin/activate
+        uv run mkdocs build
+
+    - name: 上传文档
+      uses: actions/upload-artifact@v4
+      with:
+        name: docs
+        path: site/
+
+  # 部署文档到GitHub Pages（仅在main分支）
+  deploy-docs:
+    name: 部署文档
+    runs-on: ubuntu-latest
+    needs: build-docs
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+    - name: 检出代码
+      uses: actions/checkout@v4
+
+    - name: 设置Pages
+      uses: actions/configure-pages@v4
+
+    - name: 下载文档
+      uses: actions/download-artifact@v4
+      with:
+        name: docs
+        path: site/
+
+    - name: 部署到GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
+
+  # 清理工作
+  cleanup:
+    name: 清理工作
+    runs-on: ubuntu-latest
+    needs: [test-unit, test-integration, test-performance, test-edge-cases, test-financial]
+    if: always()
+
+    steps:
+    - name: 清理测试报告
+      run: |
+        echo "测试工作流完成"
+        echo "所有测试阶段已执行"

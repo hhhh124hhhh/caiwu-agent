@@ -60,6 +60,12 @@ dev = [
     "pre-commit>=4.3.0",
     "pytest>=8.4.1",
     "pytest-asyncio>=1.0.0",
+    "pytest-cov>=6.0.0",
+    "pytest-timeout>=2.3.1",
+    "pytest-xdist>=3.6.1",
+    "pytest-mock>=3.14.0",
+    "psutil>=6.1.0",
+    "pillow>=11.3.0",
     "ruff>=0.12.8",
     # "tencentcloud-sdk-python>=3.0.1425",
     "tornado>=6.5.2",
@@ -100,18 +106,73 @@ packages = ["utu"]
 
 
 [tool.pytest.ini_options]
+# pytest配置文件
 pythonpath = "."
 asyncio_mode = "auto"
 asyncio_default_fixture_loop_scope = "session"
 asyncio_default_test_loop_scope = "session"
 
+# 测试路径
+testpaths = ["tests"]
+
+# 标记定义
+markers = [
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "integration: marks tests as integration tests",
+    "performance: marks tests as performance tests",
+    "edge_case: marks tests as edge case tests",
+    "unit: marks tests as unit tests",
+    "akshare: marks tests that require AKShare data",
+    "chart: marks tests that generate charts",
+    "report: marks tests that generate reports",
+    "financial: marks tests related to financial analysis"
+]
+
+# 测试发现模式
+python_files = [
+    "test_*.py",
+    "*_test.py"
+]
+python_classes = [
+    "Test*"
+]
+python_functions = [
+    "test_*"
+]
+
+# 日志配置
 log_cli = true
 log_cli_level = "INFO"
-log_cli_format = "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+log_cli_format = "%(asctime)s [%(levelname)8s] %(name)s: %(message)s"
 log_cli_date_format = "%Y-%m-%d %H:%M:%S"
+
+# 基础选项
 addopts = [
-    "-v", "-s",
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "-v",
+    "-s"
 ]
+
+# 超时设置（需要pytest-timeout插件）
+# timeout = 300
+# timeout_method = "thread"
+
+# 覆盖率设置（需要pytest-cov插件）
+# addopts = ["--cov=utu", "--cov-report=term-missing"]
+
+# 过滤警告
+filterwarnings = [
+    "error",
+    "ignore::UserWarning",
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+    "ignore::ResourceWarning"
+]
+
+# 最小版本要求
+minversion = "6.0"
 
 [tool.uv]
 index-url = "https://pypi.org/simple"
