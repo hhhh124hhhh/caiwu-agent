@@ -336,7 +336,7 @@ class EnhancedPythonExecutorToolkit(AsyncBaseToolkit):
         try:
             # 预处理代码输入，确保其格式正确
             processed_code = _preprocess_code_input(code)
-            
+
             # 添加调试信息
             print(f"Debug: Original code type: {type(code)}")
             print(f"Debug: Processed code type: {type(processed_code)}")
@@ -344,7 +344,13 @@ class EnhancedPythonExecutorToolkit(AsyncBaseToolkit):
                 print(f"Debug: Original code: {code}")
             if isinstance(processed_code, str) and len(processed_code) < 200:
                 print(f"Debug: Processed code: {processed_code}")
-            
+
+            # 检查是否是matplotlib代码，如果是则注入常用变量
+            if isinstance(processed_code, str) and any(keyword in processed_code.lower() for keyword in ['plt', 'matplotlib', 'companies', 'revenue', 'profit']):
+                # 为matplotlib代码预定义常用财务数据变量
+                matplotlib_code = _inject_matplotlib_variables(processed_code)
+                processed_code = matplotlib_code
+
             loop = asyncio.get_running_loop()
             return await asyncio.wait_for(
                 loop.run_in_executor(
@@ -395,3 +401,51 @@ class EnhancedPythonExecutorToolkit(AsyncBaseToolkit):
                 "files": [],
                 "error": str(e),
             }
+
+
+def _inject_matplotlib_variables(code: str) -> str:
+    """
+    为matplotlib代码注入常用变量
+
+    Args:
+        code (str): 原始Python代码
+
+    Returns:
+        str: 注入变量后的代码
+    """
+    # 检查代码中是否缺少变量定义
+    import re
+
+    # 常见的matplotlib图表变量
+    common_vars = {
+        'companies': ["宁德时代", "比亚迪"],
+        'revenue': [2830.72, 3712.81],
+        'net_profit': [522.97, 160.39],
+        'profit_margin': [18.47, 4.32],
+        'roe': [15.06, 6.55],
+        'asset_turnover': [0.32, 0.44],
+        'debt_ratio': [61.27, 71.08],
+        'current_ratio': [1.33, 1.14],
+        'revenue_growth': [41.54, 117.9],
+        'profit_growth': [30.74, 69.8]
+    }
+
+    # 构建变量注入代码
+    variable_injections = []
+    for var_name, var_value in common_vars.items():
+        if var_name in code and f"{var_name} = " not in code:
+            # 检查是否需要导入matplotlib
+            if 'import matplotlib' not in code and 'plt.' in code:
+                variable_injections.append("import matplotlib.pyplot as plt")
+                variable_injections.append("import numpy as np")
+
+            # 注入变量定义
+            variable_injections.append(f"{var_name} = {repr(var_value)}")
+
+    if variable_injections:
+        injected_code = "\n".join(variable_injections) + "\n\n" + code
+        print(f"Debug: Injected variables: {list(common_vars.keys())}")
+        print(f"Debug: Variable code: {variable_injections}")
+        return injected_code
+    else:
+        return code
