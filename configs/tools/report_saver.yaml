@@ -11,7 +11,7 @@ activated_tools:
 
 config:
   timeout: 30
-  workspace_root: "./run_workdir"
+  workspace_root: "./stock_analysis_workspace"
   cache_enabled: false
   
 # 支持的保存类型
@@ -36,7 +36,7 @@ naming_convention:
 
 # 工作目录配置
 workspace:
-  default_dir: "./run_workdir"
+  default_dir: "./stock_analysis_workspace"
   auto_create: true
   max_file_size_mb: 100
 

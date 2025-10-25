@@ -31,7 +31,86 @@ class ReportSaverToolkit(AsyncBaseToolkit):
 
     def __init__(self, config: ToolkitConfig | dict | None = None):
         super().__init__(config)
-        self.workspace_root = getattr(config, 'workspace_root', './run_workdir') if config else './run_workdir'
+        self.workspace_root = getattr(config, 'workspace_root', './stock_analysis_workspace') if config else './stock_analysis_workspace'
+
+    def get_available_chinese_fonts(self):
+        """跨平台中文字体检测"""
+        font_candidates = []
+
+        # Windows字体路径
+        windows_fonts = [
+            "C:/Windows/Fonts/simhei.ttf",
+            "C:/Windows/Fonts/simsun.ttc",
+            "C:/Windows/Fonts/msyh.ttc",
+            "C:/Windows/Fonts/simkai.ttf",
+            "C:/Windows/Fonts/msyhbd.ttc"
+        ]
+
+        # Linux字体路径
+        linux_fonts = [
+            "/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc",
+            "/usr/share/fonts/truetype/wqy/wqy-microhei.ttc",
+            "/usr/share/fonts/truetype/arphic/uming.ttc",
+            "/usr/share/fonts/truetype/arphic/ukai.ttc",
+            "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+            "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
+        ]
+
+        # macOS字体路径
+        mac_fonts = [
+            "/System/Library/Fonts/PingFang.ttc",
+            "/System/Library/Fonts/Hiragino Sans GB.ttc",
+            "/System/Library/Fonts/STHeiti Light.ttc",
+            "/System/Library/Fonts/STHeiti Medium.ttc",
+            "/Library/Fonts/Arial Unicode.ttf"
+        ]
+
+        # 检查字体文件是否存在
+        all_fonts = windows_fonts + linux_fonts + mac_fonts
+        for font_path in all_fonts:
+            if os.path.exists(font_path):
+                font_candidates.append(font_path)
+
+        return font_candidates
+
+    def setup_pdf_font(self, pdf):
+        """为PDF设置中文字体支持"""
+        available_fonts = self.get_available_chinese_fonts()
+
+        if available_fonts:
+            try:
+                # 尝试使用第一个可用字体
+                font_path = available_fonts[0]
+                font_name = "ChineseFont"
+
+                # 添加字体到PDF
+                pdf.add_font(font_name, "", font_path, uni=True)
+                pdf.set_font(font_name, size=12)
+                print(f"使用中文字体: {font_path}")
+                return True
+            except Exception as e:
+                print(f"Warning: 字体加载失败 {font_path}: {e}")
+                try:
+                    # 尝试下一个可用字体
+                    for font_path in available_fonts[1:]:
+                        try:
+                            pdf.add_font("ChineseFont", "", font_path, uni=True)
+                            pdf.set_font("ChineseFont", size=12)
+                            print(f"使用备用中文字体: {font_path}")
+                            return True
+                        except Exception:
+                            continue
+                except Exception:
+                    pass
+
+        # 降级方案：使用系统默认字体
+        try:
+            pdf.set_font("Arial", size=12)
+            print("Warning: 未找到中文字体，使用Arial字体（可能无法显示中文）")
+            return False
+        except Exception as e:
+            print(f"Error: 字体设置完全失败: {e}")
+            return False
 
     def _format_financial_data_as_markdown(self, financial_data_json: str) -> str:
         """
@@ -1106,38 +1185,55 @@ class ReportSaverToolkit(AsyncBaseToolkit):
             from fpdf import FPDF  # 确保FPDF已导入
             pdf = FPDF()
             pdf.add_page()
-            pdf.add_font("SimHei", "", "C:/Windows/Fonts/simhei.ttf", uni=True)  # 添加中文字体支持
-            
+
+            # 使用跨平台字体检测
+            font_success = self.setup_pdf_font(pdf)
+            if not font_success:
+                print("Warning: PDF将使用默认字体，中文字符可能无法正常显示")
+
             # 设置颜色和样式
             pdf.set_fill_color(240, 240, 240)  # 浅灰色背景
             pdf.set_draw_color(100, 100, 100)  # 深灰色边框
-            
+
             # 设置初始位置和行高
             pdf.set_y(20)
             line_height = 8
-            
+
             # 添加标题页
-            pdf.set_font("SimHei", size=24)
+            if font_success:
+                pdf.set_font("ChineseFont", size=24)
+            else:
+                pdf.set_font("Arial", size=24)
             pdf.set_text_color(0, 0, 0)  # 黑色文字
-            pdf.cell(0, 20, f"{company_name} 财务分析报告", align="C", ln=True)
+            pdf.cell(0, 20, f"{company_name} Financial Analysis Report", align="C", ln=True)
             pdf.ln(10)
-            
-            pdf.set_font("SimHei", size=14)
-            pdf.cell(0, 10, f"报告日期: {datetime.now().strftime('%Y年%m月%d日')}", align="C", ln=True)
+
+            if font_success:
+                pdf.set_font("ChineseFont", size=14)
+            else:
+                pdf.set_font("Arial", size=14)
+            pdf.cell(0, 10, f"Report Date: {datetime.now().strftime('%Y-%m-%d')}", align="C", ln=True)
             pdf.ln(20)
-            
+
             # 添加目录
-            pdf.set_font("SimHei", size=16)
-            pdf.cell(0, 10, "目录", ln=True)
+            if font_success:
+                pdf.set_font("ChineseFont", size=16)
+                pdf.cell(0, 10, "Table of Contents", ln=True)
+            else:
+                pdf.set_font("Arial", size=16)
+                pdf.cell(0, 10, "Table of Contents", ln=True)
             pdf.set_draw_color(0, 0, 0)
             pdf.line(10, pdf.get_y() + 5, 200, pdf.get_y() + 5)
             pdf.ln(10)
-            
+
             # 生成目录项
             sections = self._parse_report_sections(report_content)
-            section_names = list(sections.keys()) if sections else ["公司基本信息", "财务数据概览", "财务比率分析", "财务趋势分析", "关键洞察", "投资建议", "风险提示"]
-            
-            pdf.set_font("SimHei", size=12)
+            section_names = list(sections.keys()) if sections else ["Company Basic Info", "Financial Data Overview", "Financial Ratio Analysis", "Financial Trend Analysis", "Key Insights", "Investment Advice", "Risk Warning"]
+
+            if font_success:
+                pdf.set_font("ChineseFont", size=12)
+            else:
+                pdf.set_font("Arial", size=12)
             for i, section_name in enumerate(section_names, 1):
                 pdf.cell(0, 8, f"{i}. {section_name}", ln=True)
             pdf.ln(20)
@@ -1148,17 +1244,23 @@ class ReportSaverToolkit(AsyncBaseToolkit):
                     # 添加新页面
                     pdf.add_page()
                     pdf.set_y(20)
-                    
+
                     # 添加章节标题
-                    pdf.set_font("SimHei", size=18)
+                    if font_success:
+                        pdf.set_font("ChineseFont", size=18)
+                    else:
+                        pdf.set_font("Arial", size=18)
                     pdf.set_text_color(0, 0, 139)  # 深蓝色标题
                     pdf.cell(0, 15, section_title, ln=True)
                     pdf.set_draw_color(0, 0, 0)
                     pdf.line(10, pdf.get_y() + 2, 200, pdf.get_y() + 2)
                     pdf.ln(10)
-                    
+
                     # 添加章节内容
-                    pdf.set_font("SimHei", size=12)
+                    if font_success:
+                        pdf.set_font("ChineseFont", size=12)
+                    else:
+                        pdf.set_font("Arial", size=12)
                     pdf.set_text_color(0, 0, 0)  # 黑色文字
                     
                     lines = section_content.split('\n')
@@ -1171,9 +1273,15 @@ class ReportSaverToolkit(AsyncBaseToolkit):
                             # 检查是否是表格行
                             elif '|' in line and line.count('|') > 2:
                                 # 简单的表格处理
-                                pdf.set_font("SimHei", size=10)
+                                if font_success:
+                                    pdf.set_font("ChineseFont", size=10)
+                                else:
+                                    pdf.set_font("Arial", size=10)
                                 pdf.cell(0, line_height, line.strip(), ln=True)
-                                pdf.set_font("SimHei", size=12)
+                                if font_success:
+                                    pdf.set_font("ChineseFont", size=12)
+                                else:
+                                    pdf.set_font("Arial", size=12)
                             else:
                                 pdf.cell(0, line_height, line.strip(), ln=True)
                         else:
@@ -1182,17 +1290,23 @@ class ReportSaverToolkit(AsyncBaseToolkit):
                 # 如果没有解析出章节，直接添加完整内容
                 pdf.add_page()
                 pdf.set_y(20)
-                
+
                 # 添加默认章节标题
-                pdf.set_font("SimHei", size=18)
+                if font_success:
+                    pdf.set_font("ChineseFont", size=18)
+                else:
+                    pdf.set_font("Arial", size=18)
                 pdf.set_text_color(0, 0, 139)  # 深蓝色标题
-                pdf.cell(0, 15, "报告内容", ln=True)
+                pdf.cell(0, 15, "Report Content", ln=True)
                 pdf.set_draw_color(0, 0, 0)
                 pdf.line(10, pdf.get_y() + 2, 200, pdf.get_y() + 2)
                 pdf.ln(10)
-                
+
                 # 添加内容
-                pdf.set_font("SimHei", size=12)
+                if font_success:
+                    pdf.set_font("ChineseFont", size=12)
+                else:
+                    pdf.set_font("Arial", size=12)
                 pdf.set_text_color(0, 0, 0)  # 黑色文字
                 
                 lines = report_content.split('\n')
@@ -1210,9 +1324,12 @@ class ReportSaverToolkit(AsyncBaseToolkit):
                             # 在PDF中添加图片
                             pdf.add_page()
                             pdf.set_y(20)
-                            pdf.set_font("SimHei", size=16)
+                            if font_success:
+                                pdf.set_font("ChineseFont", size=16)
+                            else:
+                                pdf.set_font("Arial", size=16)
                             pdf.set_text_color(0, 0, 139)  # 深蓝色标题
-                            pdf.cell(0, 15, f"图表: {os.path.basename(chart_file)}", align="C", ln=True)
+                            pdf.cell(0, 15, f"Chart: {os.path.basename(chart_file)}", align="C", ln=True)
                             pdf.ln(10)
                             pdf.set_text_color(0, 0, 0)  # 黑色文字
                             # 添加图片（最大宽度180mm，高度自适应）
@@ -1291,3 +1408,138 @@ class ReportSaverToolkit(AsyncBaseToolkit):
             del sections["公司基本信息"]
         
         return sections
+
+    @register_tool()
+    async def save_html_as_pdf_report(self,
+                                     html_content: str,
+                                     stock_name: str = "财务分析报告",
+                                     file_prefix: str = "./stock_analysis_workspace",
+                                     chart_files: Optional[list] = None) -> Dict[str, Any]:
+        """
+        将HTML内容直接转换为PDF报告
+
+        Args:
+            html_content: HTML内容字符串
+            stock_name: 股票名称，用于文件名
+            file_prefix: 文件路径前缀
+            chart_files: 图表文件路径列表，用于在PDF中插入图表
+
+        Returns:
+            dict: 结果信息包括成功状态和文件路径
+        """
+        # 检查PDF支持是否可用
+        if not PDF_SUPPORT:
+            return {
+                "success": False,
+                "message": "PDF生成功能不可用，请安装fpdf2库",
+                "file_path": None,
+                "file_size": 0
+            }
+
+        try:
+            # 创建HTML到PDF转换器
+            class HTMLPDF(FPDF, HTMLMixin):
+                pass
+
+            # 生成文件名
+            current_date = datetime.now().strftime("%Y%m%d")
+            # 使用传入的stock_name或从HTML中提取公司名称
+            try:
+                import re
+                company_match = re.search(r'([A-Za-z\u4e00-\u9fff]+(?:股份有限公司|集团|公司|有限|Co\.|Ltd\.|Inc\.))', html_content)
+                if company_match:
+                    company_name = company_match.group(1)
+                else:
+                    company_name = stock_name
+            except:
+                company_name = stock_name
+
+            file_name = f"{company_name}{current_date}财务分析报告.pdf"
+
+            # 使用workspace_root作为默认路径，如果提供了file_prefix则使用file_prefix
+            if file_prefix and file_prefix != "./stock_analysis_workspace":
+                file_path = os.path.join(file_prefix, file_name)
+            else:
+                file_path = os.path.join(self.workspace_root, file_name)
+
+            # 确保目录存在
+            directory = os.path.dirname(file_path)
+            if directory:
+                os.makedirs(directory, exist_ok=True)
+
+            # 创建PDF文档
+            pdf = HTMLPDF()
+            pdf.add_page()
+
+            # 设置字体
+            font_success = self.setup_pdf_font(pdf)
+            if not font_success:
+                print("Warning: PDF将使用默认字体，中文字符可能无法正常显示")
+
+            # 添加HTML内容
+            try:
+                pdf.write_html(html_content)
+            except Exception as html_error:
+                print(f"HTML渲染失败，尝试文本模式: {html_error}")
+                # 降级到文本模式
+                pdf.add_page()
+                text_content = re.sub(r'<[^>]+>', '', html_content)  # 移除HTML标签
+                text_content = text_content.replace('&nbsp;', ' ').replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
+
+                if font_success:
+                    pdf.set_font("ChineseFont", size=12)
+                else:
+                    pdf.set_font("Arial", size=12)
+
+                lines = text_content.split('\n')
+                for line in lines:
+                    if line.strip():
+                        pdf.cell(0, 8, line.strip(), ln=True)
+
+            # 如果有图表文件，添加到PDF中
+            if chart_files and isinstance(chart_files, list):
+                for chart_file in chart_files:
+                    if os.path.exists(chart_file):
+                        try:
+                            # 在PDF中添加图片
+                            pdf.add_page()
+                            pdf.set_y(20)
+                            if font_success:
+                                pdf.set_font("ChineseFont", size=16)
+                            else:
+                                pdf.set_font("Arial", size=16)
+                            pdf.set_text_color(0, 0, 139)  # 深蓝色标题
+                            pdf.cell(0, 15, f"Chart: {os.path.basename(chart_file)}", align="C", ln=True)
+                            pdf.ln(10)
+                            pdf.set_text_color(0, 0, 0)  # 黑色文字
+                            # 添加图片（最大宽度180mm，高度自适应）
+                            pdf.image(chart_file, x=15, y=None, w=180)
+                        except Exception as img_error:
+                            print(f"Warning: 无法添加图表 {chart_file} 到PDF: {img_error}")
+
+            # 保存PDF文件
+            pdf.output(file_path)
+
+            # 验证文件是否保存成功
+            if os.path.exists(file_path):
+                file_size = os.path.getsize(file_path)
+                return {
+                    "success": True,
+                    "message": f"HTML转PDF报告已成功生成: {file_path}",
+                    "file_path": file_path,
+                    "file_size": file_size
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": "HTML转PDF报告时出错: 文件未成功创建",
+                    "file_path": None,
+                    "file_size": 0
+                }
+        except Exception as e:
+            return {
+                "success": False,
+                "message": f"HTML转PDF报告时出错: {str(e)}",
+                "file_path": None,
+                "file_size": 0
+            }
