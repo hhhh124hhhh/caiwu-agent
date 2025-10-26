@@ -11,6 +11,10 @@ activated_tools:
   - "save_text_report"
   - "save_analysis_result"
 
+# 新增加的内部方法支持（供analyze_trends_tool调用）
+supported_internal_methods:
+  - "_analyze_historical_trends_direct"
+
 config:
   timeout: 30
   cache_enabled: true

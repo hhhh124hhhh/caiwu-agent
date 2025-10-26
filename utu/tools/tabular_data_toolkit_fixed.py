@@ -349,16 +349,194 @@ plt.close()
         生成通用图表
 
         Args:
-            data: 数据字典
+            data: 数据字典，支持title、x_axis、series格式，以及years、revenue、net_profit格式
             chart_type: 图表类型
             output_dir: 输出目录
 
         Returns:
             Dict: 图表生成结果
         """
-        # 这里可以实现通用的图表生成逻辑
-        return {
-            "success": False,
-            "message": "通用图表生成功能待实现",
-            "files": []
-        }
+        try:
+            # 创建输出目录
+            os.makedirs(output_dir, exist_ok=True)
+            
+            # 检查是否是财务数据格式（years, revenue, net_profit）
+            if 'years' in data and ('revenue' in data or 'net_profit' in data):
+                # 转换为标准格式
+                standard_data = {
+                    'title': '财务指标趋势图',
+                    'x_axis': [str(year) for year in data['years']],
+                    'series': []
+                }
+                
+                # 添加收入数据（如果存在）
+                if 'revenue' in data:
+                    standard_data['series'].append({
+                        'name': '营业收入(亿元)',
+                        'data': data['revenue']
+                    })
+                
+                # 添加净利润数据（如果存在）
+                if 'net_profit' in data:
+                    standard_data['series'].append({
+                        'name': '净利润(亿元)',
+                        'data': data['net_profit']
+                    })
+                
+                # 使用转换后的数据
+                data = standard_data
+            
+            # 检查必要的数据字段 - 雷达图有特殊格式要求
+            if chart_type == "radar":
+                # 雷达图支持两种格式：
+                # 1. 标准格式：title, x_axis, series
+                # 2. 雷达图专用格式：title, categories, series
+                required_fields = ['title', 'series']
+                if not all(key in data for key in required_fields):
+                    return {
+                        "success": False,
+                        "message": f"雷达图数据格式错误，缺少必要字段（{', '.join(required_fields)}）",
+                        "files": []
+                    }
+
+                # 检查雷达图特有的字段
+                if 'categories' in data:
+                    # 使用雷达图专用格式
+                    return self._generate_radar_chart_with_categories(data, output_dir)
+                elif 'x_axis' in data:
+                    # 使用标准格式
+                    pass  # 继续执行通用逻辑
+                else:
+                    return {
+                        "success": False,
+                        "message": "雷达图需要categories或x_axis字段",
+                        "files": []
+                    }
+            else:
+                # 其他图表类型的标准格式检查
+                if not all(key in data for key in ['title', 'x_axis', 'series']):
+                    # 提供详细的格式示例和修复建议
+                    missing_fields = [key for key in ['title', 'x_axis', 'series'] if key not in data]
+
+                    # 生成格式示例
+                    format_example = {
+                        "title": "图表标题",
+                        "x_axis": ["2021", "2022", "2023", "2024"],
+                        "series": [
+                            {"name": "系列1", "data": [100, 150, 120, 180]},
+                            {"name": "series2", "data": [80, 120, 110, 140]}
+                        ]
+                    }
+
+                    # 支持X轴字典格式的示例
+                    dict_axis_example = {
+                        "title": "图表标题",
+                        "x_axis": {"name": "年份", "data": ["2021", "2022", "2023", "2024"]},
+                        "series": [
+                            {"name": "系列1", "data": [100, 150, 120, 180]},
+                            {"name": "series2", "data": [80, 120, 110, 140]}
+                        ]
+                    }
+
+                    return {
+                        "success": False,
+                        "message": f"数据格式错误，缺少必要字段: {', '.join(missing_fields)}",
+                        "files": [],
+                        "format_example": format_example,
+                        "dict_axis_example": dict_axis_example,
+                        "suggestions": [
+                            "1. 确保数据包含 title（图表标题）字段",
+                            "2. 确保数据包含 x_axis（X轴标签）字段，可以是列表或字典格式",
+                            "3. 确保数据包含 series（数据系列）字段",
+                            f"4. 缺失的字段: {', '.join(missing_fields)}",
+                            "5. 参考上面的格式示例调整数据结构"
+                        ]
+                    }
+            
+            # 准备数据
+            title = data.get('title', '图表')
+            x_axis_data = data.get('x_axis', [])
+            series = data.get('series', [])
+
+            # 增强X轴数据格式处理
+            x_axis = []
+            x_axis_name = 'X轴'
+            if isinstance(x_axis_data, dict):
+                # 处理 {"name": "标签名", "data": [...]} 格式
+                x_axis = x_axis_data.get('data', [])
+                x_axis_name = x_axis_data.get('name', 'X轴')
+            elif isinstance(x_axis_data, list):
+                # 处理直接列表格式
+                x_axis = x_axis_data
+                x_axis_name = 'X轴'
+            
+            # 验证数据
+            if not x_axis or not series:
+                return {
+                    "success": False,
+                    "message": "X轴数据或系列数据为空",
+                    "files": []
+                }
+            
+            # 验证系列数据长度
+            for s in series:
+                if 'data' not in s or len(s['data']) != len(x_axis):
+                    return {
+                        "success": False,
+                        "message": "系列数据长度与X轴数据不匹配",
+                        "files": []
+                    }
+            
+            # 创建图表
+            import matplotlib.pyplot as plt
+            import os
+            
+            # 设置中文字体支持
+            plt.rcParams['font.sans-serif'] = ['SimHei']  # 用来正常显示中文标签
+            plt.rcParams['axes.unicode_minus'] = False  # 用来正常显示负号
+            
+            plt.figure(figsize=(10, 6))
+            
+            if chart_type == 'line':
+                # 生成折线图
+                for s in series:
+                    plt.plot(x_axis, s['data'], marker='o', label=s['name'])
+            elif chart_type == 'bar':
+                # 生成柱状图
+                width = 0.8 / len(series)
+                for i, s in enumerate(series):
+                    plt.bar([j + i * width - (len(series) - 1) * width / 2 for j in range(len(x_axis))], 
+                            s['data'], width=width, label=s['name'])
+            else:
+                # 默认生成折线图
+                for s in series:
+                    plt.plot(x_axis, s['data'], marker='o', label=s['name'])
+            
+            plt.title(title, fontsize=15)
+            plt.xlabel(x_axis_name, fontsize=12)
+            plt.ylabel('数值', fontsize=12)
+            plt.legend()
+            plt.grid(True, linestyle='--', alpha=0.7)
+            
+            # 保存图表
+            chart_file = os.path.join(output_dir, f"{title}_{chart_type}.png")
+            plt.tight_layout()
+            plt.savefig(chart_file)
+            plt.close()
+            
+            return {
+                "success": True,
+                "message": f"图表生成成功",
+                "files": [chart_file],
+                "chart_type": chart_type
+            }
+            
+        except Exception as e:
+            error_msg = f"图表生成失败: {str(e)}"
+            self.logger.error(error_msg)
+            return {
+                "success": False,
+                "message": error_msg,
+                "files": [],
+                "error": str(e)
+            }

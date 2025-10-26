@@ -1178,6 +1178,230 @@ class AKShareFinancialDataTool(AsyncBaseToolkit):
             "report_date": report_date_str
         }
 
+    def _serialize_for_analysis(self, financial_data: Dict[str, pd.DataFrame]) -> str:
+        """
+        将财务数据序列化为适合分析的JSON格式
+
+        Args:
+            financial_data: 包含利润表、资产负债表、现金流量表的字典
+
+        Returns:
+            序列化后的JSON字符串
+        """
+        try:
+            # 导入数据适配器
+            from ..utils.data_adapter import get_data_adapter
+            adapter = get_data_adapter()
+
+            # 使用数据适配器进行序列化
+            serialized_data = adapter.normalize_financial_data(financial_data)
+            logger.info(f"财务数据序列化完成，数据大小: {len(serialized_data)} 字符")
+
+            return serialized_data
+
+        except Exception as e:
+            logger.error(f"财务数据序列化失败: {e}")
+            # 返回空的财务结构
+            empty_structure = {
+                "income": [],
+                "balance": [],
+                "cashflow": []
+            }
+            return json.dumps(empty_structure, ensure_ascii=False)
+
+    @register_tool("get_financial_data_for_analysis")
+    def get_financial_data_for_analysis(self, stock_code: str, stock_name: Optional[str] = None, format_type: str = "json") -> str:
+        """
+        获取适合财务分析的标准化数据
+
+        Args:
+            stock_code: 股票代码，如 '600248'
+            stock_name: 股票名称，可选
+            format_type: 输出格式，支持 'json', 'metrics', 'simple'
+
+        Returns:
+            标准化的财务数据JSON字符串
+        """
+        if stock_name is None:
+            stock_name = f"股票{stock_code}"
+
+        logger.info(f"获取 {stock_name}({stock_code}) 的标准化分析数据")
+
+        try:
+            # 获取原始财务数据
+            financial_data = self.get_financial_reports(stock_code, stock_name)
+
+            if not financial_data or all(df.empty for df in financial_data.values()):
+                logger.error("未获取到有效的财务数据")
+                return json.dumps({
+                    "error": True,
+                    "message": f"未获取到 {stock_name}({stock_code}) 的有效财务数据",
+                    "suggestions": [
+                        "检查股票代码是否正确",
+                        "确认该股票是否有公开财报数据",
+                        "尝试稍后重试"
+                    ]
+                }, ensure_ascii=False)
+
+            if format_type == "metrics":
+                # 提取关键指标
+                from ..utils.data_adapter import get_data_adapter
+                adapter = get_data_adapter()
+                key_metrics = adapter.extract_key_metrics(financial_data)
+
+                result = {
+                    "stock_code": stock_code,
+                    "stock_name": stock_name,
+                    "key_metrics": key_metrics,
+                    "data_source": "akshare",
+                    "extract_time": datetime.now().isoformat()
+                }
+
+                logger.info(f"提取到 {len(key_metrics)} 个关键指标")
+                return json.dumps(result, ensure_ascii=False, default=str)
+
+            elif format_type == "simple":
+                # 简化格式，只保留最新数据
+                simplified_data = {}
+
+                for table_name, df in financial_data.items():
+                    if not df.empty:
+                        # 只取第一行（最新数据）
+                        latest_row = df.iloc[0].to_dict()
+                        # 清理数据
+                        cleaned_row = {}
+                        for key, value in latest_row.items():
+                            if pd.notna(value):
+                                if isinstance(value, (int, float, np.integer, np.floating)):
+                                    cleaned_row[key] = float(value)
+                                elif isinstance(value, str):
+                                    cleaned_row[key] = value
+                                else:
+                                    cleaned_row[key] = str(value)
+                        simplified_data[table_name] = cleaned_row
+
+                result = {
+                    "stock_code": stock_code,
+                    "stock_name": stock_name,
+                    "financial_data": simplified_data,
+                    "data_source": "akshare",
+                    "format": "simple"
+                }
+
+                logger.info(f"简化数据格式生成完成: {list(simplified_data.keys())}")
+                return json.dumps(result, ensure_ascii=False, default=str)
+
+            else:  # format_type == "json" (默认)
+                # 标准JSON格式，适合直接传递给财务分析工具
+                serialized_data = self._serialize_for_analysis(financial_data)
+
+                # 添加元数据
+                enhanced_data = {
+                    "stock_code": stock_code,
+                    "stock_name": stock_name,
+                    "financial_data": json.loads(serialized_data),
+                    "data_source": "akshare",
+                    "format": "standard",
+                    "serialization_time": datetime.now().isoformat()
+                }
+
+                logger.info(f"标准化分析数据生成完成")
+                return json.dumps(enhanced_data, ensure_ascii=False, default=str)
+
+        except Exception as e:
+            logger.error(f"获取标准化分析数据失败: {e}")
+            import traceback
+            logger.error(f"详细错误: {traceback.format_exc()}")
+
+            return json.dumps({
+                "error": True,
+                "error_code": "DATA_EXTRACTION_ERROR",
+                "message": f"获取 {stock_name}({stock_code}) 的分析数据失败: {str(e)}",
+                "suggestions": [
+                    "检查网络连接是否正常",
+                    "确认股票代码是否正确",
+                    "稍后重试或联系技术支持"
+                ]
+            }, ensure_ascii=False)
+
+    @register_tool("convert_financial_data_format")
+    def convert_financial_data_format(self, financial_data: Union[str, Dict], target_format: str = "analysis_ready") -> str:
+        """
+        转换财务数据格式
+
+        Args:
+            financial_data: 输入的财务数据（JSON字符串或字典）
+            target_format: 目标格式，支持 'analysis_ready', 'simple', 'metrics'
+
+        Returns:
+            转换后的JSON字符串
+        """
+        logger.info(f"转换财务数据格式，目标格式: {target_format}")
+
+        try:
+            # 导入数据适配器
+            from ..utils.data_adapter import get_data_adapter
+            adapter = get_data_adapter()
+
+            if target_format == "analysis_ready":
+                # 转换为适合分析的标准格式
+                if isinstance(financial_data, str):
+                    # 已经是字符串，使用适配器标准化
+                    result = adapter.normalize_financial_data(financial_data)
+                else:
+                    # 字典格式，直接标准化
+                    result = adapter.normalize_financial_data(financial_data)
+
+            elif target_format == "simple":
+                # 转换为简化格式
+                if isinstance(financial_data, str):
+                    data_dict = json.loads(financial_data)
+                else:
+                    data_dict = financial_data
+
+                # 提取关键指标
+                key_metrics = adapter.extract_key_metrics(data_dict)
+
+                result = {
+                    "key_metrics": key_metrics,
+                    "format": "simple",
+                    "conversion_time": datetime.now().isoformat()
+                }
+
+            elif target_format == "metrics":
+                # 只提取关键指标
+                if isinstance(financial_data, str):
+                    data_dict = json.loads(financial_data)
+                else:
+                    data_dict = financial_data
+
+                key_metrics = adapter.extract_key_metrics(data_dict)
+                result = json.dumps(key_metrics, ensure_ascii=False, default=str)
+
+            else:
+                # 不支持的格式
+                result = json.dumps({
+                    "error": True,
+                    "message": f"不支持的目标格式: {target_format}",
+                    "supported_formats": ["analysis_ready", "simple", "metrics"]
+                }, ensure_ascii=False)
+
+            logger.info(f"数据格式转换完成: {target_format}")
+            return result
+
+        except Exception as e:
+            logger.error(f"数据格式转换失败: {e}")
+            return json.dumps({
+                "error": True,
+                "error_code": "FORMAT_CONVERSION_ERROR",
+                "message": f"数据格式转换失败: {str(e)}",
+                "suggestions": [
+                    "检查输入数据格式是否正确",
+                    "确认目标格式是否支持",
+                    "参考文档中的格式示例"
+                ]
+            }, ensure_ascii=False)
+
 
 # 便利函数
 def get_financial_reports(stock_code: str, stock_name: Optional[str] = None, force_refresh: bool = False) -> Dict[str, pd.DataFrame]:
@@ -1312,3 +1536,227 @@ if __name__ == "__main__":
     print("- 缓存有效期管理（默认7天）")
     print("- 自动清理过期缓存")
     print("- 完整的缓存管理功能")
+
+    def _serialize_for_analysis(self, financial_data: Dict[str, pd.DataFrame]) -> str:
+        """
+        将财务数据序列化为适合分析的JSON格式
+
+        Args:
+            financial_data: 包含利润表、资产负债表、现金流量表的字典
+
+        Returns:
+            序列化后的JSON字符串
+        """
+        try:
+            # 导入数据适配器
+            from ..utils.data_adapter import get_data_adapter
+            adapter = get_data_adapter()
+
+            # 使用数据适配器进行序列化
+            serialized_data = adapter.normalize_financial_data(financial_data)
+            logger.info(f"财务数据序列化完成，数据大小: {len(serialized_data)} 字符")
+
+            return serialized_data
+
+        except Exception as e:
+            logger.error(f"财务数据序列化失败: {e}")
+            # 返回空的财务结构
+            empty_structure = {
+                "income": [],
+                "balance": [],
+                "cashflow": []
+            }
+            return json.dumps(empty_structure, ensure_ascii=False)
+
+    @register_tool("get_financial_data_for_analysis")
+    def get_financial_data_for_analysis(self, stock_code: str, stock_name: Optional[str] = None, format_type: str = "json") -> str:
+        """
+        获取适合财务分析的标准化数据
+
+        Args:
+            stock_code: 股票代码，如 '600248'
+            stock_name: 股票名称，可选
+            format_type: 输出格式，支持 'json', 'metrics', 'simple'
+
+        Returns:
+            标准化的财务数据JSON字符串
+        """
+        if stock_name is None:
+            stock_name = f"股票{stock_code}"
+
+        logger.info(f"获取 {stock_name}({stock_code}) 的标准化分析数据")
+
+        try:
+            # 获取原始财务数据
+            financial_data = self.get_financial_reports(stock_code, stock_name)
+
+            if not financial_data or all(df.empty for df in financial_data.values()):
+                logger.error("未获取到有效的财务数据")
+                return json.dumps({
+                    "error": True,
+                    "message": f"未获取到 {stock_name}({stock_code}) 的有效财务数据",
+                    "suggestions": [
+                        "检查股票代码是否正确",
+                        "确认该股票是否有公开财报数据",
+                        "尝试稍后重试"
+                    ]
+                }, ensure_ascii=False)
+
+            if format_type == "metrics":
+                # 提取关键指标
+                from ..utils.data_adapter import get_data_adapter
+                adapter = get_data_adapter()
+                key_metrics = adapter.extract_key_metrics(financial_data)
+
+                result = {
+                    "stock_code": stock_code,
+                    "stock_name": stock_name,
+                    "key_metrics": key_metrics,
+                    "data_source": "akshare",
+                    "extract_time": datetime.now().isoformat()
+                }
+
+                logger.info(f"提取到 {len(key_metrics)} 个关键指标")
+                return json.dumps(result, ensure_ascii=False, default=str)
+
+            elif format_type == "simple":
+                # 简化格式，只保留最新数据
+                simplified_data = {}
+
+                for table_name, df in financial_data.items():
+                    if not df.empty:
+                        # 只取第一行（最新数据）
+                        latest_row = df.iloc[0].to_dict()
+                        # 清理数据
+                        cleaned_row = {}
+                        for key, value in latest_row.items():
+                            if pd.notna(value):
+                                if isinstance(value, (int, float, np.integer, np.floating)):
+                                    cleaned_row[key] = float(value)
+                                elif isinstance(value, str):
+                                    cleaned_row[key] = value
+                                else:
+                                    cleaned_row[key] = str(value)
+                        simplified_data[table_name] = cleaned_row
+
+                result = {
+                    "stock_code": stock_code,
+                    "stock_name": stock_name,
+                    "financial_data": simplified_data,
+                    "data_source": "akshare",
+                    "format": "simple"
+                }
+
+                logger.info(f"简化数据格式生成完成: {list(simplified_data.keys())}")
+                return json.dumps(result, ensure_ascii=False, default=str)
+
+            else:  # format_type == "json" (默认)
+                # 标准JSON格式，适合直接传递给财务分析工具
+                serialized_data = self._serialize_for_analysis(financial_data)
+
+                # 添加元数据
+                enhanced_data = {
+                    "stock_code": stock_code,
+                    "stock_name": stock_name,
+                    "financial_data": json.loads(serialized_data),
+                    "data_source": "akshare",
+                    "format": "standard",
+                    "serialization_time": datetime.now().isoformat()
+                }
+
+                logger.info(f"标准化分析数据生成完成")
+                return json.dumps(enhanced_data, ensure_ascii=False, default=str)
+
+        except Exception as e:
+            logger.error(f"获取标准化分析数据失败: {e}")
+            import traceback
+            logger.error(f"详细错误: {traceback.format_exc()}")
+
+            return json.dumps({
+                "error": True,
+                "error_code": "DATA_EXTRACTION_ERROR",
+                "message": f"获取 {stock_name}({stock_code}) 的分析数据失败: {str(e)}",
+                "suggestions": [
+                    "检查网络连接是否正常",
+                    "确认股票代码是否正确",
+                    "稍后重试或联系技术支持"
+                ]
+            }, ensure_ascii=False)
+
+    @register_tool("convert_financial_data_format")
+    def convert_financial_data_format(self, financial_data: Union[str, Dict], target_format: str = "analysis_ready") -> str:
+        """
+        转换财务数据格式
+
+        Args:
+            financial_data: 输入的财务数据（JSON字符串或字典）
+            target_format: 目标格式，支持 'analysis_ready', 'simple', 'metrics'
+
+        Returns:
+            转换后的JSON字符串
+        """
+        logger.info(f"转换财务数据格式，目标格式: {target_format}")
+
+        try:
+            # 导入数据适配器
+            from ..utils.data_adapter import get_data_adapter
+            adapter = get_data_adapter()
+
+            if target_format == "analysis_ready":
+                # 转换为适合分析的标准格式
+                if isinstance(financial_data, str):
+                    # 已经是字符串，使用适配器标准化
+                    result = adapter.normalize_financial_data(financial_data)
+                else:
+                    # 字典格式，直接标准化
+                    result = adapter.normalize_financial_data(financial_data)
+
+            elif target_format == "simple":
+                # 转换为简化格式
+                if isinstance(financial_data, str):
+                    data_dict = json.loads(financial_data)
+                else:
+                    data_dict = financial_data
+
+                # 提取关键指标
+                key_metrics = adapter.extract_key_metrics(data_dict)
+
+                result = {
+                    "key_metrics": key_metrics,
+                    "format": "simple",
+                    "conversion_time": datetime.now().isoformat()
+                }
+
+            elif target_format == "metrics":
+                # 只提取关键指标
+                if isinstance(financial_data, str):
+                    data_dict = json.loads(financial_data)
+                else:
+                    data_dict = financial_data
+
+                key_metrics = adapter.extract_key_metrics(data_dict)
+                result = json.dumps(key_metrics, ensure_ascii=False, default=str)
+
+            else:
+                # 不支持的格式
+                result = json.dumps({
+                    "error": True,
+                    "message": f"不支持的目标格式: {target_format}",
+                    "supported_formats": ["analysis_ready", "simple", "metrics"]
+                }, ensure_ascii=False)
+
+            logger.info(f"数据格式转换完成: {target_format}")
+            return result
+
+        except Exception as e:
+            logger.error(f"数据格式转换失败: {e}")
+            return json.dumps({
+                "error": True,
+                "error_code": "FORMAT_CONVERSION_ERROR",
+                "message": f"数据格式转换失败: {str(e)}",
+                "suggestions": [
+                    "检查输入数据格式是否正确",
+                    "确认目标格式是否支持",
+                    "参考文档中的格式示例"
+                ]
+            }, ensure_ascii=False)
