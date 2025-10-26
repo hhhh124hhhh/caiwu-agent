@@ -78,11 +78,33 @@ class TabularDataToolkit(AsyncBaseToolkit):
         except json.JSONDecodeError as e:
             error_msg = f"JSON解析错误: {str(e)}"
             logger.error(error_msg)
+
+            # 提供详细的错误信息和格式示例
+            if chart_type == "radar":
+                format_example = {
+                    "title": "陕西建工财务健康雷达图",
+                    "categories": ["盈利能力", "偿债能力", "运营效率", "成长能力", "现金流"],
+                    "series": [
+                        {"name": "陕西建工", "data": [30, 20, 25, 15, 10]},
+                        {"name": "行业平均", "data": [60, 70, 55, 50, 65]}
+                    ]
+                }
+            else:
+                format_example = {
+                    "title": "图表标题",
+                    "x_axis": ["X轴标签1", "X轴标签2"],
+                    "series": [
+                        {"name": "系列1", "data": [10, 20]},
+                        {"name": "系列2", "data": [15, 25]}
+                    ]
+                }
+
             return {
                 "success": False,
-                "message": error_msg,
+                "message": f"{error_msg}\n\n请使用正确的JSON格式，例如：\n{json.dumps(format_example, ensure_ascii=False, indent=2)}",
                 "files": [],
-                "error": str(e)
+                "error": str(e),
+                "format_example": format_example
             }
         except Exception as e:
             error_msg = f"图表生成失败: {str(e)}"
@@ -1201,18 +1223,95 @@ class TabularDataToolkit(AsyncBaseToolkit):
             # 创建输出目录
             os.makedirs(output_dir, exist_ok=True)
             
-            # 检查必要的数据字段
-            if not all(key in data for key in ['title', 'x_axis', 'series']):
-                return {
-                    "success": False,
-                    "message": "数据格式错误，缺少必要字段（title、x_axis、series）",
-                    "files": []
-                }
+            # 检查必要的数据字段 - 雷达图有特殊格式要求
+            if chart_type == "radar":
+                # 雷达图支持两种格式：
+                # 1. 标准格式：title, x_axis, series
+                # 2. 雷达图专用格式：title, categories, series
+                required_fields = ['title', 'series']
+                if not all(key in data for key in required_fields):
+                    return {
+                        "success": False,
+                        "message": f"雷达图数据格式错误，缺少必要字段（{', '.join(required_fields)}）",
+                        "files": []
+                    }
+
+                # 检查雷达图特有的字段
+                if 'categories' in data:
+                    # 使用雷达图专用格式
+                    return self._generate_radar_chart_with_categories(data, output_dir)
+                elif 'x_axis' in data:
+                    # 使用标准格式
+                    pass  # 继续执行通用逻辑
+                else:
+                    return {
+                        "success": False,
+                        "message": "雷达图需要categories或x_axis字段",
+                        "files": []
+                    }
+            else:
+                # 其他图表类型的标准格式检查
+                if not all(key in data for key in ['title', 'x_axis', 'series']):
+                    # 提供详细的格式示例和修复建议
+                    missing_fields = [key for key in ['title', 'x_axis', 'series'] if key not in data]
+
+                    # 生成格式示例
+                    format_example = {
+                        "title": "图表标题",
+                        "x_axis": ["2021", "2022", "2023", "2024"],
+                        "series": [
+                            {"name": "系列1", "data": [100, 150, 120, 180]},
+                            {"name": "series2", "data": [80, 120, 110, 140]}
+                        ]
+                    }
+
+                    # 支持X轴字典格式的示例
+                    dict_axis_example = {
+                        "title": "图表标题",
+                        "x_axis": {"name": "年份", "data": ["2021", "2022", "2023", "2024"]},
+                        "series": [
+                            {"name": "系列1", "data": [100, 150, 120, 180]},
+                            {"name": "series2", "data": [80, 120, 110, 140]}
+                        ]
+                    }
+
+                    return {
+                        "success": False,
+                        "message": f"数据格式错误，缺少必要字段: {', '.join(missing_fields)}",
+                        "files": [],
+                        "format_example": format_example,
+                        "dict_axis_example": dict_axis_example,
+                        "suggestions": [
+                            "1. 确保数据包含 title（图表标题）字段",
+                            "2. 确保数据包含 x_axis（X轴标签）字段，可以是列表或字典格式",
+                            "3. 确保数据包含 series（数据系列）字段",
+                            f"4. 缺失的字段: {', '.join(missing_fields)}",
+                            "5. 参考上面的格式示例调整数据结构"
+                        ]
+                    }
             
             # 准备数据
             title = data.get('title', '图表')
-            x_axis = data.get('x_axis', [])
+            x_axis_data = data.get('x_axis', [])
             series = data.get('series', [])
+
+            # 增强X轴数据格式处理
+            x_axis = []
+            x_axis_name = 'X轴'
+            if isinstance(x_axis_data, dict):
+                # 处理 {"name": "标签名", "data": [...]} 格式
+                x_axis = x_axis_data.get('data', [])
+                x_axis_name = x_axis_data.get('name', 'X轴')
+                logger.info(f"检测到X轴字典格式，名称: {x_axis_name}, 数据: {x_axis}")
+            elif isinstance(x_axis_data, list):
+                # 处理直接列表格式
+                x_axis = x_axis_data
+                x_axis_name = 'X轴'
+                logger.info(f"检测到X轴列表格式，数据: {x_axis}")
+            else:
+                logger.warning(f"X轴数据格式不正确，类型: {type(x_axis_data)}, 值: {x_axis_data}")
+                x_axis = []
+                x_axis_name = 'X轴'
             
             if not x_axis or not series:
                 return {
@@ -1234,22 +1333,46 @@ class TabularDataToolkit(AsyncBaseToolkit):
                 for i, item in enumerate(series):
                     series_name = item.get('name', f'系列{i+1}')
                     series_data = item.get('data', [])
-                    
-                    if len(series_data) != len(x_axis):
-                        logger.warning(f"系列 '{series_name}' 的数据长度与X轴不匹配，跳过")
+
+                    # 数据长度检查
+                    expected_length = len(x_axis)
+                    actual_length = len(series_data)
+
+                    if actual_length != expected_length:
+                        logger.warning(f"系列 '{series_name}' 数据长度不匹配，跳过")
+                        logger.warning(f"  期望长度: {expected_length}, 实际长度: {actual_length}")
+                        logger.warning(f"  X轴标签: {x_axis}")
+                        logger.warning(f"  系列数据: {series_data}")
+
+                        # 提供修复建议
+                        if actual_length < expected_length:
+                            logger.info(f"  建议补充 {expected_length - actual_length} 个数据点")
+                        else:
+                            logger.info(f"  建议移除 {actual_length - expected_length} 个数据点")
                         continue
                     
                     # 使用不同颜色，循环使用
                     color = colors[i % len(colors)]
-                    
-                    # 绘制折线图
-                    plt.plot(x_axis, series_data, marker='o', linewidth=2, markersize=6, color=color, label=series_name)
+
+                    # 确保X轴数据是列表格式
+                    plot_x_axis = x_axis if isinstance(x_axis, list) else list(x_axis) if x_axis else []
+
+                    # 添加绘图错误处理
+                    try:
+                        # 绘制折线图
+                        plt.plot(plot_x_axis, series_data, marker='o', linewidth=2, markersize=6, color=color, label=series_name)
+                        logger.debug(f"成功绘制系列 '{series_name}'，数据点数: {len(series_data)}")
+                    except Exception as e:
+                        logger.error(f"绘制系列 '{series_name}' 时出错: {e}")
+                        logger.error(f"  X轴数据: {plot_x_axis} (类型: {type(plot_x_axis)})")
+                        logger.error(f"  系列数据: {series_data} (类型: {type(series_data)})")
+                        continue
                 
                 # 设置图表标题和标签
                 plt.title(title, fontsize=16, fontweight='bold')
-                plt.xlabel('年份', fontsize=12)
+                plt.xlabel(x_axis_name, fontsize=12)
                 plt.ylabel('数值', fontsize=12)
-                
+
                 # 添加图例
                 plt.legend(loc='best', fontsize=10)
                 
@@ -1430,6 +1553,129 @@ class TabularDataToolkit(AsyncBaseToolkit):
         except Exception as e:
             error_msg = f"通用图表生成失败: {str(e)}"
             logger.error(error_msg)
+            import traceback
+            traceback.print_exc()
+            return {
+                "success": False,
+                "message": error_msg,
+                "files": [],
+                "error": str(e)
+            }
+
+    def _generate_radar_chart_with_categories(self, data: dict, output_dir: str) -> Dict[str, Any]:
+        """
+        生成带类别的雷达图（支持单公司多维度数据）
+
+        Args:
+            data: 数据字典，包含title、categories、series
+            output_dir: 输出目录
+
+        Returns:
+            Dict: 图表生成结果
+        """
+        try:
+            import matplotlib.pyplot as plt
+            import numpy as np
+            import os
+
+            # 创建输出目录
+            os.makedirs(output_dir, exist_ok=True)
+
+            # 提取数据
+            title = data.get('title', '财务雷达图')
+            categories = data.get('categories', [])
+            series = data.get('series', [])
+
+            if not categories:
+                return {
+                    "success": False,
+                    "message": "雷达图缺少categories字段",
+                    "files": []
+                }
+
+            if not series:
+                return {
+                    "success": False,
+                    "message": "雷达图缺少series字段",
+                    "files": []
+                }
+
+            # 创建图表
+            fig = plt.figure(figsize=(10, 8))
+            ax = fig.add_subplot(111, polar=True)
+
+            # 计算角度
+            angles = np.linspace(0, 2 * np.pi, len(categories), endpoint=False).tolist()
+            angles += angles[:1]  # 闭合图形
+
+            # 颜色配置
+            colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b']
+
+            # 为每个系列绘制雷达图
+            for i, serie in enumerate(series):
+                if not isinstance(serie, dict):
+                    continue
+
+                name = serie.get('name', f'系列{i+1}')
+                values = serie.get('data', [])
+
+                if len(values) != len(categories):
+                    self.logger.warning(f"系列 '{name}' 的数据长度 {len(values)} 与类别数量 {len(categories)} 不匹配")
+                    continue
+
+                # 闭合图形
+                values += values[:1]
+
+                color = colors[i % len(colors)]
+                ax.plot(angles, values, 'o-', linewidth=2, label=name, color=color)
+                ax.fill(angles, values, alpha=0.25, color=color)
+
+            # 设置角度标签
+            ax.set_thetagrids(np.degrees(angles[:-1]), categories)
+
+            # 设置径向范围
+            all_values = []
+            for serie in series:
+                if isinstance(serie, dict) and 'data' in serie:
+                    all_values.extend(serie['data'])
+
+            if all_values:
+                max_value = max(all_values)
+                min_value = min(all_values)
+                if min_value >= 0:
+                    ax.set_ylim(0, max_value * 1.1)
+                else:
+                    ax.set_ylim(min_value * 1.1, max_value * 1.1)
+
+            ax.grid(True)
+            ax.legend(loc='upper right', bbox_to_anchor=(1.3, 1.0))
+
+            plt.title(title, size=16, fontweight='bold', pad=20)
+
+            # 保存图表
+            chart_file = os.path.join(output_dir, 'radar_chart.png')
+            plt.savefig(chart_file, dpi=300, bbox_inches='tight', facecolor='white')
+            plt.close()
+
+            if os.path.exists(chart_file):
+                self.logger.info(f"雷达图生成成功: {chart_file}")
+                return {
+                    "success": True,
+                    "message": "雷达图生成成功",
+                    "files": [chart_file],
+                    "chart_type": "radar",
+                    "chart_count": 1
+                }
+            else:
+                return {
+                    "success": False,
+                    "message": "雷达图文件保存失败",
+                    "files": []
+                }
+
+        except Exception as e:
+            error_msg = f"雷达图生成失败: {str(e)}"
+            self.logger.error(error_msg)
             import traceback
             traceback.print_exc()
             return {

@@ -431,13 +431,13 @@ async def main():
     
     <div class="section">
         <h2>1. 执行摘要</h2>
-        <p>{investment_advice.get('summary', '公司财务状况总体分析...')}</p>
+        <p>{integrated_data['investment_advice'].get('summary', '公司财务状况总体分析...')}</p>
     </div>
     
     <div class="section">
         <h2>2. 公司基本信息</h2>
-        <p>{basic_info.get('company_profile', '公司基本情况介绍...')}</p>
-        <p>{basic_info.get('business_description', '主营业务描述...')}</p>
+        <p>{integrated_data['basic_info'].get('company_profile', '公司基本情况介绍...')}</p>
+        <p>{integrated_data['basic_info'].get('business_description', '主营业务描述...')}</p>
     </div>
     
     <div class="section">
@@ -445,36 +445,36 @@ async def main():
         <p>主要财务指标:</p>
         <table>
             <tr><th>指标</th><th>数值</th><th>单位</th></tr>
-            <tr><td>营业收入</td><td>{financial_data.get('revenue', 'N/A')}</td><td>亿元</td></tr>
-            <tr><td>净利润</td><td>{financial_data.get('net_profit', 'N/A')}</td><td>亿元</td></tr>
-            <tr><td>总资产</td><td>{financial_data.get('total_assets', 'N/A')}</td><td>亿元</td></tr>
-            <tr><td>总负债</td><td>{financial_data.get('total_liabilities', 'N/A')}</td><td>亿元</td></tr>
+            <tr><td>营业收入</td><td>{integrated_data['financial_data'].get('revenue', 'N/A')}</td><td>亿元</td></tr>
+            <tr><td>净利润</td><td>{integrated_data['financial_data'].get('net_profit', 'N/A')}</td><td>亿元</td></tr>
+            <tr><td>总资产</td><td>{integrated_data['financial_data'].get('total_assets', 'N/A')}</td><td>亿元</td></tr>
+            <tr><td>总负债</td><td>{integrated_data['financial_data'].get('total_liabilities', 'N/A')}</td><td>亿元</td></tr>
         </table>
     </div>
     
     <div class="section">
         <h2>4. 财务比率分析</h2>
-        <p>{ratio_analysis.get('summary', '财务比率分析结果...')}</p>
+        <p>{integrated_data['ratio_analysis'].get('summary', '财务比率分析结果...')}</p>
     </div>
     
     <div class="section">
         <h2>5. 趋势分析</h2>
-        <p>{trend_analysis.get('summary', '财务趋势分析...')}</p>
+        <p>{integrated_data['trend_analysis'].get('summary', '财务趋势分析...')}</p>
     </div>
     
     <div class="section">
         <h2>6. 风险评估</h2>
-        <p>{risk_assessment.get('summary', '风险因素分析...')}</p>
+        <p>{integrated_data['risk_assessment'].get('summary', '风险因素分析...')}</p>
         <ul>
-            {''.join([f'<li class="risk">{risk}</li>' for risk in risk_assessment.get('risk_factors', [])])}
+            {''.join([f'<li class="risk">{risk}</li>' for risk in integrated_data['risk_assessment'].get('risk_factors', [])])}
         </ul>
     </div>
     
     <div class="section">
         <h2>7. 投资建议</h2>
-        <p class="highlight">{investment_advice.get('recommendation', '投资建议内容...')}</p>
-        <p>目标价位: {investment_advice.get('target_price', 'N/A')}</p>
-        <p>投资评级: {investment_advice.get('rating', 'N/A')}</p>
+        <p class="highlight">{integrated_data['investment_advice'].get('recommendation', '投资建议内容...')}</p>
+        <p>目标价位: {integrated_data['investment_advice'].get('target_price', 'N/A')}</p>
+        <p>投资评级: {integrated_data['investment_advice'].get('rating', 'N/A')}</p>
     </div>
     
     <div class="section">
@@ -491,8 +491,24 @@ async def main():
             current_date_display = datetime.now().strftime("%Y年%m月%d日 %H:%M:%S")
             integrated_data['analysis_date'] = current_date_display
             
-            # 保存HTML报告
-            html_file_name = f"{integrated_data['company_name']}_综合财务分析报告_{current_date}.html"
+            # 保存HTML报告 - 清理文件名中的特殊字符
+            def clean_filename(filename):
+                """清理文件名，移除特殊字符，只保留安全字符"""
+                import re
+                # 移除或替换不安全的字符
+                # 保留中文字符、字母、数字、下划线、连字符、点
+                cleaned = re.sub(r'[^\w\-_\.一-龥]', '_', filename)
+                # 移除连续的下划线
+                cleaned = re.sub(r'_+', '_', cleaned)
+                # 移除开头和结尾的下划线
+                cleaned = cleaned.strip('_')
+                # 确保不是空字符串
+                if not cleaned:
+                    cleaned = "financial_analysis_report"
+                return cleaned
+
+            safe_company_name = clean_filename(integrated_data['company_name'])
+            html_file_name = f"{safe_company_name}_综合财务分析报告_{current_date}.html"
             html_file_path = workspace_path / html_file_name
             
             # 添加图表到HTML报告
@@ -544,11 +560,11 @@ async def main():
             md_content += f"**股票代码**: {integrated_data['stock_code']}\n"
             md_content += f"**分析日期**: {integrated_data['analysis_date']}\n\n"
             md_content += "## 1. 执行摘要\n"
-            md_content += f"{investment_advice.get('summary', '公司财务状况总体分析...')}\n\n"
+            md_content += f"{integrated_data['investment_advice'].get('summary', '公司财务状况总体分析...')}\n\n"
             md_content += "## 2. 公司基本信息\n"
-            md_content += f"{basic_info.get('company_profile', '公司基本情况介绍...')}\n\n"
+            md_content += f"{integrated_data['basic_info'].get('company_profile', '公司基本情况介绍...')}\n\n"
             
-            md_file_name = f"{integrated_data['company_name']}_财务分析报告_{current_date}.md"
+            md_file_name = f"{safe_company_name}_财务分析报告_{current_date}.md"
             md_file_path = workspace_path / md_file_name
             with open(md_file_path, 'w', encoding='utf-8') as f:
                 f.write(md_content)
