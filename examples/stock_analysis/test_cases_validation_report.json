@@ -1,0 +1,49 @@
+{
+  "total_cases": 3,
+  "validation_details": [
+    {
+      "case_id": "basic_chinese_001",
+      "name": "基础中文财务数据",
+      "issues": [],
+      "warnings": [
+        "缺少测试重点说明"
+      ],
+      "found_statements": [
+        "利润表",
+        "资产负债表",
+        "现金流量表",
+        "历史数据"
+      ]
+    },
+    {
+      "case_id": "mixed_format_002",
+      "name": "混合格式财务数据",
+      "issues": [],
+      "warnings": [
+        "缺少测试重点说明"
+      ],
+      "found_statements": [
+        "利润表",
+        "资产负债表",
+        "历史数据"
+      ]
+    },
+    {
+      "case_id": "problematic_data_003",
+      "name": "问题数据修复测试",
+      "issues": [],
+      "warnings": [
+        "缺少测试重点说明"
+      ],
+      "found_statements": [
+        "利润表",
+        "资产负债表",
+        "历史数据"
+      ]
+    }
+  ],
+  "issues_found": [],
+  "recommendations": [
+    "所有测试用例验证通过"
+  ]
+}
