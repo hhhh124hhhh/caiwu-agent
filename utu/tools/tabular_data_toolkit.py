@@ -1241,8 +1241,29 @@ class TabularDataToolkit(AsyncBaseToolkit):
                     # 使用雷达图专用格式
                     return self._generate_radar_chart_with_categories(data, output_dir)
                 elif 'x_axis' in data:
-                    # 使用标准格式
-                    pass  # 继续执行通用逻辑
+                    # 使用标准格式，需要转换为categories格式
+                    # 从x_axis中提取数据作为categories
+                    categories_data = []
+                    if isinstance(data['x_axis'], dict) and 'data' in data['x_axis']:
+                        categories_data = data['x_axis']['data']
+                    elif isinstance(data['x_axis'], list):
+                        categories_data = data['x_axis']
+                    
+                    if categories_data:
+                        # 创建转换后的数据字典
+                        radar_data = {
+                            'title': data.get('title', '雷达图'),
+                            'categories': categories_data,
+                            'series': data.get('series', [])
+                        }
+                        # 调用雷达图生成方法
+                        return self._generate_radar_chart_with_categories(radar_data, output_dir)
+                    else:
+                        return {
+                            "success": False,
+                            "message": "雷达图的x_axis数据为空",
+                            "files": []
+                        }
                 else:
                     return {
                         "success": False,

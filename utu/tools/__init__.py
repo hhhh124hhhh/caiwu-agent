@@ -5,6 +5,7 @@ from .base import AsyncBaseToolkit as AsyncBaseToolkit, register_tool as registe
 from .bash_remote_tool import BashRemoteToolkit
 from .bash_toolkit import BashToolkit
 from .codesnip_toolkit import CodesnipToolkit
+from .datetime_toolkit import DateTimeToolkit
 from .document_toolkit import DocumentToolkit
 from .file_edit_toolkit import FileEditToolkit
 from .github_toolkit import GitHubToolkit
@@ -44,6 +45,8 @@ TOOLKIT_MAP = {
     "serper": SerperToolkit,
     "tabular": TabularDataToolkit,
     "memory_simple": SimpleMemoryToolkit,
+    # 添加DateTime工具包到映射中
+    "datetime": DateTimeToolkit,
     # 添加AKShare财务数据工具包到映射中
     "akshare_financial_data": AKShareFinancialDataTool,
     # 添加财务分析工具包到映射中

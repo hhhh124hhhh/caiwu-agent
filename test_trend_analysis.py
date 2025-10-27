@@ -1,132 +1,281 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
-测试趋势分析工具修复
+测试趋势分析工具修复效果
 """
 
 import sys
 import os
-
-# 添加项目根目录到Python路径
+import json
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from utu.tools.financial_analysis_toolkit import StandardFinancialAnalyzer
-import json
-
 
 def test_trend_analysis():
-    """
-    测试趋势分析工具对不同数据格式的处理
-    """
-    # 初始化工具类
+    """测试趋势分析功能"""
+    
+    # 创建工具实例
     toolkit = StandardFinancialAnalyzer()
     
-    # 测试数据1：用户提供的第一种格式
-    test_data1 = {
-        "company_name": "陕西建工", 
-        "stock_code": "600248.SH", 
-        "financial_statements": {
-            "income_statement": {"revenue": 573.88, "net_profit": 11.04, "gross_profit": 42.67}, 
-            "balance_sheet": {"total_assets": 3472.98, "total_liabilities": 3081.05, "equity": 391.93}, 
-            "cash_flow": {"operating_cash_flow": 7.18}
-        }, 
-        "financial_ratios": {
-            "profitability": {"net_profit_margin": 1.92, "roe": 2.68, "gross_margin": 7.44}, 
-            "liquidity": {"current_ratio": 1.12, "quick_ratio": 0.95}, 
-            "solvency": {"debt_to_assets": 88.71}, 
-            "efficiency": {"asset_turnover": 0.17, "inventory_turnover": 4.2}, 
-            "growth": {"revenue_growth": 2.39, "net_profit_growth": 3.47, "asset_growth": 4.6}, 
-            "cash_flow": {"operating_cash_flow_ratio": 0.65, "cash_flow_coverage": 1.05}
-        }, 
-        "health_assessment": {"score": 60.6, "risk_level": "中等风险"}
-    }
-    
-    # 测试数据2：用户提供的第二种格式（包含historical_data）
-    test_data2 = {
-        "company_name": "陕西建工", 
-        "stock_code": "600248.SH", 
-        "historical_data": {
-            "years": [2021, 2022, 2023, 2024], 
-            "revenue": [520.45, 545.23, 560.78, 573.88], 
-            "net_profit": [9.85, 10.23, 10.67, 11.04], 
-            "total_assets": [3156.78, 3289.45, 3320.12, 3472.98], 
-            "total_liabilities": [2789.34, 2901.56, 2945.23, 3081.05], 
-            "equity": [367.44, 387.89, 374.89, 391.93], 
-            "operating_cash_flow": [6.45, 6.78, 6.92, 7.18]
-        }, 
-        "current_period": {
-            "revenue": 573.88, 
-            "net_profit": 11.04, 
-            "total_assets": 3472.98, 
-            "total_liabilities": 3081.05, 
-            "equity": 391.93, 
-            "operating_cash_flow": 7.18
-        }, 
-        "financial_ratios": {
-            "profitability": {"net_profit_margin": 1.92, "roe": 2.68, "gross_margin": 7.44}, 
-            "liquidity": {"current_ratio": 1.12, "quick_ratio": 0.95}, 
-            "solvency": {"debt_to_assets": 88.71}, 
-            "efficiency": {"asset_turnover": 0.17, "inventory_turnover": 4.2}, 
-            "growth": {"revenue_growth": 2.39, "net_profit_growth": 3.47, "asset_growth": 4.6}, 
-            "cash_flow": {"operating_cash_flow_ratio": 0.65, "cash_flow_coverage": 1.05}
-        }
-    }
-    
-    # 测试数据3：用户提供的第三种格式（company, symbol, data结构）
-    test_data3 = {
-        "company": "陕西建工", 
-        "symbol": "600248.SH", 
-        "data": {
-            "2021": {"revenue": 520.45, "net_profit": 9.85, "total_assets": 3156.78, "total_liabilities": 2789.34, "equity": 367.44, "operating_cash_flow": 6.45}, 
-            "2022": {"revenue": 545.23, "net_profit": 10.23, "total_assets": 3289.45, "total_liabilities": 2901.56, "equity": 387.89, "operating_cash_flow": 6.78}, 
-            "2023": {"revenue": 560.78, "net_profit": 10.67, "total_assets": 3320.12, "total_liabilities": 2945.23, "equity": 374.89, "operating_cash_flow": 6.92}, 
-            "2024": {"revenue": 573.88, "net_profit": 11.04, "total_assets": 3472.98, "total_liabilities": 3081.05, "equity": 391.93, "operating_cash_flow": 7.18}
-        }
-    }
-    
-    # 测试数据4：多公司格式
-    test_data4 = {
-        "陕西建工": {
-            "2021": {"revenue": 520.45, "net_profit": 9.85}, 
-            "2022": {"revenue": 545.23, "net_profit": 10.23}, 
-            "2023": {"revenue": 560.78, "net_profit": 10.67}, 
-            "2024": {"revenue": 573.88, "net_profit": 11.04}
+    # 测试数据 - 包含financial_metrics格式的历史数据
+    test_data = {
+        "company_name": "测试公司",
+        "financial_metrics": {
+            "revenue": {
+                "2024": 1511.39,
+                "2025": 573.88
+            },
+            "net_profit": {
+                "2024": 200.50,
+                "2025": 150.30
+            },
+            "assets": {
+                "2024": 2000.00,
+                "2025": 2200.00
+            },
+            "liabilities": {
+                "2024": 1500.00,
+                "2025": 1600.00
+            }
         },
-        "对比公司": {
-            "2021": {"revenue": 480.56, "net_profit": 12.34}, 
-            "2022": {"revenue": 500.78, "net_profit": 13.56}, 
-            "2023": {"revenue": 510.34, "net_profit": 14.78}, 
-            "2024": {"revenue": 520.12, "net_profit": 15.90}
-        }
+        "current_year": "2025",
+        "analysis_type": "trend"
     }
     
-    # 测试不同数据格式
-    print("=== 测试数据格式1 ===")
-    result1 = toolkit.analyze_trends_tool(json.dumps(test_data1))
-    print(f"结果类型: {type(result1)}")
-    print(f"结果: {json.dumps(result1, ensure_ascii=False, indent=2)}")
+    print("=" * 60)
+    print("趋势分析工具测试")
+    print("=" * 60)
+    print(f"测试数据: {test_data}")
     print()
     
-    print("=== 测试数据格式2 ===")
-    result2 = toolkit.analyze_trends_tool(json.dumps(test_data2))
-    print(f"结果类型: {type(result2)}")
-    print(f"结果: {json.dumps(result2, ensure_ascii=False, indent=2)}")
-    print()
-    
-    print("=== 测试数据格式3 ===")
-    result3 = toolkit.analyze_trends_tool(json.dumps(test_data3))
-    print(f"结果类型: {type(result3)}")
-    print(f"结果: {json.dumps(result3, ensure_ascii=False, indent=2)}")
-    print()
-    
-    print("=== 测试数据格式4 (多公司) ===")
-    result4 = toolkit.analyze_trends_tool(json.dumps(test_data4))
-    print(f"结果类型: {type(result4)}")
-    print(f"结果: {json.dumps(result4, ensure_ascii=False, indent=2)}")
-    print()
-    
-    print("所有测试完成!")
+    try:
+        # 调用趋势分析工具
+        result = toolkit.analyze_trends_tool(
+            financial_data_json=json.dumps(test_data),
+            years=2
+        )
+        
+        print("分析结果:")
+        print(f"- 趋势类型: {result.get('trend_type', 'N/A')}")
+        print(f"- 整体增长率: {result.get('overall_growth_rate', 0):.2f}%")
+        print(f"- 数据完整性: {result.get('data_completeness', 0):.1f}%")
+        
+        # 检查各项指标的趋势
+        trend_indicators = result.get('trend_indicators', {})
+        print(f"\n各项指标趋势:")
+        for indicator, data in trend_indicators.items():
+            if data:  # 只显示有数据的指标
+                values = data.get('values', [])
+                if values:
+                    print(f"- {indicator}: {values}")
+                    growth_rates = data.get('growth_rates', [])
+                    if growth_rates:
+                        print(f"  增长率: {growth_rates}")
+                    trend = data.get('trend', 'unknown')
+                    print(f"  趋势: {trend}")
+        
+        # 检查关键发现
+        key_findings = result.get('key_findings', [])
+        print(f"\n关键发现:")
+        for i, finding in enumerate(key_findings, 1):
+            print(f"{i}. {finding}")
+        
+        print(f"\n状态: {'[成功]' if result else '[失败]'}")
+        
+        # 验证是否解决了空结果问题
+        has_data = (
+            result.get('trend_indicators') and 
+            any(result.get('trend_indicators', {}).values()) and
+            result.get('data_completeness', 0) > 0
+        )
+        
+        if has_data:
+            print("[成功] 趋势分析工具修复成功 - 不再返回空结果")
+        else:
+            print("[失败] 趋势分析工具仍有问题 - 返回空结果")
+            
+        return result
+        
+    except Exception as e:
+        print(f"[失败] 测试失败: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return None
 
+def test_different_data_formats():
+    """测试不同数据格式的兼容性"""
+    
+    toolkit = StandardFinancialAnalyzer()
+    
+    print("\n" + "=" * 60)
+    print("测试不同数据格式兼容性")
+    print("=" * 60)
+    
+    # 测试格式1: financial_metrics格式 (主要测试格式)
+    financial_metrics_data = {
+        "company_name": "Financial Metrics格式测试",
+        "financial_metrics": {
+            "revenue": {"2024": 1000, "2025": 1200},
+            "net_profit": {"2024": 100, "2025": 150}
+        },
+        "analysis_type": "trend"
+    }
+    
+    # 测试格式2: historical_trends格式
+    historical_trends_data = {
+        "company_name": "Historical Trends格式测试",
+        "historical_trends": {
+            "revenue": {"2024": 1000, "2025": 1200},
+            "net_profit": {"2024": 100, "2025": 150}
+        },
+        "analysis_type": "trend"
+    }
+    
+    # 测试格式3: 逐年数据格式
+    yearly_data = {
+        "company_name": "逐年格式测试",
+        "2024_data": {
+            "revenue": 1000,
+            "net_profit": 100,
+            "assets": 2000
+        },
+        "2025_data": {
+            "revenue": 1200,
+            "net_profit": 150,
+            "assets": 2100
+        },
+        "analysis_type": "trend"
+    }
+    
+    test_cases = [
+        ("financial_metrics格式", financial_metrics_data),
+        ("historical_trends格式", historical_trends_data),
+        ("逐年数据格式", yearly_data)
+    ]
+    
+    results = {}
+    
+    for case_name, data in test_cases:
+        print(f"\n测试 {case_name}:")
+        try:
+            result = toolkit.analyze_trends_tool(
+                financial_data_json=json.dumps(data),
+                years=2
+            )
+            
+            if result and result.get('data_completeness', 0) > 0:
+                print(f"[成功] {case_name} - 成功")
+                print(f"   趋势类型: {result.get('trend_type', 'N/A')}")
+                print(f"   数据完整性: {result.get('data_completeness', 0):.1f}%")
+                print(f"   指标数量: {len([k for k,v in result.get('trend_indicators', {}).items() if v])}")
+                results[case_name] = "成功"
+            else:
+                print(f"[失败] {case_name} - 失败或返回空结果")
+                results[case_name] = "失败"
+                
+        except Exception as e:
+            print(f"[异常] {case_name} - 异常: {str(e)}")
+            results[case_name] = f"异常: {str(e)}"
+    
+    return results
+
+def test_edge_cases():
+    """测试边缘情况"""
+    
+    toolkit = StandardFinancialAnalyzer()
+    
+    print("\n" + "=" * 60)
+    print("测试边缘情况")
+    print("=" * 60)
+    
+    # 测试单年数据
+    single_year_data = {
+        "company_name": "单年数据测试",
+        "financial_metrics": {
+            "revenue": {"2025": 1000}
+        },
+        "analysis_type": "trend"
+    }
+    
+    # 测试空数据
+    empty_data = {
+        "company_name": "空数据测试",
+        "financial_metrics": {},
+        "analysis_type": "trend"
+    }
+    
+    # 测试缺失年份
+    missing_year_data = {
+        "company_name": "缺失年份测试",
+        "financial_metrics": {
+            "revenue": {"2023": 1000, "2025": 1200}  # 缺少2024
+        },
+        "analysis_type": "trend"
+    }
+    
+    edge_cases = [
+        ("单年数据", single_year_data),
+        ("空数据", empty_data),
+        ("缺失年份", missing_year_data)
+    ]
+    
+    for case_name, data in edge_cases:
+        print(f"\n测试 {case_name}:")
+        try:
+            result = toolkit.analyze_trends_tool(
+                financial_data_json=json.dumps(data),
+                years=2
+            )
+            
+            if result:
+                print(f"[成功] {case_name} - 处理正常")
+                print(f"   数据完整性: {result.get('data_completeness', 0):.1f}%")
+                print(f"   趋势类型: {result.get('trend_type', 'N/A')}")
+            else:
+                print(f"[警告] {case_name} - 返回空结果（可能是预期的）")
+                
+        except Exception as e:
+            print(f"[异常] {case_name} - 异常: {str(e)}")
+
+def main():
+    print("开始趋势分析工具测试...")
+    
+    # 1. 测试主要功能
+    main_result = test_trend_analysis()
+    
+    # 2. 测试不同格式兼容性
+    format_results = test_different_data_formats()
+    
+    # 3. 测试边缘情况
+    test_edge_cases()
+    
+    # 4. 生成测试总结
+    print("\n" + "=" * 60)
+    print("测试总结")
+    print("=" * 60)
+    
+    if main_result and main_result.get('data_completeness', 0) > 0:
+        print("[成功] 主要功能测试通过")
+    else:
+        print("[失败] 主要功能测试失败")
+    
+    print("\n格式兼容性测试结果:")
+    for format_name, result in format_results.items():
+        print(f"- {format_name}: {result}")
+    
+    # 总体评估
+    success_count = sum(1 for r in format_results.values() if r == "成功")
+    total_count = len(format_results)
+    
+    if success_count == total_count and main_result:
+        print(f"\n[成功] 所有测试通过！趋势分析工具修复成功！")
+        print(f"[成功] 主要功能正常")
+        print(f"[成功] 格式兼容性 ({success_count}/{total_count})")
+    else:
+        print(f"\n[警告] 部分测试未通过，需要进一步检查")
+        print(f"主要功能: {'[成功]' if main_result else '[失败]'}")
+        print(f"格式兼容性: {success_count}/{total_count}")
+    
+    print("\n测试完成")
 
 if __name__ == "__main__":
-    test_trend_analysis()
+    main()

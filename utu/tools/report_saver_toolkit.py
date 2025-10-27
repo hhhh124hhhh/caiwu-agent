@@ -13,6 +13,17 @@ from pathlib import Path
 from ..config import ToolkitConfig
 from .base import AsyncBaseToolkit, register_tool
 
+# Markdown和HTML转换支持
+try:
+    import markdown
+    from pygments import highlight
+    from pygments.lexers import get_lexer_by_name
+    from pygments.formatters import HtmlFormatter
+    MARKDOWN_SUPPORT = True
+except ImportError:
+    MARKDOWN_SUPPORT = False
+    print("Warning: markdown not installed. HTML conversion will not be available.")
+
 # 添加PDF生成相关的导入
 try:
     from fpdf import FPDF
@@ -72,6 +83,453 @@ class ReportSaverToolkit(AsyncBaseToolkit):
                 font_candidates.append(font_path)
 
         return font_candidates
+
+    def _convert_markdown_to_html(self, content: str, template_type: str = "financial") -> str:
+        """
+        将Markdown内容转换为HTML格式
+        
+        Args:
+            content: Markdown格式的内容
+            template_type: 模板类型 ("financial", "general", "minimal")
+            
+        Returns:
+            HTML格式的内容
+        """
+        if not MARKDOWN_SUPPORT:
+            # 如果markdown库不可用，返回简单的HTML包装
+            return f"""
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分析报告</title>
+    <style>
+        body {{
+            font-family: "Microsoft YaHei", Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }}
+        h1, h2, h3, h4, h5, h6 {{
+            color: #2c3e50;
+            margin-top: 1.5em;
+            margin-bottom: 0.8em;
+        }}
+        table {{
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1em 0;
+        }}
+        th, td {{
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }}
+        th {{
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }}
+        code {{
+            background-color: #f4f4f4;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }}
+        pre {{
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }}
+    </style>
+</head>
+<body>
+    <pre>{content}</pre>
+</body>
+</html>
+"""
+        
+        try:
+            # 配置Markdown扩展
+            extensions = [
+                'tables',
+                'codehilite',
+                'fenced_code',
+                'toc',
+                'nl2br',
+                'sane_lists'
+            ]
+            
+            # 配置代码高亮
+            extension_configs = {
+                'codehilite': {
+                    'css_class': 'highlight',
+                    'use_pygments': True
+                }
+            }
+            
+            # 转换Markdown为HTML
+            html_content = markdown.markdown(
+                content,
+                extensions=extensions,
+                extension_configs=extension_configs
+            )
+            
+            # 选择HTML模板
+            if template_type == "financial":
+                return self._get_financial_html_template(html_content)
+            elif template_type == "general":
+                return self._get_general_html_template(html_content)
+            else:
+                return self._get_minimal_html_template(html_content)
+                
+        except Exception as e:
+            print(f"Markdown转换失败: {e}")
+            # 降级到简单HTML包装
+            return self._get_minimal_html_template(content)
+
+    def _get_financial_html_template(self, content: str) -> str:
+        """生成专业的财务分析报告HTML模板"""
+        return f"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>财务分析报告</title>
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+        
+        body {{
+            font-family: "Microsoft YaHei", "PingFang SC", Arial, sans-serif;
+            line-height: 1.8;
+            color: #2c3e50;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }}
+        
+        .container {{
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }}
+        
+        .header {{
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 40px 30px;
+            text-align: center;
+        }}
+        
+        .header h1 {{
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 300;
+        }}
+        
+        .header .subtitle {{
+            font-size: 1.2em;
+            opacity: 0.9;
+        }}
+        
+        .content {{
+            padding: 40px 50px;
+        }}
+        
+        h1, h2, h3, h4, h5, h6 {{
+            color: #1e3c72;
+            margin: 2em 0 1em 0;
+            position: relative;
+        }}
+        
+        h1 {{ font-size: 2.2em; }}
+        h2 {{ 
+            font-size: 1.8em; 
+            border-bottom: 3px solid #3498db;
+            padding-bottom: 10px;
+        }}
+        h3 {{ font-size: 1.5em; color: #2980b9; }}
+        h4 {{ font-size: 1.3em; color: #27ae60; }}
+        
+        p {{
+            margin: 1.2em 0;
+            text-align: justify;
+        }}
+        
+        table {{
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2em 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            border-radius: 10px;
+            overflow: hidden;
+        }}
+        
+        th, td {{
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #ecf0f1;
+        }}
+        
+        th {{
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }}
+        
+        tr:nth-child(even) {{
+            background-color: #f8f9fa;
+        }}
+        
+        tr:hover {{
+            background-color: #e8f4f8;
+            transition: background-color 0.3s ease;
+        }}
+        
+        blockquote {{
+            border-left: 5px solid #3498db;
+            margin: 2em 0;
+            padding: 15px 25px;
+            background: linear-gradient(135deg, #f6f9fc 0%, #e9f7fe 100%);
+            border-radius: 0 10px 10px 0;
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.1);
+        }}
+        
+        ul, ol {{
+            margin: 1.5em 0;
+            padding-left: 30px;
+        }}
+        
+        li {{
+            margin: 0.8em 0;
+        }}
+        
+        code {{
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            color: #e74c3c;
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-family: "Consolas", "Monaco", monospace;
+            font-size: 0.9em;
+            border: 1px solid #dee2e6;
+        }}
+        
+        pre {{
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 25px;
+            border-radius: 10px;
+            overflow-x: auto;
+            margin: 2em 0;
+            box-shadow: 0 10px 30px rgba(44, 62, 80, 0.3);
+        }}
+        
+        pre code {{
+            background: transparent;
+            color: inherit;
+            padding: 0;
+            border: none;
+        }}
+        
+        .highlight {{
+            background: linear-gradient(135deg, #fff3cd, #ffeaa7);
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid #ffc107;
+        }}
+        
+        .footer {{
+            background: #34495e;
+            color: #ecf0f1;
+            text-align: center;
+            padding: 30px;
+            margin-top: 40px;
+        }}
+        
+        @media print {{
+            body {{ background: white; }}
+            .container {{ box-shadow: none; }}
+            .header {{ background: white !important; color: black !important; }}
+            .header h1, .header .subtitle {{ color: black !important; }}
+            h1, h2, h3, h4, h5, h6 {{ color: black !important; }}
+            th {{ background: #f0f0f0 !important; color: black !important; }}
+        }}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>财务分析报告</h1>
+            <div class="subtitle">Professional Financial Analysis Report</div>
+        </div>
+        <div class="content">
+            {content}
+        </div>
+        <div class="footer">
+            <p>报告生成时间: {datetime.now().strftime("%Y年%m月%d日 %H:%M")}</p>
+            <p>本报告基于公开信息生成，仅供参考</p>
+        </div>
+    </div>
+</body>
+</html>"""
+
+    def _get_general_html_template(self, content: str) -> str:
+        """生成通用HTML模板"""
+        return f"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分析报告</title>
+    <style>
+        body {{
+            font-family: "Microsoft YaHei", Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+            color: #333;
+        }}
+        .paper {{
+            background: white;
+            padding: 40px 60px;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+            border-radius: 5px;
+        }}
+        h1, h2, h3, h4, h5, h6 {{
+            color: #2c3e50;
+            margin-top: 1.5em;
+            margin-bottom: 0.8em;
+        }}
+        table {{
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1.5em 0;
+        }}
+        th, td {{
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }}
+        th {{
+            background-color: #f8f9fa;
+            font-weight: bold;
+        }}
+        blockquote {{
+            border-left: 4px solid #007bff;
+            margin: 1.5em 0;
+            padding: 1em 1.5em;
+            background-color: #f8f9fa;
+            color: #495057;
+        }}
+        code {{
+            background-color: #e9ecef;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: Consolas, Monaco, monospace;
+        }}
+        pre {{
+            background-color: #212529;
+            color: #f8f9fa;
+            padding: 1em;
+            border-radius: 5px;
+            overflow-x: auto;
+        }}
+    </style>
+</head>
+<body>
+    <div class="paper">
+        {content}
+    </div>
+</body>
+</html>"""
+
+    def _get_minimal_html_template(self, content: str) -> str:
+        """生成简洁HTML模板"""
+        return f"""<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>分析报告</title>
+    <style>
+        body {{
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            color: #333;
+        }}
+        h1, h2, h3, h4, h5, h6 {{
+            color: #2c3e50;
+        }}
+        table {{
+            border-collapse: collapse;
+            width: 100%;
+            margin: 1em 0;
+        }}
+        th, td {{
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }}
+        th {{
+            background-color: #f2f2f2;
+        }}
+        code {{
+            background-color: #f4f4f4;
+            padding: 2px 4px;
+        }}
+    </style>
+</head>
+<body>
+    {content}
+</body>
+</html>"""
+
+    def _clean_html_for_pdf(self, html_content: str) -> str:
+        """
+        清理HTML内容以适配PDF渲染
+        
+        Args:
+            html_content: 原始HTML内容
+            
+        Returns:
+            str: 清理后的HTML内容
+        """
+        import re
+        
+        # 移除emoji字符
+        html_content = re.sub(r'[\U00010000-\U0010FFFF]', '', html_content)
+        
+        # 修复HTML结构问题
+        html_content = re.sub(r'<head[^>]*>(.*?)</head>', r'<head>\1</head>', html_content, flags=re.DOTALL)
+        
+        # 移除可能导致问题的CSS和JavaScript
+        html_content = re.sub(r'<script[^>]*>.*?</script>', '', html_content, flags=re.DOTALL)
+        html_content = re.sub(r'<style[^>]*>.*?</style>', '', html_content, flags=re.DOTALL)
+        
+        # 简化HTML结构
+        html_content = re.sub(r'<meta[^>]*>', '', html_content)
+        
+        # 确保基本的HTML结构
+        if not html_content.strip().startswith('<!DOCTYPE') and not html_content.strip().startswith('<html'):
+            html_content = f'<html><head><meta charset="UTF-8"></head><body>{html_content}</body></html>'
+        
+        return html_content
 
     def setup_pdf_font(self, pdf):
         """为PDF设置中文字体支持"""
@@ -903,9 +1361,29 @@ class ReportSaverToolkit(AsyncBaseToolkit):
             if directory:
                 os.makedirs(directory, exist_ok=True)
             
+            # 根据文件格式进行内容转换
+            final_content = content
+            
+            if file_format.lower() == "html":
+                # 如果是HTML格式，将Markdown转换为HTML
+                try:
+                    # 检测内容类型以选择合适的模板
+                    if any(keyword in content.lower() for keyword in ["财务", "收入", "利润", "资产", "负债"]):
+                        template_type = "financial"
+                    elif any(keyword in content.lower() for keyword in ["分析", "报告"]):
+                        template_type = "general"
+                    else:
+                        template_type = "minimal"
+                    
+                    final_content = self._convert_markdown_to_html(content, template_type)
+                    print(f"Markdown内容已转换为HTML格式，使用模板: {template_type}")
+                except Exception as e:
+                    print(f"HTML转换失败，使用原始内容: {e}")
+                    final_content = content
+            
             # 保存到文件，确保正确处理换行符和特殊字符
             with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(content)
+                f.write(final_content)
             
             # 验证文件是否保存成功
             if os.path.exists(file_path):
@@ -966,9 +1444,27 @@ class ReportSaverToolkit(AsyncBaseToolkit):
             if directory:
                 os.makedirs(directory, exist_ok=True)
             
+            # 根据文件格式进行内容转换
+            final_content = content
+            
+            if file_format.lower() == "html":
+                # 如果是HTML格式，将Markdown转换为HTML
+                try:
+                    # 检测内容类型以选择合适的模板
+                    if any(keyword in content.lower() for keyword in ["对比", "比较", "财务", "分析"]):
+                        template_type = "financial"
+                    else:
+                        template_type = "general"
+                    
+                    final_content = self._convert_markdown_to_html(content, template_type)
+                    print(f"Markdown内容已转换为HTML格式，使用模板: {template_type}")
+                except Exception as e:
+                    print(f"HTML转换失败，使用原始内容: {e}")
+                    final_content = content
+            
             # 保存到文件，确保正确处理换行符和特殊字符
             with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(content)
+                f.write(final_content)
             
             # 验证文件是否保存成功
             if os.path.exists(file_path):
@@ -1154,11 +1650,23 @@ class ReportSaverToolkit(AsyncBaseToolkit):
                 "file_size": 0
             }
         
+        # 导入必要的模块
+        import re
+        from filename_sanitizer import FilenameSanitizer
+        from content_sanitizer import ContentSanitizer
+        
+        # 创建清理器
+        filename_sanitizer = FilenameSanitizer()
+        content_sanitizer = ContentSanitizer()
+        
         try:
             # 格式化财务数据为PDF报告内容
             report_content = self._format_financial_data_as_pdf_content(financial_data_json)
             
-            # 生成文件名
+            # 清理报告内容，移除emoji和特殊字符
+            report_content = content_sanitizer.sanitize_text_for_pdf(report_content)
+            
+            # 生成安全的文件名
             current_date = datetime.now().strftime("%Y%m%d")
             # 使用传入的stock_name或从JSON中提取公司名称
             try:
@@ -1169,14 +1677,20 @@ class ReportSaverToolkit(AsyncBaseToolkit):
                 company_name = data.get("stock_name", data.get("company_name", data.get("公司名称", stock_name)))
             except:
                 company_name = stock_name
-                
-            file_name = f"{company_name}{current_date}财务分析报告.pdf"
+            
+            # 使用文件名清理器生成安全文件名
+            safe_filename = filename_sanitizer.create_safe_filename(
+                company_name=company_name,
+                report_type="财务分析报告",
+                date_str=current_date,
+                extension="pdf"
+            )
             
             # 使用workspace_root作为默认路径，如果提供了file_prefix则使用file_prefix
             if file_prefix and file_prefix != "./run_workdir":
-                file_path = os.path.join(file_prefix, file_name)
+                file_path = os.path.join(file_prefix, safe_filename)
             else:
-                file_path = os.path.join(self.workspace_root, file_name)
+                file_path = os.path.join(self.workspace_root, safe_filename)
             
             # 确保目录存在
             directory = os.path.dirname(file_path)
@@ -1334,7 +1848,10 @@ class ReportSaverToolkit(AsyncBaseToolkit):
                             else:
                                 pdf.set_font("Arial", size=16)
                             pdf.set_text_color(0, 0, 139)  # 深蓝色标题
-                            pdf.cell(0, 15, f"Chart: {os.path.basename(chart_file)}", align="C", ln=True)
+                            # 清理文件名中的特殊字符
+                            chart_title = os.path.basename(chart_file)
+                            chart_title = re.sub(r'[\U00010000-\U0010FFFF]', '', chart_title)  # 移除emoji
+                            pdf.cell(0, 15, f"图表: {chart_title}", align="C", ln=True)
                             pdf.ln(10)
                             pdf.set_text_color(0, 0, 0)  # 黑色文字
                             # 添加图片（最大宽度180mm，高度自适应）
@@ -1443,16 +1960,27 @@ class ReportSaverToolkit(AsyncBaseToolkit):
                 "file_size": 0
             }
 
+        # 导入必要的模块
+        import re
+        from filename_sanitizer import FilenameSanitizer
+        from content_sanitizer import ContentSanitizer
+        
+        # 创建清理器
+        filename_sanitizer = FilenameSanitizer()
+        content_sanitizer = ContentSanitizer()
+        
         try:
             # 创建HTML到PDF转换器
             class HTMLPDF(FPDF, HTMLMixin):
                 pass
 
-            # 生成文件名
+            # 清理HTML内容，移除emoji和特殊字符
+            html_content = content_sanitizer.clean_html_for_pdf(html_content)
+
+            # 生成安全的文件名
             current_date = datetime.now().strftime("%Y%m%d")
             # 使用传入的stock_name或从HTML中提取公司名称
             try:
-                import re
                 company_match = re.search(r'([A-Za-z\u4e00-\u9fff]+(?:股份有限公司|集团|公司|有限|Co\.|Ltd\.|Inc\.))', html_content)
                 if company_match:
                     company_name = company_match.group(1)
@@ -1460,6 +1988,14 @@ class ReportSaverToolkit(AsyncBaseToolkit):
                     company_name = stock_name
             except:
                 company_name = stock_name
+            
+            # 使用文件名清理器生成安全文件名
+            safe_filename = filename_sanitizer.create_safe_filename(
+                company_name=company_name,
+                report_type="财务分析报告",
+                date_str=current_date,
+                extension="pdf"
+            )
             
             # 使用传入的报告日期或当前时间
             report_date_display = report_date or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -1472,13 +2008,13 @@ class ReportSaverToolkit(AsyncBaseToolkit):
             # 处理更通用的格式
             html_content = re.sub(r'[生成分析]时间[:：].*?</p>', f'生成时间: {report_date_display}</p>', html_content)
 
-            file_name = f"{company_name}{current_date}财务分析报告.pdf"
-
+            # 使用安全的文件名（已在上面生成）
+            
             # 使用workspace_root作为默认路径，如果提供了file_prefix则使用file_prefix
             if file_prefix and file_prefix != "./stock_analysis_workspace":
-                file_path = os.path.join(file_prefix, file_name)
+                file_path = os.path.join(file_prefix, safe_filename)
             else:
-                file_path = os.path.join(self.workspace_root, file_name)
+                file_path = os.path.join(self.workspace_root, safe_filename)
 
             # 确保目录存在
             directory = os.path.dirname(file_path)
@@ -1494,15 +2030,19 @@ class ReportSaverToolkit(AsyncBaseToolkit):
             if not font_success:
                 print("Warning: PDF将使用默认字体，中文字符可能无法正常显示")
 
-            # 添加HTML内容
+            # 预处理HTML内容，移除可能导致问题的元素
             try:
-                pdf.write_html(html_content)
+                # 清理HTML内容
+                cleaned_html = self._clean_html_for_pdf(html_content)
+                pdf.write_html(cleaned_html)
             except Exception as html_error:
                 print(f"HTML渲染失败，尝试文本模式: {html_error}")
                 # 降级到文本模式
                 pdf.add_page()
                 text_content = re.sub(r'<[^>]+>', '', html_content)  # 移除HTML标签
                 text_content = text_content.replace('&nbsp;', ' ').replace('&lt;', '<').replace('&gt;', '>').replace('&amp;', '&')
+                # 移除emoji字符
+                text_content = re.sub(r'[\U00010000-\U0010FFFF]', '', text_content)
 
                 if font_success:
                     pdf.set_font("ChineseFont", size=12)
@@ -1527,7 +2067,10 @@ class ReportSaverToolkit(AsyncBaseToolkit):
                             else:
                                 pdf.set_font("Arial", size=16)
                             pdf.set_text_color(0, 0, 139)  # 深蓝色标题
-                            pdf.cell(0, 15, f"Chart: {os.path.basename(chart_file)}", align="C", ln=True)
+                            # 清理文件名中的特殊字符
+                            chart_title = os.path.basename(chart_file)
+                            chart_title = re.sub(r'[\U00010000-\U0010FFFF]', '', chart_title)  # 移除emoji
+                            pdf.cell(0, 15, f"图表: {chart_title}", align="C", ln=True)
                             pdf.ln(10)
                             pdf.set_text_color(0, 0, 0)  # 黑色文字
                             # 添加图片（最大宽度180mm，高度自适应）

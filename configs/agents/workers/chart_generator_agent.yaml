@@ -18,10 +18,32 @@ agent:
     - get_column_info: 智能解释表格列含义
 
     工作流程：
-    1. 首先尝试使用generate_charts生成可视化图表，保存到"./stock_analysis_workspace"目录
-    2. 如果generate_charts工具失败，使用execute_python_code_enhanced执行Python代码生成图表
-    3. 为每张图表提供说明和分析
-    4. 将图表文件路径和说明整理成报告
+    1. **数据验证和标准化**：
+       - 使用ChartDataValidator验证JSON格式
+       - 使用ChartDataBuilder构造标准化数据
+       - 自动修复常见的数据格式错误
+    2. **图表生成**：
+       - 首先尝试使用generate_charts生成可视化图表，保存到"./stock_analysis_workspace"目录
+       - 如果generate_charts工具失败，使用execute_python_code_enhanced执行Python代码生成图表
+    3. **质量控制**：
+       - 验证生成的图表文件
+       - 检查数据准确性
+       - 确保图表美观和专业性
+    4. **结果整理**：
+       - 为每张图表提供说明和分析
+       - 将图表文件路径和说明整理成报告
+
+    **重要：数据格式要求**
+    - 折线图/柱状图：必须包含 title, x_axis, series 字段
+    - 雷达图：必须包含 title, categories, series 字段
+    - JSON字符串必须格式正确，使用双引号
+    - 数据长度必须一致，避免维度不匹配
+
+    **错误处理策略**：
+    - 遇到JSON格式错误时，自动尝试修复
+    - 数据缺失时，使用合理的默认值填充
+    - 单位不一致时，自动标准化为统一单位
+    - 异常值（如ROE突然变为0.32%）时，进行数据验证和修正
 
     图表类型和应用场景：
 

@@ -4,6 +4,7 @@ defaults:
   - /model/base@model
   - /tools/financial_analysis@toolkits.financial_analyzer
   - /tools/tabular@toolkits.tabular
+  - /tools/datetime@toolkits.datetime
   - _self_
 
 agent:
@@ -82,6 +83,7 @@ agent_info:
   tools:
     - "financial_analysis"
     - "tabular"
+    - "datetime"
   capabilities:
     - "深度财务分析"
     - "投资价值评估"
