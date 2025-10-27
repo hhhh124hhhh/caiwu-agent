@@ -155,11 +155,29 @@ standard_toolkits:
     timeout: 60
     save_code: true
     matplotlib_backend: "Agg"
+    
+  # 数据清洗工具包（DataCleanserAgent专用）
+  data_cleansing:
+    enabled: false  # 默认关闭，只有DataCleanserAgent启用
+    timeout: 120
+    cache_enabled: true
+    cache_ttl: 1800  # 30分钟缓存
+    
+    # 数据清洗参数
+    strict_mode: false
+    auto_fix_issues: true
+    generate_quality_report: true
+    
+    # 性能设置
+    batch_processing: true
+    max_concurrent_operations: 3
+    memory_limit_mb: 512
 
 # 标准工具行为配置
 standard_behavior:
   # 智能体间协作行为
   data_collection: "stop_on_first_tool"      # DataAgent: 获取数据后停止
+  data_processing: "run_llm_again"           # 数据清洗智能体: 继续优化清洗结果
   data_analysis: "run_llm_again"              # 分析智能体: 继续优化结果
   content_generation: "run_llm_again"       # 内容生成智能体: 继续完善内容
   
@@ -171,6 +189,14 @@ standard_behavior:
       fallback_approach: "general_tools"
       validation_required: true
       caching_enabled: true
+      
+    # 数据处理行为
+    data_processing:
+      approach: "comprehensive_cleaning"
+      validation_first: true
+      auto_fix_enabled: true
+      quality_assessment: true
+      error_recovery: "intelligent"
       
     # 分析计算行为
     analysis_computation:
@@ -233,6 +259,16 @@ standard_data_formats:
     required_fields: ["ratios", "trends", "health_assessment"]
     optional_fields: ["recommendations", "risk_factors"]
     
+  # 数据清洗专用格式
+  cleansed_financial_data:
+    required_fields: ["cleansed_data", "quality_score", "quality_level"]
+    optional_fields: ["quality_metrics", "transformation_log", "issues_found"]
+    
+  # 质量报告格式
+  quality_assessment_data:
+    required_fields: ["quality_metrics", "quality_level", "assessment_time"]
+    optional_fields: ["issues", "recommendations", "processing_summary"]
+    
   chart_data:
     required_fields: ["title", "chart_type", "data"]
     optional_fields: ["file_path", "description"]
@@ -254,6 +290,11 @@ standard_naming:
     comparison_report: "{companies}_对比分析报告_{date}"
     chart_file: "{title}_{chart_type}"
     data_file: "{company_name}_财务数据_{date}"
+    
+    # 数据清洗专用文件模板
+    cleansed_data_file: "{company_name}_清洗后数据_{date}"
+    quality_report_file: "{company_name}_数据质量报告_{date}"
+    transformation_log: "{company_name}_数据转换日志_{date}"
 
 # 标准质量控制设置
 standard_quality:
@@ -274,6 +315,31 @@ standard_quality:
     structure_check: true
     content_quality_check: false
     format_validation: true
+    
+  # 数据清洗专用质量控制
+  data_cleansing_quality:
+    # 质量评估标准
+    overall_quality_threshold: 75
+    critical_issue_threshold: 3
+    high_issue_threshold: 5
+    
+    # 数据质量指标权重
+    quality_weights:
+      completeness: 0.30
+      accuracy: 0.25
+      consistency: 0.20
+      validity: 0.15
+      timeliness: 0.10
+    
+    # 自动修复规则
+    auto_fix_enabled: true
+    auto_fix_strictness: "balanced"  # strict, balanced, lenient
+    preserve_original_data: true
+    
+    # 质量报告设置
+    generate_detailed_report: true
+    include_processing_log: true
+    issue_severity_classification: true
 
 # 标准性能优化设置
 standard_performance:

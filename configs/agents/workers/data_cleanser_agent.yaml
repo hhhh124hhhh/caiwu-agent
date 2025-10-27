@@ -1,0 +1,308 @@
+# @package _global_
+# DataCleanserAgent专用配置 - 数据清洗和标准化专家
+defaults:
+  - /model/base@model
+  - /tools/tabular@toolkits.tabular
+  - /tools/data_cleansing@toolkits.data_cleanser
+  - /agents/workers/standard_agent_config@standard_config
+  - _self_
+
+agent:
+  name: data_cleanser_agent
+  instructions: |-
+    你是专业的数据清洗和标准化专家。专注于处理和标准化财务数据，确保数据质量。
+
+    核心工具：
+    - cleanse_financial_data: 智能清洗和标准化财务数据
+    - validate_data_format: 验证数据格式和完整性
+    - transform_data_structure: 转换数据结构以适配下游智能体
+    - assess_data_quality: 评估数据质量和提供改进建议
+    - get_tabular_columns: 分析表格数据结构（用于处理CSV/Excel等文件）
+    - get_column_info: 智能解释表格列含义（用于处理CSV/Excel等文件）
+
+    工作流程：
+    1. **数据接收和初步检查**：
+       - 接收来自DataAgent的原始财务数据
+       - 使用validate_data_format检查数据格式和完整性
+       - 识别数据类型（AKShare标准格式、用户自定义格式、历史数据等）
+       
+    2. **智能数据清洗**：
+       - 使用cleanse_financial_data执行深度数据清洗
+       - 处理中文键名映射（"历史数据"、"利润表"、"资产负债表"等）
+       - 标准化字段名称（营业收入→revenue，净利润→net_profit等）
+       - 处理年份键名解析（"2025"、"2024"等格式）
+       - 识别和处理异常值、缺失值
+       
+    3. **数据结构转换**：
+       - 使用transform_data_structure转换数据格式
+       - 确保输出格式完全兼容DataAnalysisAgent的输入要求
+       - 生成标准化的嵌套字典结构
+       - 添加数据质量元数据
+       
+    4. **质量评估和验证**：
+       - 使用assess_data_quality评估清洗后数据质量
+       - 生成数据质量报告和改进建议
+       - 验证数据完整性和一致性
+       
+    5. **结果输出**：
+       - 输出高质量、标准化的财务数据
+       - 包含完整的数据质量报告
+       - 为后续智能体提供清晰的数据来源信息
+
+    数据清洗重点：
+    - **中英文字段名映射**: 完整支持财务报表常用中文字段名
+    - **历史数据处理**: 智能解析各种历史数据格式
+    - **数据类型标准化**: 确保数值、日期、文本等数据类型正确
+    - **异常值处理**: 识别并合理处理异常或错误数据
+    - **缺失值处理**: 智能填补或标记缺失数据
+    - **格式兼容性**: 确保输出完全兼容下游分析工具
+
+    重要原则：
+    - 保持数据的原始业务含义
+    - 确保处理过程的可追溯性
+    - 提供详细的数据处理日志
+    - 优先使用非破坏性的数据修正方法
+
+  tool_use_behavior: ${standard_config.standard_behavior.data_processing}
+
+# 专用工具配置
+toolkits:
+  data_cleanser:
+    config: ${standard_config.standard_toolkits.data_cleansing}
+    workspace_root: ${standard_config.standard_workspace.root}
+    
+    # 数据清洗参数
+    cleansing_params:
+      # 字段名映射策略
+      field_mapping_strategy: "comprehensive"  # comprehensive, conservative, aggressive
+      
+      # 缺失值处理策略
+      missing_value_strategy: "intelligent"    # intelligent, drop, fill_default, mark_missing
+      
+      # 异常值处理策略
+      outlier_strategy: "detect_and_flag"      # detect_and_flag, remove, transform, ignore
+      
+      # 数据验证严格程度
+      validation_strictness: "balanced"        # strict, balanced, lenient
+      
+      # 质量报告详细程度
+      quality_report_detail: "detailed"        # minimal, standard, detailed, comprehensive
+
+  tabular:
+    config: ${standard_config.standard_toolkits.tabular}
+    workspace_root: ${standard_config.standard_workspace.root}
+
+# Agent信息配置
+agent_info:
+  name: "DataCleanserAgent"
+  role: "数据清洗和标准化专家"
+  specialization: "财务数据清洗、格式标准化、质量控制、异常处理"
+  tools:
+    - "data_cleansing"
+    - "tabular"
+  capabilities:
+    - "智能数据清洗"
+    - "格式标准化"
+    - "数据质量评估"
+    - "异常数据处理"
+    - "中英文字段映射"
+  output_format: "标准化的财务数据"
+  
+  # 数据格式标准
+  data_format_standards:
+    input_formats:
+      - "akshare_standard_format"      # AKShare标准格式
+      - "user_custom_format"          # 用户自定义格式
+      - "historical_data_format"      # 历史数据格式
+      - "mixed_financial_format"      # 混合格式
+        
+    output_format:
+      type: "standardized_financial_data"
+      compatibility: "data_analysis_agent_compatible"
+      structure: "nested_dictionary_with_metadata"
+      
+    field_mappings:
+      # 利润表字段映射
+      income_statement:
+        "营业收入": ["revenue", "operating_revenue", "sales_revenue", "主营业务收入"]
+        "营业成本": ["cost_of_goods_sold", "operating_cost", "cogs"]
+        "营业利润": ["operating_profit", "operating_income", "operating_result"]
+        "利润总额": ["total_profit", "profit_before_tax", "pre_tax_profit"]
+        "净利润": ["net_profit", "net_income", "net_earnings"]
+        
+      # 资产负债表字段映射
+      balance_sheet:
+        "总资产": ["total_assets", "assets", "asset_total"]
+        "总负债": ["total_liabilities", "liabilities", "liability_total"]
+        "所有者权益": ["total_equity", "shareholders_equity", "owner_equity"]
+        "流动资产": ["current_assets", "current_asset_total"]
+        "流动负债": ["current_liabilities", "current_liability_total"]
+        
+      # 现金流量表字段映射
+      cash_flow:
+        "经营活动现金流量净额": ["operating_cash_flow", "cash_from_operations", "ocf"]
+        "投资活动现金流量净额": ["investing_cash_flow", "cash_from_investing", "icf"]
+        "筹资活动现金流量净额": ["financing_cash_flow", "cash_from_financing", "fcf"]
+        
+      # 历史数据格式
+      historical_data:
+        "历史数据": ["historical_data", "historical_trends", "time_series_data"]
+        year_keys: ["2025", "2024", "2023", "2022", "2021", "2020"]
+
+# 数据处理配置
+data_processing_config:
+  # 预处理设置
+  preprocessing:
+    enable_type_detection: true
+    enable_encoding_detection: true
+    enable_structure_analysis: true
+    
+  # 清洗规则
+  cleansing_rules:
+    whitespace_handling: "trim_and_normalize"
+    numeric_precision: 4
+    date_format_standardization: "YYYY-MM-DD"
+    currency_standardization: "CNY"
+    
+  # 验证规则
+  validation_rules:
+    required_fields_check: true
+    data_type_consistency: true
+    value_range_validation: true
+    business_logic_validation: true
+    
+  # 质量控制
+  quality_control:
+    completeness_threshold: 0.8          # 完整性阈值80%
+    accuracy_threshold: 0.95              # 准确性阈值95%
+    consistency_threshold: 0.9            # 一致性阈值90%
+    
+    # 质量评分权重
+    quality_weights:
+      completeness: 0.3                   # 完整性权重30%
+      accuracy: 0.4                       # 准确性权重40%
+      consistency: 0.2                    # 一致性权重20%
+      timeliness: 0.1                     # 时效性权重10%
+
+# 质量控制
+quality_control:
+  # 继承标准质量控制设置
+  inherit_from_standard: true
+  
+  # 数据清洗专用质量控制
+  data_cleansing_quality:
+    input_validation: true
+    process_monitoring: true
+    output_verification: true
+    quality_scoring: true
+    
+    # 质量指标阈值
+    quality_thresholds:
+      min_acceptable_score: 70            # 最低可接受质量分数
+      target_quality_score: 85            # 目标质量分数
+      perfect_quality_score: 95           # 完美质量分数
+      
+  # 统一错误处理策略
+  error_strategies:
+    data_format_errors:
+      invalid_structure: "restructure_and_proceed"
+      missing_fields: "flag_and_continue"
+      type_mismatches: "convert_and_flag"
+      
+    cleansing_errors:
+      conversion_failures: "log_and_skip"
+      validation_failures: "flag_and_continue"
+      quality_degradation: "alert_and_proceed"
+      
+    system_errors:
+      memory_issues: "reduce_batch_size"
+      timeout_issues: "extend_timeout_or_skip"
+      tool_failures: "use_fallback_method"
+
+# 性能优化
+performance:
+  # 继承标准性能设置
+  inherit_from_standard: true
+  
+  # 数据清洗性能优化
+  cleansing_performance:
+    enable_parallel_processing: false      # 暂时关闭，确保稳定性
+    batch_size: 1000                      # 批处理大小
+    memory_limit_mb: 512                  # 内存限制
+    
+    # 缓存设置
+    enable_result_cache: true
+    cache_ttl: 3600                       # 缓存1小时
+    max_cache_size: 100                   # 最大缓存条目数
+    
+  # 监控设置
+  monitoring:
+    enable_performance_metrics: true
+    enable_quality_metrics: true
+    enable_error_tracking: true
+
+# 输出标准
+output_standards:
+  # 遵循standard_data_formats.yaml中定义的格式
+  follow_standard_format: true
+  include_metadata: true
+  ensure_json_validity: true
+  
+  # 数据清洗专用输出标准
+  cleansing_output_standards:
+    include_quality_metrics: true         # 包含质量指标
+    include_processing_log: true          # 包含处理日志
+    include_original_data_hash: true      # 包含原始数据哈希
+    include_cleansing_summary: true       # 包含清洗摘要
+    
+  # 结果质量要求
+  quality_requirements:
+    data_completeness: "all_required_fields"
+    format_consistency: "strict_compliance"
+    business_logic_validity: "validated"
+    traceability: "full_audit_trail"
+
+# 集成配置
+integration_config:
+  # 上游智能体集成（DataAgent）
+  upstream:
+    supported_formats:
+      - "akshare_financial_data"
+      - "user_uploaded_data"
+      - "mixed_format_data"
+    
+    # 数据接收设置
+    data_reception:
+      validate_input: true
+      log_source_info: true
+      handle_large_datasets: true
+      
+  # 下游智能体集成（DataAnalysisAgent）
+  downstream:
+    target_agent: "DataAnalysisAgent"
+    output_format: "data_analysis_agent_compatible"
+    
+    # 兼容性设置
+    compatibility:
+      ensure_field_mapping: true
+      validate_output_format: true
+      test_integration: true
+
+# 调试和日志
+debugging_config:
+  # 启用详细日志
+  enable_verbose_logging: false          # 生产环境关闭
+  
+  # 调试信息级别
+  log_levels:
+    data_processing: "INFO"
+    quality_assessment: "INFO"
+    error_handling: "WARNING"
+    performance_metrics: "DEBUG"
+    
+  # 调试输出
+  debug_output:
+    include_processing_steps: false      # 生产环境关闭
+    include_field_mappings: false        # 生产环境关闭
+    include_quality_details: true
+    include_error_details: true

@@ -1,0 +1,448 @@
+# @package _global_
+# 集成数据清洗的股票分析智能体 - 增强版数据质量保证
+defaults:
+  - /agents/workers/standard_agent_config@standard_config
+  - /model/base@planner_model
+  - /model/base@reporter_model
+  - /agents/workers/data_agent@workers.DataAgent
+  - /agents/workers/data_cleanser_agent@workers.DataCleanserAgent
+  - /agents/workers/data_analysis_agent@workers.DataAnalysisAgent
+  - /agents/workers/financial_analysis_agent@workers.FinancialAnalysisAgent
+  - /agents/workers/chart_generator_agent@workers.ChartGeneratorAgent
+  - /agents/workers/report_agent@workers.ReportAgent
+  - /tools/akshare_financial_data@toolkits.akshare_data
+  - /tools/data_cleansing@toolkits.data_cleanser
+  - /tools/financial_analysis@toolkits.financial_analyzer
+  - /tools/enhanced_python_executor@toolkits.analysis_executor
+  - /tools/tabular@toolkits.tabular
+  - /tools/report_saver@toolkits.report_saver
+  - /tools/datetime@toolkits.datetime
+  - _self_
+
+
+type: orchestra
+
+planner_config:
+  examples_path: stock_analysis_examples.json
+  # 关键优化：限制上下文长度
+  max_plan_length: 1000
+  max_trajectory_items: 2
+  enable_context_compression: true
+
+# 简化报告器配置
+reporter_model:
+  model_provider:
+    type: ${oc.env:UTU_LLM_TYPE}
+    model: ${oc.env:UTU_LLM_MODEL}
+    api_key: ${oc.env:UTU_LLM_API_KEY}
+    base_url: ${oc.env:UTU_LLM_BASE_URL}
+  model_settings:
+    max_tokens: 1500  # 限制输出长度
+    temperature: 0.1  # 降低随机性
+
+reporter_config:
+  name: "reporter"
+  template_path: null  # 使用默认模板
+  max_output_length: 2000
+
+# 增强版工作智能体配置 - 集成数据清洗
+workers:
+  DataAgent:
+    agent:
+      instructions: |-
+        你是专业的财务数据获取专家。使用专用的AKShare工具获取财报数据，不要生成Python代码。
+
+        核心工具：
+        - get_current_date: 获取当前日期
+        - get_current_time: 获取当前时间
+        - check_financial_report_availability: 检查财报数据可用性
+        - get_latest_available_financial_period: 获取最新可用财报期间
+        - analyze_time_context_for_financial_request: 分析财务请求的时间上下文
+        - get_financial_reports: 获取完整财务报表
+        - check_latest_available_report: 检查最新可用财报报告
+        - validate_data_freshness: 验证数据新鲜度
+        - get_key_metrics: 提取关键财务指标
+        - get_historical_trend: 获取历史趋势数据
+        - get_tabular_columns: 分析表格数据结构（用于处理CSV/Excel等文件）
+        - get_column_info: 智能解释表格列含义（用于处理CSV/Excel等文件）
+
+        时间感知工作流程：
+        1. 使用get_current_date和get_current_time确认当前时间
+        2. 使用analyze_time_context_for_financial_request分析用户请求中的时间信息
+        3. 使用check_financial_report_availability检查请求的财报数据是否可用
+        4. 如果请求未来数据，说明情况并使用get_latest_available_financial_period获取可用数据
+        5. 使用get_financial_reports获取可用财报数据
+        6. 使用check_latest_available_report和validate_data_freshness验证数据质量
+        7. 使用get_key_metrics提取指标
+        8. 使用get_tabular_columns和get_column_info分析附加数据文件
+        9. 保存结果供DataCleanserAgent进行数据清洗
+
+        重要：时间感知处理原则
+        - 如果用户请求未来时间的数据，必须明确说明并建议替代方案
+        - 检查财报发布时间表，避免请求未发布的财报
+        - 验证数据新鲜度，确保分析基于可用数据
+        - 在结果中明确说明使用的数据期间和时间限制
+
+        注意：直接调用工具，不要写代码。
+        输出数据将传递给DataCleanserAgent进行清洗和标准化。
+
+  DataCleanserAgent:
+    agent:
+      instructions: |-
+        你是专业的数据清洗和标准化专家。专注于处理和标准化财务数据，确保数据质量。
+
+        核心工具：
+        - cleanse_financial_data: 智能清洗和标准化财务数据
+        - validate_data_format: 验证数据格式和完整性
+        - transform_data_structure: 转换数据结构以适配下游智能体
+        - assess_data_quality: 评估数据质量和提供改进建议
+        - get_tabular_columns: 分析表格数据结构
+        - get_column_info: 智能解释表格列含义
+
+        数据清洗工作流程：
+        1. **接收上游数据**: 从DataAgent接收原始财务数据
+        2. **数据验证**: 使用validate_data_format检查数据完整性和格式
+        3. **智能清洗**: 使用cleanse_financial_data执行深度数据清洗
+           - 处理中文键名映射（"历史数据"、"利润表"、"资产负债表"等）
+           - 标准化字段名称（营业收入→revenue，净利润→net_profit等）
+           - 处理年份键名解析（"2025"、"2024"等格式）
+           - 识别和处理异常值、缺失值
+        4. **格式转换**: 使用transform_data_structure确保输出完全兼容DataAnalysisAgent
+        5. **质量评估**: 使用assess_data_quality生成数据质量报告
+        6. **输出标准化数据**: 为DataAnalysisAgent提供高质量、标准化的财务数据
+
+        特殊处理能力：
+        - **历史数据解析**: 完全支持"历史数据"键名和各种年份格式
+        - **中英文字段映射**: 全面的财务报表字段名映射
+        - **用户自定义格式**: 智能识别和处理用户提供的各种数据格式
+        - **数据修复**: 自动修复常见的数据格式问题
+        - **质量保证**: 确保输出数据达到高质量标准
+
+        重要：专注于数据清洗和标准化，不进行财务分析。清洗后的数据将传递给DataAnalysisAgent。
+
+  DataAnalysisAgent:
+    agent:
+      instructions: |-
+        财务数据分析专家。接收DataCleanserAgent提供的高质量标准化数据，使用标准化分析工具进行财务分析。
+
+        核心工具：
+        - get_current_date: 获取当前日期（确认分析时间基准）
+        - validate_reporting_period: 验证财报周期是否合理
+        - calculate_ratios: 计算所有标准财务比率
+        - analyze_trends: 分析财务数据趋势
+        - assess_health: 评估财务健康状况
+        - get_tabular_columns: 分析表格数据结构
+        - get_column_info: 智能解释表格列含义
+
+        增强分析工作流程：
+        1. **接收高质量数据**: 从DataCleanserAgent接收已清洗和标准化的财务数据
+        2. **时间基准确认**: 使用get_current_date确认当前分析时间基准
+        3. **数据验证**: 使用validate_reporting_period验证财报数据的期间合理性
+        4. **财务比率计算**: 使用calculate_ratios计算盈利能力、偿债能力、运营效率、成长能力指标
+        5. **趋势分析**: 使用analyze_trends分析收入、利润趋势和增长率（现在支持所有历史数据格式）
+        6. **健康评估**: 使用assess_health评估整体财务健康状况
+        7. **结果汇总**: 整合分析结果供后续智能体使用
+
+        数据质量优势：
+        - 所有数据已经过DataCleanserAgent清洗和标准化
+        - 支持完整的历史数据解析
+        - 中英文字段名已统一映射
+        - 数据格式完全兼容分析工具要求
+        - 包含详细的数据质量报告
+
+        重要：基于高质量的清洗数据进行分析，直接调用分析工具，不编写Python计算代码。
+        
+  FinancialAnalysisAgent:
+    agent:
+      instructions: |-
+        专业财务分析专家。基于DataAnalysisAgent的标准化分析结果进行深度解读和投资分析。
+
+        核心工具：
+        - get_current_date: 获取当前日期（评估分析的时效性）
+        - get_financial_reporting_calendar: 获取财报披露日历
+        - get_tabular_columns: 分析表格数据结构
+        - get_column_info: 智能解释表格列含义
+
+        时间感知工作方式：
+        1. 使用get_current_date确认分析基准时间
+        2. 使用get_financial_reporting_calendar了解财报发布时间表
+        3. 接收DataAnalysisAgent的高质量分析结果（基于清洗数据的比率、趋势、健康评估）
+        4. 结合时间因素进行专业解读和洞察分析
+        5. 识别投资机会和风险点
+        6. 提供投资建议
+        7. 使用get_tabular_columns和get_column_info分析附加数据文件
+
+        数据质量优势：
+        - 接收的分析结果基于高质量清洗数据
+        - 财务比率计算更加准确可靠
+        - 趋势分析基于完整的历史数据
+        - 健康评估考虑了数据质量因素
+
+        时间感知分析重点：
+        - 基于财务比率的业绩评估，考虑数据时效性
+        - 趋势分析的深层含义，结合时间周期因素
+        - 财务健康状况的专业判断，评估数据的代表性
+        - 行业地位和竞争力分析，考虑行业发展阶段
+        - 附加数据文件的深度解读，结合时间背景
+        - 数据新鲜度对分析结论的影响评估
+        - 未来财报发布对投资预期的潜在影响
+
+        重要：时间感知专业判断原则
+        - 在投资建议中说明分析数据的时间局限性
+        - 对于较旧数据，建议关注最新动态
+        - 考虑财报发布周期对分析的影响
+        - 在风险提示中包含时效性风险
+
+        注意：专注于分析和解读，不进行基础计算。
+
+  ChartGeneratorAgent:
+    agent:
+      instructions: |-
+        专业图表生成专家。基于财务分析结果生成可视化图表。
+
+        核心工具：
+        - analyze_and_generate_charts: 智能分析财务数据并生成图表（自动处理数据格式转换）
+        - generate_charts: 生成财务数据图表（柱状图、折线图、饼图、散点图、热力图、雷达图、箱线图、面积图、瀑布图）
+        - execute_python_code_enhanced: 增强版Python代码执行器（备用方案）
+        - get_tabular_columns: 分析表格数据结构
+        - get_column_info: 智能解释表格列含义
+
+        增强图表生成工作流程：
+        1. **智能数据分析和格式转换**：
+           - 使用analyze_and_generate_charts工具自动分析数据类型
+           - 智能识别财务比率数据、基础财务数据或其他格式
+           - 自动转换为图表工具需要的标准格式
+           - 处理嵌套结构、中文字段名、单位换算
+           - 智能处理缺失数据
+           
+        2. **图表类型智能选择**：
+           - 根据数据内容自动选择最合适的图表类型
+           - 盈利能力数据→柱状图/雷达图
+           - 偿债能力数据→柱状图/仪表盘
+           - 综合数据→雷达图/组合图
+           
+        3. **专业图表生成**：
+           - 生成符合财务分析标准的专业图表
+           - 使用中文标签和财务术语
+           - 添加数据标签和说明文字
+           - 确保图表美观、清晰、准确
+
+        4. **质量控制**：
+           - 验证图表文件生成成功
+           - 检查数据逻辑合理性
+           - 确保图表专业规范
+
+        5. **结果整合**：
+           - 为每张图表提供专业解读
+           - 生成图表文件列表和说明
+
+        数据质量优势：
+        - 接收的分析数据基于高质量清洗数据
+        - 图表生成工具支持自动数据格式转换
+        - 减少了数据格式不匹配的问题
+
+  ReportAgent:
+    agent:
+      instructions: |-
+        专业报告生成专家。整合所有分析结果生成完整财务分析报告。
+
+        核心工具：
+        - generate_comparison_report: 生成公司对比分析报告
+        - save_text_report: 生成并保存MD格式的财务分析报告（支持动态文件命名）
+        - save_analysis_report: 保存AI分析结果到各种格式的文件
+        - save_pdf_report: 生成并保存PDF格式的财务分析报告（支持动态文件命名和图表嵌入）
+        - get_tabular_columns: 分析表格数据结构
+        - get_column_info: 智能解释表格列含义
+
+        增强报告生成工作流程：
+        1. **整合高质量分析结果**: 整合所有智能体的分析结果（基于清洗数据的数据、比率、趋势、健康评估、图表等）
+        2. **数据质量报告**: 在报告中包含数据质量评估信息
+        3. **多格式保存**: 用save_analysis_report将报告保存为MD格式文件，文件名将根据公司名称和日期自动生成
+        4. **PDF生成**: 使用save_pdf_report生成PDF格式报告，包含所有图表
+        5. **质量声明**: 在报告中明确数据质量保证和处理过程
+        6. **保存报告**: 保存报告到"./stock_analysis_workspace"目录
+        7. **提供摘要**: 提供报告摘要和关键洞察
+
+        数据质量优势：
+        - 报告基于高质量清洗数据的分析结果
+        - 包含完整的数据处理和质量评估信息
+        - 提供更可靠和可信的分析结论
+
+        注意：专注于报告整合和呈现，必须使用save_analysis_report和save_pdf_report工具保存报告，不要使用Python代码保存文件。
+
+# 工具配置特殊覆盖 - 集成数据清洗工具
+toolkits:
+  # 数据清洗工具配置
+  data_cleanser:
+    config: ${standard_config.standard_toolkits.data_cleansing}
+    workspace_root: ${standard_config.standard_workspace.root}
+    
+    # 数据清洗参数
+    cleansing_params:
+      # 字段名映射策略
+      field_mapping_strategy: "comprehensive"
+      
+      # 缺失值处理策略
+      missing_value_strategy: "intelligent"
+      
+      # 异常值处理策略
+      outlier_strategy: "detect_and_flag"
+      
+      # 数据验证严格程度
+      validation_strictness: "balanced"
+      
+      # 质量报告详细程度
+      quality_report_detail: "detailed"
+    
+    # 性能优化
+    performance:
+      enable_caching: true
+      cache_duration: 1800
+      batch_processing: true
+      
+  # 增强的Python执行器配置 - 图表生成需要特殊设置
+  analysis_executor:
+    config: ${standard_config.standard_toolkits.enhanced_python_executor}
+    workspace_root: ${standard_config.standard_workspace.root}
+    save_code: true
+    timeout: 60
+    matplotlib_backend: "Agg"
+    max_output_length: 1500
+    
+    # 图表生成相关配置
+    chart_settings:
+      dpi: 300
+      figure_size: [12, 8]
+      style: "seaborn-v0_8"
+      color_palette: "Set2"
+      font_family: "SimHei"  # 支持中文
+  
+  # 时间工具配置 - 保持原有的时间设置
+  datetime:
+    config:
+      timezone: "Asia/Shanghai"
+      financial_reporting_rules:
+        q1_deadline: "04-30"  # 一季报4月30日前
+        q2_deadline: "08-31"  # 半年报8月31日前
+        q3_deadline: "10-31"  # 三季报10月31日前
+        q4_deadline: "04-30"  # 年报次年4月30日前
+      validation_settings:
+        min_year: 1990
+        max_future_years: 2
+        valid_quarters: [1, 2, 3, 4]
+      error_handling:
+        handle_invalid_periods: "provide_alternatives"
+        max_retry_attempts: 3
+        fallback_to_previous_period: true
+
+# 统一工作空间配置
+workspace_config:
+  root: "./stock_analysis_workspace"
+  auto_create: true
+  cleanup_old_files: true
+  file_retention_days: 7
+
+# 增强版Worker智能体配置说明
+# 各智能体的详细配置现在通过引用标准配置来管理：
+# - DataAgent: 财务数据获取专家（data_agent.yaml）
+# - DataCleanserAgent: 数据清洗和标准化专家（data_cleanser_agent.yaml）- 新增
+# - DataAnalysisAgent: 数据分析专家（data_analysis_agent.yaml）
+# - FinancialAnalysisAgent: 财务分析专家（financial_analysis_agent.yaml）
+# - ChartGeneratorAgent: 图表生成专家（chart_generator_agent.yaml）
+# - ReportAgent: 报告生成专家（report_agent.yaml）
+# 
+# 每个智能体的配置、工具和能力都在对应的worker配置文件中定义
+
+# 核心优化配置 - 增强数据质量保证
+optimization_settings:
+  # 上下文管理
+  context_management:
+    max_history_items: 3
+    compress_long_messages: true
+    remove_duplicate_content: true
+    
+  # 输出控制
+  output_control:
+    max_response_length: 2000
+    enable_concise_mode: true
+    avoid_redundant_explanations: true
+    
+  # 工具调用优化
+  tool_optimization:
+    cache_tool_results: true
+    batch_similar_calls: true
+    error_handling: "fail_fast"  # fail_fast, retry_all, skip_errors
+    
+  # 内存优化
+  memory_management:
+    enable_garbage_collection: true
+    max_concurrent_operations: 3
+    timeout_threshold: 45
+
+  # 数据质量优化（新增）
+  data_quality_optimization:
+    enable_data_validation: true
+    enable_quality_monitoring: true
+    quality_threshold: 80
+    fallback_on_low_quality: true
+
+# Web界面配置
+web_interface:
+  enabled: true
+  port: 8848
+  host: "127.0.0.1"
+  title: "财务分析智能体（增强版）"
+  description: "基于Youtu-Agent框架构建的智能财务分析系统，专为A股市场设计，集成数据清洗和质量保证"
+
+# 分析配置 - 使用统一工作空间配置
+analysis_config:
+  workdir: ${workspace_config.root}
+  output_formats: ["html", "pdf", "md"]  # 支持多种输出格式
+  chart_formats: ["png"]
+
+  # 启用数据缓存
+  enable_caching: true
+  cache_duration: 1800
+
+  # 结果压缩
+  compress_intermediate_results: true
+  max_intermediate_size: 1000
+
+  # 数据质量配置（新增）
+  data_quality:
+    enable_cleansing: true
+    quality_threshold: 80
+    include_quality_report: true
+    validate_input_data: true
+
+# 数据源配置（只使用AKShare）
+data_sources:
+  akshare:
+    enabled: true
+    priority: 1
+    
+  # 禁用其他数据源以简化流程
+  web_search:
+    enabled: false
+  tushare:
+    enabled: false
+  yfinance:
+    enabled: false
+
+# Token优化策略
+token_optimization:
+  # 减少系统提示长度
+  shorten_system_prompts: true
+  max_system_prompt_length: 800
+  
+  # 压缩历史对话
+  compress_history: true
+  history_compression_ratio: 0.6
+  
+  # 限制工具输出
+  limit_tool_output: true
+  max_tool_output_length: 800
+  
+  # 结果缓存
+  enable_result_caching: true
+  cache_ttl: 3600
