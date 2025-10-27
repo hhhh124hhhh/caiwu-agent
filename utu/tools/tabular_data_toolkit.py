@@ -1555,12 +1555,65 @@ class TabularDataToolkit(AsyncBaseToolkit):
                         plt.close()
                         continue
             
+            elif chart_type == 'area':
+                # 生成面积图
+                x = np.arange(len(x_axis))
+                
+                for i, item in enumerate(series):
+                    series_name = item.get('name', f'系列{i+1}')
+                    series_data = item.get('data', [])
+                    
+                    if len(series_data) != len(x_axis):
+                        logger.warning(f"系列 '{series_name}' 的数据长度与X轴不匹配，跳过")
+                        continue
+                    
+                    color = colors[i % len(colors)]
+                    
+                    # 绘制面积图
+                    plt.fill_between(x, series_data, alpha=0.3, color=color, label=series_name)
+                    plt.plot(x, series_data, marker='o', linewidth=2, color=color, label=series_name)
+                
+                # 设置图表标题和标签
+                plt.title(title, fontsize=16, fontweight='bold')
+                plt.xlabel('年份', fontsize=12)
+                plt.ylabel('数值', fontsize=12)
+                
+                # 设置X轴刻度标签
+                plt.xticks(x, x_axis)
+                
+                # 添加图例
+                plt.legend(loc='best', fontsize=10)
+                
+                # 添加网格线
+                plt.grid(True, linestyle='--', alpha=0.7, axis='y')
+                
+                # 保存图表
+                chart_filename = os.path.join(output_dir, f"{title.replace(' ', '_')}_面积图.png")
+                plt.tight_layout()
+                plt.savefig(chart_filename, dpi=300, bbox_inches='tight')
+                plt.close()
+                
+                chart_files.append(chart_filename)
+            
             # 可以根据需要添加更多图表类型的支持
             else:
+                # 提供推荐的替代图表类型
+                suggestions = {
+                    'area': 'line',
+                    'stacked_bar': 'bar', 
+                    'waterfall': 'bar',
+                    'donut': 'pie',
+                    'histogram': 'bar',
+                    'violin': 'boxplot'
+                }
+                
+                suggested_type = suggestions.get(chart_type, 'bar')
                 return {
                     "success": False,
-                    "message": f"不支持的图表类型: {chart_type}",
-                    "files": []
+                    "message": f"不支持的图表类型: {chart_type}。建议使用 '{suggested_type}' 类型代替，或使用execute_python_code_enhanced工具生成高级图表。",
+                    "files": [],
+                    "suggested_chart_type": suggested_type,
+                    "alternative_tools": ["execute_python_code_enhanced"]
                 }
             
             return {

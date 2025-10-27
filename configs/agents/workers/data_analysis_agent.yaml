@@ -4,6 +4,7 @@ defaults:
   - /model/base@model
   - /tools/financial_analysis@toolkits.financial_analyzer
   - /tools/tabular@toolkits.tabular
+  - /agents/workers/standard_agent_config@standard_config
   - _self_
 
 agent:
@@ -46,30 +47,24 @@ agent:
 
     重要：直接调用分析工具，不要编写Python计算代码。确保分析结果准确、客观、有价值。
 
-  tool_use_behavior: "run_llm_again"
+  tool_use_behavior: ${standard_config.standard_behavior.data_analysis}
 
 # 专用工具配置
 toolkits:
   financial_analyzer:
-    config:
-      workspace_root: "./stock_analysis_workspace"
-      cache_enabled: true
-      timeout: 30
-      cache_ttl: 1800  # 缓存30分钟
-
-      # 分析参数设置
-      trend_years: 4
-      health_weights:
-        profitability: 0.3    # 盈利能力
-        solvency: 0.3         # 偿债能力
-        efficiency: 0.2       # 运营效率
-        growth: 0.2           # 成长能力
+    config: ${standard_config.standard_toolkits.financial_analysis}
+    workspace_root: ${standard_config.standard_workspace.root}
+    # 分析参数设置
+    trend_years: 4
+    health_weights:
+      profitability: 0.3    # 盈利能力
+      solvency: 0.3         # 偿债能力
+      efficiency: 0.2       # 运营效率
+      growth: 0.2           # 成长能力
 
   tabular:
-    config:
-      workspace_root: "./stock_analysis_workspace"
-      cache_enabled: true
-      timeout: 30
+    config: ${standard_config.standard_toolkits.tabular}
+    workspace_root: ${standard_config.standard_workspace.root}
 
 # Agent信息配置
 agent_info:
@@ -85,6 +80,21 @@ agent_info:
     - "财务健康评估"
     - "投资风险分析"
   output_format: "结构化的分析结果数据"
+  
+  # 数据格式标准
+  data_format_standards:
+    analysis_results:
+      required_sections: ["ratios", "health_assessment"]
+      optional_sections: ["trends", "valuation"]
+    ratios:
+      profitability: ["gross_profit_margin", "net_profit_margin", "roe", "roa"]
+      solvency: ["debt_to_asset_ratio", "current_ratio", "quick_ratio"]
+      efficiency: ["asset_turnover", "inventory_turnover", "receivables_turnover"]
+      growth: ["revenue_growth", "profit_growth", "eps_growth"]
+    validation_ranges:
+      ratios: "-100 to 100"
+      scores: "0 to 100"
+      growth_rates: "reasonable_range_check"
 
 # 分析配置
 analysis_config:
@@ -94,19 +104,26 @@ analysis_config:
     solvency_ratios: true
     efficiency_ratios: true
     growth_ratios: true
-
+    
   # 趋势分析设置
   trend_analysis:
     years: 4
     cagr_calculation: true
     growth_rate_analysis: true
     volatility_analysis: true
-
+    
   # 健康评估设置
   health_assessment:
     scoring_enabled: true
     risk_level_assessment: true
     recommendation_generation: true
+    
+  # 数据处理标准
+  data_processing:
+    handle_historical_trends: true
+    support_nested_structures: true
+    time_series_analysis: true
+    missing_data_treatment: "interpolation"
 
 # 质量控制
 quality_control:
@@ -114,6 +131,28 @@ quality_control:
   result_cross_check: true
   error_handling: "detailed_logging"
   sensitivity_analysis: false
+  
+  # 统一错误处理策略
+  error_strategies:
+    calculation_errors:
+      division_by_zero: "handle_gracefully"
+      missing_data: "use_available_data"
+      invalid_input: "request_correction"
+    trend_analysis_errors:
+      insufficient_data: "extend_period_if_possible"
+      irregular_intervals: "normalize_and_proceed"
+      extreme_volatility: "flag_and_analyze"
+    health_assessment_errors:
+      incomplete_ratios: "use_available_partial"
+      weighting_issues: "use_default_weights"
+      scoring_errors: "log_and_continue"
+  
+  # 结果验证规则
+  validation_rules:
+    ratio_reasonableness: true
+    trend_consistency: true
+    score_validity: true
+    cross_validation: true
 
 # 性能优化
 performance:
@@ -121,3 +160,17 @@ performance:
   cache_duration: 1800
   batch_calculations: true
   parallel_processing: false
+  
+# 输出标准
+output_standards:
+  # 遵循standard_data_formats.yaml中定义的格式
+  follow_standard_format: true
+  include_metadata: true
+  ensure_json_validity: true
+  
+  # 结果质量要求
+  quality_requirements:
+    calculation_accuracy: "high"
+    result_completeness: "all_required_sections"
+    consistency: "internal_validation"
+    interpretability: "clear_explanations"

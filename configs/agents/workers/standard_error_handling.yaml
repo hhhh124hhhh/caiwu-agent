@@ -1,0 +1,383 @@
+# 标准错误处理配置
+# 为所有工作智能体提供统一的错误处理策略
+
+## 错误类型分类
+
+### 1. 数据相关错误
+```yaml
+data_errors:
+  missing_data:
+    description: "缺失必要数据"
+    handling_strategy: "graceful_degradation"
+    fallback_options:
+      - "使用默认值"
+      - "跳过相关分析"
+      - "请求用户补充"
+      - "使用历史数据"
+    
+  invalid_format:
+    description: "数据格式不正确"
+    handling_strategy: "auto_conversion"
+    fallback_options:
+      - "尝试格式转换"
+      - "使用解析器修复"
+      - "请求格式修正"
+      - "跳过该数据项"
+      
+  inconsistent_data:
+    description: "数据间存在矛盾"
+    handling_strategy: "validation_and_flag"
+    fallback_options:
+      - "标记并继续"
+      - "使用最可靠数据源"
+      - "计算一致性检查"
+      - "记录异常报告"
+      
+  extreme_values:
+    description: "数据值异常"
+    handling_strategy: "validation_and_adjustment"
+    fallback_options:
+      - "验证合理性"
+      - "调整到合理范围"
+      - "标记为异常值"
+      - "使用统计方法处理"
+```
+
+### 2. 工具调用错误
+```yaml
+tool_errors:
+  timeout:
+    description: "工具调用超时"
+    handling_strategy: "retry_with_fallback"
+    max_retries: 3
+    fallback_options:
+      - "增加超时时间"
+      - "使用备用工具"
+      - "简化请求参数"
+      - "跳过该操作"
+      
+  failure:
+    description: "工具执行失败"
+    handling_strategy: "continue_with_partial_results"
+    fallback_options:
+      - "使用缓存结果"
+      - "尝试替代方法"
+      - "降级处理"
+      - "记录错误继续"
+      
+  unavailability:
+    description: "工具不可用"
+    handling_strategy: "skip_component"
+    fallback_options:
+      - "使用类似工具"
+      - "跳过该功能"
+      - "延迟处理"
+      - "通知用户"
+      
+  permission_denied:
+    description: "权限不足"
+    handling_strategy: "request_alternative"
+    fallback_options:
+      - "请求权限提升"
+      - "使用只读模式"
+      - "跳过受限操作"
+      - "建议替代方案"
+```
+
+### 3. 分析计算错误
+```yaml
+analysis_errors:
+  calculation_errors:
+    description: "计算过程出错"
+    handling_strategy: "error_correction"
+    fallback_options:
+      - "使用备选算法"
+      - "简化计算模型"
+      - "分步计算验证"
+      - "提供估算值"
+      
+  insufficient_data:
+    description: "数据不足以支持分析"
+    handling_strategy: "adaptive_analysis"
+    fallback_options:
+      - "使用可用数据分析"
+      - "扩展数据范围"
+      - "使用行业基准"
+      - "标记数据局限性"
+      
+  model_errors:
+    description: "分析模型出错"
+    handling_strategy: "model_fallback"
+    fallback_options:
+      - "使用简化模型"
+      - "切换分析方法"
+      - "使用历史结果"
+      - "手动计算验证"
+```
+
+### 4. 文件操作错误
+```yaml
+file_errors:
+  save_failure:
+    description: "文件保存失败"
+    handling_strategy: "location_change"
+    fallback_options:
+      - "更换保存位置"
+      - "更改文件名"
+      - "更换文件格式"
+      - "使用临时目录"
+      
+  access_denied:
+    description: "文件访问被拒绝"
+    handling_strategy: "permission_handling"
+    fallback_options:
+      - "检查文件权限"
+      - "使用管理员权限"
+      - "更改文件路径"
+      - "保存到用户目录"
+      
+  space_insufficient:
+    description: "磁盘空间不足"
+    handling_strategy: "space_optimization"
+    fallback_options:
+      - "清理临时文件"
+      - "压缩输出内容"
+      - "保存到其他位置"
+      - "分批保存"
+```
+
+## 错误处理策略
+
+### 1. 分层处理策略
+```yaml
+handling_layers:
+  immediate_recovery:
+    description: "立即恢复"
+    actions:
+      - "重试操作"
+      - "使用默认值"
+      - "跳过当前步骤"
+      - "使用缓存结果"
+      
+  graceful_degradation:
+    description: "优雅降级"
+    actions:
+      - "简化功能"
+      - "使用备选方案"
+      - "减少输出内容"
+      - "降低精度要求"
+      
+  user_interaction:
+    description: "用户交互"
+    actions:
+      - "请求用户输入"
+      - "提供选择选项"
+      - "显示错误信息"
+      - "指导用户操作"
+      
+  logging_and_reporting:
+    description: "记录和报告"
+    actions:
+      - "记录错误详情"
+      - "生成错误报告"
+      - "发送通知"
+      - "更新监控指标"
+```
+
+### 2. 错误恢复机制
+```yaml
+recovery_mechanisms:
+  automatic_recovery:
+    enabled: true
+    strategies:
+      - "重试机制"
+      - "备选工具切换"
+      - "数据格式自动修复"
+      - "参数调整"
+      
+  manual_recovery:
+    enabled: true
+    strategies:
+      - "用户输入请求"
+      - "配置文件修改"
+      - "工具更换指导"
+      - "数据源替换"
+      
+  fallback_recovery:
+    enabled: true
+    strategies:
+      - "使用历史数据"
+      - "应用默认值"
+      - "简化分析模型"
+      - "降级功能支持"
+```
+
+## 智能体特定错误处理
+
+### DataAgent 错误处理
+```yaml
+data_agent_errors:
+  specific_strategies:
+    api_limit_exceeded:
+      handling: "rate_limiting"
+      actions: ["延迟重试", "使用缓存", "切换数据源"]
+      
+    invalid_stock_code:
+      handling: "code_correction"
+      actions: ["建议正确代码", "模糊匹配", "提供选择列表"]
+      
+    data_source_unavailable:
+      handling: "source_switching"
+      actions: ["切换备用数据源", "使用缓存数据", "延迟获取"]
+```
+
+### DataAnalysisAgent 错误处理
+```yaml
+data_analysis_agent_errors:
+  specific_strategies:
+    ratio_calculation_errors:
+      handling: "calculation_adaptation"
+      actions: ["使用备选公式", "处理零值", "标记异常结果"]
+      
+    trend_analysis_insufficient_data:
+      handling: "period_adjustment"
+      actions: ["扩展时间范围", "使用插值", "降低分析深度"]
+      
+    health_assessment_incomplete:
+      handling: "partial_assessment"
+      actions: ["基于可用数据评估", "使用默认权重", "标记局限性"]
+```
+
+### ChartGeneratorAgent 错误处理
+```yaml
+chart_generator_agent_errors:
+  specific_strategies:
+    chart_type_unsupported:
+      handling: "type_substitution"
+      actions: ["推荐相似类型", "使用Python备用方案", "提供替代建议"]
+      
+    data_format_mismatch:
+      handling: "format_conversion"
+      actions: ["自动转换格式", "调整数据结构", "提供格式示例"]
+      
+    rendering_failure:
+      handling: "rendering_retry"
+      actions: ["调整参数重试", "更换渲染引擎", "简化图表设计"]
+```
+
+### FinancialAnalysisAgent 错误处理
+```yaml
+financial_analysis_agent_errors:
+  specific_strategies:
+    valuation_insufficient_data:
+      handling: "valuation_adaptation"
+      actions: ["使用简化模型", "采用行业基准", "标记数据局限性"]
+      
+    risk_assessment_incomplete:
+      handling: "risk_prioritization"
+      actions: ["基于主要风险因素", "使用通用风险模型", "建议进一步分析"]
+      
+    recommendation_uncertainty:
+      handling: "conservative_approach"
+      actions: ["采用保守策略", "建议等待更多信息", "提供多场景分析"]
+```
+
+### ReportAgent 错误处理
+```yaml
+report_agent_errors:
+  specific_strategies:
+    content_integration_failure:
+      handling: "content_simplification"
+      actions: ["简化整合逻辑", "分步整合", "使用基础模板"]
+      
+    pdf_generation_failure:
+      handling: "format_fallback"
+      actions: ["生成HTML版本", "生成Markdown版本", "提供打印版本"]
+      
+    template_rendering_errors:
+      handling: "template_fallback"
+      actions: ["使用基础模板", "手动格式化", "简化输出格式"]
+```
+
+## 错误监控和报告
+
+### 1. 错误日志记录
+```yaml
+error_logging:
+  enabled: true
+  log_level: "INFO"
+  include_details:
+    - "错误类型"
+    - "发生时间"
+    - "处理策略"
+    - "恢复结果"
+    - "影响范围"
+    
+  log_format:
+    timestamp: "%Y-%m-%d %H:%M:%S"
+    structure: "structured_json"
+    rotation: "daily"
+    retention_days: 30
+```
+
+### 2. 错误统计和分析
+```yaml
+error_statistics:
+  enabled: true
+  metrics:
+    - "错误频率"
+    - "恢复成功率"
+    - "平均处理时间"
+    - "影响用户数"
+    
+  reporting:
+    frequency: "daily"
+    format: "dashboard"
+    alerts: "high_frequency_errors"
+```
+
+### 3. 错误预防机制
+```yaml
+error_prevention:
+  data_validation:
+    pre_check: true
+    validation_rules: "strict"
+    user_guidance: "clear_instructions"
+    
+  tool_health_check:
+    availability_check: true
+    performance_monitoring: true
+    fallback_preparation: true
+    
+  capacity_planning:
+    resource_monitoring: true
+    load_balancing: true
+    scalability_preparation: true
+```
+
+## 用户通知策略
+
+### 1. 错误信息展示
+```yaml
+user_notification:
+  error_display:
+    severity_levels: ["info", "warning", "error", "critical"]
+    message_style: "clear_and_constructive"
+    include_suggestions: true
+    
+  recovery_guidance:
+    provide_steps: true
+    include_alternatives: true
+    escalation_path: true
+```
+
+### 2. 透明度管理
+```yaml
+transparency:
+  show_error_details: "technical_users"
+  hide_complexity: "general_users"
+  provide_context: "always"
+  offer_help: "always"
+```
+
+这套标准错误处理配置确保了所有智能体在面对各种错误情况时都能有一致、可靠的应对策略。

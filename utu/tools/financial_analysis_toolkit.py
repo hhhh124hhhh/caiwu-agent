@@ -794,31 +794,104 @@ class StandardFinancialAnalyzer(AsyncBaseToolkit):
                 financial_data = {}
                 
                 # 特殊处理陕西建工等单公司多年数据格式
-                # 支持historical_data和historical_trends两种格式
+                # 支持historical_data、historical_trends和历史数据等格式
                 historical_source = None
                 if 'historical_data' in data_dict and isinstance(data_dict['historical_data'], dict):
                     historical_source = data_dict['historical_data']
                     logger.info("检测到单公司多年历史数据格式(historical_data)")
+                elif '历史数据' in data_dict and isinstance(data_dict['历史数据'], dict):
+                    historical_source = data_dict['历史数据']
+                    logger.info("检测到单公司多年历史数据格式(历史数据)")
+                elif 'historical_trends' in data_dict and isinstance(data_dict['historical_trends'], dict):
+                    historical_source = data_dict['historical_trends']
+                    logger.info("检测到单公司多年历史数据格式(historical_trends)")
                 
                 if historical_source:
+                    # 检查是否包含years数组格式
                     years_list = historical_source.get('years', [])
-                    if years_list and all(isinstance(year, int) for year in years_list):
+                    
+                    # 如果没有years数组，尝试从键中提取年份
+                    if not years_list:
+                        years_list = []
+                        for key in historical_source.keys():
+                            if key.isdigit() and len(key) == 4:  # 4位数字年份
+                                years_list.append(int(key))
+                        years_list.sort(reverse=True)  # 按年份降序排列
+                    
+                    if years_list:
                         # 构建DataFrame格式
                         income_data = []
                         for i, year in enumerate(years_list):
+                            year_str = str(year)
                             row = {'年份': year}
-                            # 提取各种财务指标
-                            for metric in ['revenue', 'net_profit', 'total_assets', 'total_liabilities', 'equity', 'operating_cash_flow']:
-                                # 同时检查直接指标名和带trend后缀的指标名
-                                if metric in historical_source and isinstance(historical_source[metric], list) and i < len(historical_source[metric]):
-                                    row[metric] = historical_source[metric][i]
-                                elif f'{metric}_trend' in historical_source and isinstance(historical_source[f'{metric}_trend'], list) and i < len(historical_source[f'{metric}_trend']):
-                                    row[metric] = historical_source[f'{metric}_trend'][i]
+                            
+                            # 检查数据是否按年份组织（用户格式）
+                            if year_str in historical_source:
+                                year_data = historical_source[year_str]
+                                if isinstance(year_data, dict):
+                                    # 支持中英文字段名映射
+                                    field_mapping = {
+                                        'revenue': ['营业收入', 'revenue', '主营业务收入', '营业总收入'],
+                                        'net_profit': ['净利润', 'net_profit', 'net_income', '利润总额'],
+                                        'total_assets': ['总资产', 'total_assets', '资产总计'],
+                                        'total_liabilities': ['总负债', 'total_liabilities', '负债合计'],
+                                        'equity': ['所有者权益', 'equity', '股东权益'],
+                                        'operating_cash_flow': ['经营活动现金流量净额', 'operating_cash_flow', '经营现金流']
+                                    }
+                                    
+                                    for metric, field_names in field_mapping.items():
+                                        for field_name in field_names:
+                                            if field_name in year_data:
+                                                row[metric] = year_data[field_name]
+                                                break
+                            
+                            # 原有格式：指标数组
+                            else:
+                                # 提取各种财务指标
+                                for metric in ['revenue', 'net_profit', 'total_assets', 'total_liabilities', 'equity', 'operating_cash_flow']:
+                                    # 同时检查直接指标名和带trend后缀的指标名
+                                    if metric in historical_source and isinstance(historical_source[metric], list) and i < len(historical_source[metric]):
+                                        row[metric] = historical_source[metric][i]
+                                    elif f'{metric}_trend' in historical_source and isinstance(historical_source[f'{metric}_trend'], list) and i < len(historical_source[f'{metric}_trend']):
+                                        row[metric] = historical_source[f'{metric}_trend'][i]
+                            
                             income_data.append(row)
-                        financial_data['income_statement'] = pd.DataFrame(income_data)
-                        financial_data['balance_sheet'] = pd.DataFrame(income_data)
-                        financial_data['cash_flow'] = pd.DataFrame(income_data)
-                        return self.analyze_trends(financial_data, years)
+                        
+                        if income_data:
+                            # 创建DataFrame并确保列名标准化
+                            df = pd.DataFrame(income_data)
+                            
+                            # 确保收入和利润字段有标准的列名
+                            if 'revenue' not in df.columns and '营业收入' in df.columns:
+                                df['revenue'] = df['营业收入']
+                            if 'net_profit' not in df.columns and '净利润' in df.columns:
+                                df['net_profit'] = df['净利润']
+                            
+                            # 添加标准列名映射，便于后续分析
+                            column_mapping = {
+                                '营业收入': 'TOTAL_OPERATE_INCOME',
+                                '净利润': 'NETPROFIT',
+                                '总资产': 'TOTAL_ASSETS',
+                                '总负债': 'TOTAL_LIABILITIES',
+                                '所有者权益': 'TOTAL_EQUITY',
+                                '经营活动现金流量净额': 'NET_CASH_FLOWS_FROM_OPERATING_ACTIVITIES'
+                            }
+                            
+                            # 添加标准列名（不覆盖原有数据）
+                            for chinese_col, english_col in column_mapping.items():
+                                if chinese_col in df.columns and english_col not in df.columns:
+                                    df[english_col] = df[chinese_col]
+                            
+                            financial_data['income_statement'] = df
+                            financial_data['balance_sheet'] = df
+                            financial_data['cash_flow'] = df
+                            
+                            logger.info(f"成功构建DataFrame，包含{len(income_data)}年数据，列名: {list(df.columns)}")
+                            return self.analyze_trends(financial_data, years)
+                        else:
+                            logger.warning("未能从历史数据中提取有效数据")
+                    else:
+                        logger.warning("未能从历史数据中提取年份信息")
                 
                 # 处理其他格式的数据
                 for key, df_data in data_dict.items():
@@ -887,15 +960,54 @@ class StandardFinancialAnalyzer(AsyncBaseToolkit):
             for year in years:
                 year_data = historical_trends[year]
                 if isinstance(year_data, dict):
-                    # 提取收入数据
-                    revenue = year_data.get('revenue') or year_data.get('营业收入') or year_data.get('收入')
-                    if revenue is not None:
-                        revenue_data.append({'年份': int(year), 'revenue': float(revenue)})
-                    
-                    # 提取利润数据
-                    profit = year_data.get('net_profit') or year_data.get('净利润') or year_data.get('利润')
-                    if profit is not None:
-                        profit_data.append({'年份': int(year), 'net_profit': float(profit)})
+                    # 增强的收入数据提取 - 支持更多字段名
+                    revenue_fields = ['revenue', '营业收入', '收入', '主营业务收入', '营业总收入', 'TOTAL_OPERATE_INCOME', 'sales_revenue']
+                revenue = None
+                for field in revenue_fields:
+                    if field in year_data and year_data[field] is not None:
+                        try:
+                            revenue = float(year_data[field])
+                            break
+                        except (ValueError, TypeError):
+                            continue
+                
+                if revenue is not None:
+                    revenue_data.append({'年份': int(year), 'revenue': revenue})
+                    logger.debug(f"提取{year}年收入数据: {revenue}")
+                
+                # 增强的利润数据提取 - 支持更多字段名
+                profit_fields = ['net_profit', '净利润', '利润', 'net_income', '归属于母公司所有者的净利润', 'NETPROFIT']
+                profit = None
+                for field in profit_fields:
+                    if field in year_data and year_data[field] is not None:
+                        try:
+                            profit = float(year_data[field])
+                            break
+                        except (ValueError, TypeError):
+                            continue
+                
+                if profit is not None:
+                    profit_data.append({'年份': int(year), 'net_profit': profit})
+                    logger.debug(f"提取{year}年利润数据: {profit}")
+                
+                # 提取资产数据用于资产增长率分析
+                asset_fields = ['total_assets', '总资产', '资产', '资产总计', 'TOTAL_ASSETS']
+                if not hasattr(trends, 'asset_data'):
+                    trends['asset_data'] = []
+                asset = None
+                for field in asset_fields:
+                    if field in year_data and year_data[field] is not None:
+                        try:
+                            asset = float(year_data[field])
+                            break
+                        except (ValueError, TypeError):
+                            continue
+                
+                if asset is not None:
+                    if 'asset_data' not in trends:
+                        trends['asset_data'] = []
+                    trends['asset_data'].append({'年份': int(year), 'total_assets': asset})
+                    logger.debug(f"提取{year}年资产数据: {asset}")
             
             trends['revenue']['data'] = revenue_data
             trends['profit']['data'] = profit_data
@@ -949,6 +1061,28 @@ class StandardFinancialAnalyzer(AsyncBaseToolkit):
                         trends['profit']['trend'] = 'declining'
                     else:
                         trends['profit']['trend'] = 'stable'
+            
+            # 计算资产增长率
+            if 'asset_data' in trends and len(trends['asset_data']) >= 2:
+                asset_growth_rates = []
+                for i in range(len(trends['asset_data']) - 1):
+                    current_val = trends['asset_data'][i]['total_assets']
+                    prev_val = trends['asset_data'][i + 1]['total_assets']
+                    if prev_val > 0:
+                        growth_rate = ((current_val - prev_val) / prev_val) * 100
+                        asset_growth_rates.append(round(growth_rate, 2))
+                
+                if asset_growth_rates:
+                    avg_asset_growth = sum(asset_growth_rates) / len(asset_growth_rates)
+                    trends['growth_rates']['assets_growth'] = asset_growth_rates
+                    logger.info(f"计算资产增长率，平均: {avg_asset_growth:.2f}%")
+            
+            # 增加数据质量检查和日志
+            logger.info(f"趋势分析完成 - 收入数据点: {len(revenue_data)}, 利润数据点: {len(profit_data)}")
+            if len(revenue_data) == 0:
+                logger.warning("未能提取到任何收入数据")
+            if len(profit_data) == 0:
+                logger.warning("未能提取到任何利润数据")
         
         # 检查是否是传统数组格式 {"years": [...], "revenue_trend": [...], ...}
         elif 'years' in historical_trends:
@@ -1469,6 +1603,259 @@ class StandardFinancialAnalyzer(AsyncBaseToolkit):
         """
         return self.assess_financial_health(ratios, trends)
     
+    @register_tool()
+    def assess_health_tool(self, ratios_json: str) -> Dict:
+        """
+        评估财务健康状况 - 独立工具版本
+        
+        Args:
+            ratios_json: 财务比率的JSON字符串表示
+            
+        Returns:
+            财务健康评估结果
+        """
+        import json
+        logger.info("开始评估财务健康状况")
+        
+        try:
+            # 解析比率数据
+            if isinstance(ratios_json, str):
+                ratios = json.loads(ratios_json)
+            else:
+                ratios = ratios_json
+            
+            # 创建默认的趋势数据（如果没有提供）
+            trends = {
+                'revenue': {'trend': 'stable', 'average_growth': 0.0},
+                'profit': {'trend': 'stable', 'average_growth': 0.0}
+            }
+            
+            # 调用健康评估
+            health_result = self.assess_financial_health(ratios, trends)
+            
+            logger.info("财务健康评估完成")
+            return health_result
+            
+        except Exception as e:
+            logger.error(f"财务健康评估失败: {e}")
+            return {
+                'overall_health': 'unknown',
+                'score': 0,
+                'analysis': f'评估失败: {str(e)}',
+                'warnings': [f'评估过程出现错误: {str(e)}'],
+                'recommendations': ['请检查输入数据格式']
+            }
+    
+    @register_tool()
+    def comprehensive_financial_analysis(self, financial_data_json: str, stock_name: str = "目标公司") -> Dict:
+        """
+        综合财务分析工具 - 集成所有修复功能
+        
+        Args:
+            financial_data_json: 财务数据的JSON字符串表示
+            stock_name: 公司名称
+            
+        Returns:
+            综合分析结果，包含比率分析、趋势分析、健康评估和详细诊断
+        """
+        import json
+        import traceback
+        from datetime import datetime
+        
+        logger.info(f"开始综合财务分析: {stock_name}")
+        start_time = datetime.now()
+        
+        result = {
+            'success': False,
+            'company_name': stock_name,
+            'analysis_time': start_time.strftime('%Y-%m-%d %H:%M:%S'),
+            'ratios': {},
+            'trends': {},
+            'health_assessment': {},
+            'diagnostics': {
+                'data_format_detected': 'unknown',
+                'data_quality_issues': [],
+                'calculation_warnings': [],
+                'missing_data_fields': []
+            },
+            'error_info': None
+        }
+        
+        try:
+            # 数据预处理和格式检测
+            logger.info("步骤1: 数据预处理和格式检测")
+            try:
+                data_dict = json.loads(financial_data_json)
+                result['diagnostics']['data_format_detected'] = self._detect_data_format(data_dict)
+                logger.info(f"检测到数据格式: {result['diagnostics']['data_format_detected']}")
+            except json.JSONDecodeError as e:
+                result['error_info'] = f"JSON解析失败: {e}"
+                logger.error(f"JSON解析失败: {e}")
+                return result
+            
+            # 转换为标准财务数据结构
+            logger.info("步骤2: 数据结构标准化")
+            try:
+                financial_data = self._convert_simple_metrics_to_financial_data(data_dict)
+                
+                # 检查数据完整性
+                income_df = financial_data.get('income', pd.DataFrame())
+                balance_df = financial_data.get('balance', pd.DataFrame())
+                cashflow_df = financial_data.get('cashflow', pd.DataFrame())
+                
+                if income_df.empty and balance_df.empty and cashflow_df.empty:
+                    result['diagnostics']['data_quality_issues'].append("所有财务数据表都为空")
+                    logger.warning("所有财务数据表都为空")
+                else:
+                    logger.info(f"数据表状态 - 利润表: {not income_df.empty}, 资产负债表: {not balance_df.empty}, 现金流表: {not cashflow_df.empty}")
+                
+                # 检查关键字段缺失情况
+                if income_df.empty:
+                    result['diagnostics']['missing_data_fields'].extend(['营业收入', '净利润', '毛利润'])
+                if balance_df.empty:
+                    result['diagnostics']['missing_data_fields'].extend(['总资产', '总负债', '净资产'])
+                    
+            except Exception as e:
+                result['diagnostics']['data_quality_issues'].append(f"数据结构转换失败: {str(e)}")
+                logger.error(f"数据结构转换失败: {e}")
+                # 继续执行，尝试基本的数据提取
+                
+            # 计算财务比率
+            logger.info("步骤3: 财务比率计算")
+            try:
+                ratios = self.calculate_financial_ratios(financial_data)
+                result['ratios'] = ratios
+                
+                # 检查比率计算结果
+                if not ratios:
+                    result['diagnostics']['calculation_warnings'].append("未能计算任何财务比率")
+                    logger.warning("未能计算任何财务比率")
+                else:
+                    logger.info(f"成功计算财务比率: {list(ratios.keys())}")
+                    
+            except Exception as e:
+                result['diagnostics']['calculation_warnings'].append(f"财务比率计算出错: {str(e)}")
+                logger.error(f"财务比率计算出错: {e}")
+                result['ratios'] = {}
+            
+            # 趋势分析
+            logger.info("步骤4: 趋势分析")
+            try:
+                trends = self.analyze_trends(financial_data)
+                result['trends'] = trends
+                
+                # 检查趋势分析结果
+                if not trends or (not trends.get('revenue', {}).get('data') and not trends.get('profit', {}).get('data')):
+                    result['diagnostics']['calculation_warnings'].append("趋势分析数据不足")
+                    logger.warning("趋势分析数据不足")
+                else:
+                    logger.info("趋势分析完成")
+                    
+            except Exception as e:
+                result['diagnostics']['calculation_warnings'].append(f"趋势分析出错: {str(e)}")
+                logger.error(f"趋势分析出错: {e}")
+                result['trends'] = {}
+            
+            # 健康状况评估
+            logger.info("步骤5: 财务健康评估")
+            try:
+                health_assessment = self.assess_financial_health(result['ratios'], result['trends'])
+                result['health_assessment'] = health_assessment
+                logger.info(f"健康评估完成 - 总体评分: {health_assessment.get('overall_score', 0)}")
+                
+            except Exception as e:
+                result['diagnostics']['calculation_warnings'].append(f"健康评估出错: {str(e)}")
+                logger.error(f"健康评估出错: {e}")
+                result['health_assessment'] = {}
+            
+            # 生成诊断摘要
+            logger.info("步骤6: 生成诊断摘要")
+            self._generate_diagnostic_summary(result)
+            
+            # 计算分析耗时
+            end_time = datetime.now()
+            analysis_duration = (end_time - start_time).total_seconds()
+            result['analysis_duration_seconds'] = round(analysis_duration, 2)
+            
+            result['success'] = True
+            logger.info(f"综合财务分析完成，耗时: {analysis_duration:.2f}秒")
+            
+        except Exception as e:
+            result['error_info'] = f"综合分析过程出现严重错误: {str(e)}"
+            result['diagnostics']['data_quality_issues'].append(f"系统错误: {str(e)}")
+            logger.error(f"综合分析过程出现严重错误: {e}")
+            logger.error(f"错误堆栈: {traceback.format_exc()}")
+        
+        return result
+    
+    def _detect_data_format(self, data_dict: dict) -> str:
+        """
+        检测数据格式类型
+        
+        Args:
+            data_dict: 输入数据字典
+            
+        Returns:
+            数据格式描述字符串
+        """
+        if not isinstance(data_dict, dict):
+            return "非字典格式"
+        
+        # 检查各种数据格式特征
+        if 'historical_trends' in data_dict:
+            return "historical_trends格式"
+        elif 'financial_data' in data_dict:
+            return "financial_data嵌套格式"
+        elif 'financial_metrics' in data_dict:
+            return "financial_metrics格式"
+        elif any(key.isdigit() for key in data_dict.keys()):
+            return "多年份数据格式"
+        elif any(key in data_dict for key in ['revenue', 'net_profit', '营业收入', '净利润']):
+            return "扁平化财务指标格式"
+        elif 'income_statement' in data_dict or 'balance_sheet' in data_dict:
+            return "标准财务报表格式"
+        else:
+            return "未知格式"
+    
+    def _generate_diagnostic_summary(self, result: dict) -> None:
+        """
+        生成诊断摘要
+        
+        Args:
+            result: 分析结果字典
+        """
+        diagnostics = result['diagnostics']
+        
+        # 数据质量评分
+        quality_score = 100
+        quality_score -= len(diagnostics['data_quality_issues']) * 20
+        quality_score -= len(diagnostics['calculation_warnings']) * 10
+        quality_score -= len(diagnostics['missing_data_fields']) * 5
+        quality_score = max(0, quality_score)
+        
+        result['diagnostics']['data_quality_score'] = quality_score
+        
+        # 生成摘要信息
+        summary_parts = []
+        
+        if quality_score >= 80:
+            summary_parts.append("数据质量良好")
+        elif quality_score >= 60:
+            summary_parts.append("数据质量一般")
+        else:
+            summary_parts.append("数据质量较差")
+        
+        if result['ratios']:
+            summary_parts.append(f"成功计算{len(result['ratios'])}项财务比率")
+        
+        if result['trends'].get('revenue', {}).get('data'):
+            summary_parts.append("趋势分析数据充足")
+        
+        if result['health_assessment'].get('overall_score', 0) > 0:
+            summary_parts.append("健康评估完成")
+        
+        result['diagnostics']['summary'] = "，".join(summary_parts) if summary_parts else "分析完成，但存在较多问题"
+    
     def generate_analysis_report(self, financial_data: Dict[str, pd.DataFrame], 
                               stock_name: str = "目标公司") -> Dict:
         """
@@ -1887,6 +2274,9 @@ class StandardFinancialAnalyzer(AsyncBaseToolkit):
                     parsed_data = json.loads(data)
                     logger.info("JSON解析成功，递归处理解析后的数据")
                     return self._standardize_financial_data_structure(parsed_data)
+                except json.JSONDecodeError:
+                    logger.warning("JSON解析失败，尝试其他格式...")
+                    # 继续尝试其他格式
                 except json.JSONDecodeError as e:
                     logger.error(f"JSON解析失败: {e}")
                     # 尝试处理可能包含特殊格式的字符串
@@ -1907,21 +2297,41 @@ class StandardFinancialAnalyzer(AsyncBaseToolkit):
                 elif 'financial_data' in data:
                     return self._convert_nested_financial_data_to_standard(data['financial_data'])
                 
-                # 格式2.3: 扁平化指标格式
-                elif any(key in data for key in ['revenue', 'net_profit', '营业收入', '净利润']):
-                    return self._convert_simple_metrics_to_financial_data_flat(data)
+                # 格式2.3: 扁平化指标格式（增强版本）
+                elif any(key in data for key in ['revenue', 'net_profit', '营业收入', '净利润', '总资产', '总负债', '净资产']):
+                    logger.info("检测到扁平化财务指标格式，转换为标准结构")
+                    return self._convert_simple_metrics_to_financial_data_flat_enhanced(data)
                 
-                # 格式2.4: 直接的年份格式 {"2025": {...}, "2024": {...}}
+                # 格式2.4: 包含百分比格式的指标
+                elif any(key in data for key in ['净利润率', '资产负债率', '净资产收益率', '毛利率', '流动比率']):
+                    logger.info("检测到比率指标格式，增强转换处理")
+                    return self._convert_simple_metrics_to_financial_data_flat_enhanced(data)
+                
+                # 格式2.5: 直接的年份格式 {"2025": {...}, "2024": {...}}
                 elif all(isinstance(k, str) and k.isdigit() for k in data.keys()):
+                    logger.info("检测到年份格式数据，转换为标准结构")
                     # 获取最新年份数据
                     latest_year = max(data.keys())
                     latest_data = data[latest_year]
-                    return self._convert_simple_metrics_to_financial_data_flat(latest_data)
+                    return self._convert_simple_metrics_to_financial_data_flat_enhanced(latest_data)
                 
-                # 格式2.5: 包含财务指标字段的其他格式
+                # 格式2.6: 公司名称格式 {"公司名": {...}}
+                elif isinstance(data, dict) and len(data) == 1:
+                    logger.info("检测到单公司格式数据")
+                    company_name = list(data.keys())[0]
+                    company_data = data[company_name]
+                    if isinstance(company_data, dict):
+                        return self._convert_simple_metrics_to_financial_data_flat_enhanced(company_data)
+                
+                # 格式2.7: 检查是否包含中文财务指标名称
+                elif isinstance(data, dict) and any(self._is_chinese_financial_term(key) for key in data.keys()):
+                    logger.info("检测到中文财务指标，使用增强转换")
+                    return self._convert_simple_metrics_to_financial_data_flat_enhanced(data)
+                
+                # 格式2.8: 通用数据格式转换（最后尝试）
                 else:
                     logger.info("尝试通用数据格式转换...")
-                    return self._convert_simple_metrics_to_financial_data_flat(data)
+                    return self._convert_simple_metrics_to_financial_data_flat_enhanced(data)
             
             # 格式3: 其他类型，尝试转换
             else:
@@ -1930,7 +2340,258 @@ class StandardFinancialAnalyzer(AsyncBaseToolkit):
                 
         except Exception as e:
             logger.error(f"标准化数据结构时出错: {e}")
+            import traceback
+            traceback.print_exc()
             return self._create_empty_financial_structure()
+    
+    def _is_chinese_financial_term(self, term: str) -> bool:
+        """
+        判断是否为中文财务术语
+        
+        Args:
+            term: 要检查的术语
+            
+        Returns:
+            是否为中文财务术语
+        """
+        chinese_financial_terms = {
+            # 基本财务指标
+            '营业收入', '营业成本', '毛利润', '净利润', '利润总额',
+            '总资产', '净资产', '股东权益', '总负债', '流动资产', '流动负债',
+            '货币资金', '应收账款', '存货', '固定资产', '无形资产',
+            
+            # 比率指标
+            '净利率', '毛利率', '营业利润率', '净资产收益率', '总资产收益率',
+            '资产负债率', '流动比率', '速动比率', '存货周转率', '应收账款周转率',
+            '总资产周转率', '固定资产周转率',
+            
+            # 现金流指标
+            '经营活动现金流', '投资活动现金流', '筹资活动现金流',
+            '现金净流量', '自由现金流', '现金流比率',
+            
+            # 其他
+            '每股收益', '市盈率', '市净率', '营业收入增长率', '净利润增长率'
+        }
+        
+        return term in chinese_financial_terms
+    
+    def _convert_simple_metrics_to_financial_data_flat_enhanced(self, data: Dict) -> Dict:
+        """
+        增强版扁平化财务指标转换方法
+        
+        Args:
+            data: 扁平化的财务指标数据
+            
+        Returns:
+            标准化的财务数据结构
+        """
+        logger.info("开始增强版扁平化数据转换...")
+        logger.debug(f"数据字段: {list(data.keys())}")
+        
+        def _extract_numeric_from_dict(self, nested_dict):
+            """
+            从嵌套字典中提取第一个找到的数值
+            
+            Args:
+                nested_dict: 可能包含嵌套结构的字典
+                
+            Returns:
+                提取到的数值或None
+            """
+            if not isinstance(nested_dict, dict):
+                return nested_dict
+                
+            # 递归遍历字典寻找数值
+            for key, value in nested_dict.items():
+                if value is None:
+                    continue
+                    
+                # 如果是数值类型，直接返回
+                if isinstance(value, (int, float)):
+                    return float(value)
+                    
+                # 如果是字符串，尝试转换为数值
+                if isinstance(value, str):
+                    try:
+                        # 尝试解析百分比
+                        if '%' in value:
+                            return float(value.replace('%', ''))
+                        # 尝试直接转换
+                        return float(value)
+                    except ValueError:
+                        # 尝试提取数字
+                        import re
+                        numbers = re.findall(r'\d+\.?\d*', value)
+                        if numbers:
+                            return float(numbers[0])
+                
+                # 如果是字典，递归调用
+                if isinstance(value, dict):
+                    result = self._extract_numeric_from_dict(value)
+                    if result is not None:
+                        return result
+                        
+            return None
+        
+        def _flatten_nested_data(self, data):
+            """
+            扁平化嵌套数据结构
+            
+            Args:
+                data: 可能包含嵌套结构的数据
+                
+            Returns:
+                扁平化后的数据字典
+            """
+            flattened = {}
+            
+            for key, value in data.items():
+                if isinstance(value, dict):
+                    # 处理嵌套字典
+                    extracted_value = self._extract_numeric_from_dict(value)
+                    if extracted_value is not None:
+                        flattened[key] = extracted_value
+                    # 如果提取失败，尝试递归扁平化
+                    else:
+                        nested_flattened = self._flatten_nested_data(value)
+                        flattened.update(nested_flattened)
+                else:
+                    flattened[key] = value
+                    
+            return flattened
+        
+        try:
+            # 首先尝试扁平化嵌套数据
+            flattened_data = self._flatten_nested_data(data)
+            logger.info(f"数据扁平化完成，字段数量: {len(flattened_data)}")
+            
+            # 扩展的中英文映射表
+            field_mappings = {
+                # 收入相关
+                'revenue': 'TOTAL_OPERATE_INCOME',
+                '营业收入': 'TOTAL_OPERATE_INCOME', 
+                '收入': 'TOTAL_OPERATE_INCOME',
+                '销售收入': 'TOTAL_OPERATE_INCOME',
+                '主营业务收入': 'TOTAL_OPERATE_INCOME',
+                
+                # 利润相关
+                'net_profit': 'NETPROFIT',
+                '净利润': 'NETPROFIT',
+                '利润总额': 'NETPROFIT',
+                '利润': 'NETPROFIT',
+                '毛利润': 'GROSS_PROFIT',
+                
+                # 资产相关
+                'total_assets': 'TOTAL_ASSETS',
+                '总资产': 'TOTAL_ASSETS',
+                '资产总计': 'TOTAL_ASSETS',
+                '净资产': 'TOTAL_EQUITY',
+                '股东权益': 'TOTAL_EQUITY',
+                '所有者权益': 'TOTAL_EQUITY',
+                '权益总计': 'TOTAL_EQUITY',
+                
+                # 负债相关
+                'total_liabilities': 'TOTAL_LIABILITIES',
+                '总负债': 'TOTAL_LIABILITIES',
+                '负债合计': 'TOTAL_LIABILITIES',
+                
+                # 流动性指标
+                'current_assets': 'CURRENT_ASSETS',
+                'current_liabilities': 'CURRENT_LIABILITIES',
+                '流动资产': 'CURRENT_ASSETS',
+                '流动负债': 'CURRENT_LIABILITIES',
+                
+                # 现金流相关
+                'operating_cash_flow': 'OPERATE_CASH_FLOW',
+                '经营现金流': 'OPERATE_CASH_FLOW',
+                '经营活动现金流': 'OPERATE_CASH_FLOW',
+                '现金净流量': 'NET_CASH_FLOW',
+                '自由现金流': 'FREE_CASH_FLOW',
+                
+                # 特殊处理字段
+                '应收账款': 'ACCOUNTS_RECEIVABLE',
+                'accounts_receivable': 'ACCOUNTS_RECEIVABLE',
+                '存货': 'INVENTORY',
+                'inventory': 'INVENTORY',
+                '固定资产': 'FIXED_ASSETS',
+                'fixed_assets': 'FIXED_ASSETS'
+            }
+            
+            # 创建标准财务数据结构
+            standardized_data = {
+                'income': pd.DataFrame(columns=['TOTAL_OPERATE_INCOME', 'NETPROFIT', 'GROSS_PROFIT']),
+                'balance': pd.DataFrame(columns=['TOTAL_ASSETS', 'TOTAL_LIABILITIES', 'TOTAL_EQUITY']),
+                'cashflow': pd.DataFrame(columns=['OPERATE_CASH_FLOW', 'FREE_CASH_FLOW'])
+            }
+            
+            # 转换数据
+            income_data = {}
+            balance_data = {}
+            cashflow_data = {}
+            
+            for key, value in flattened_data.items():
+                if value is None:
+                    continue
+                    
+                # 处理字符串格式的数值
+                if isinstance(value, str):
+                    # 尝试解析百分比
+                    if '%' in value:
+                        try:
+                            numeric_value = float(value.replace('%', ''))
+                        except:
+                            numeric_value = 0.0
+                    else:
+                        try:
+                            numeric_value = float(value)
+                        except:
+                            # 如果不是数字，尝试提取数字
+                            import re
+                            numbers = re.findall(r'\d+\.?\d*', value)
+                            if numbers:
+                                numeric_value = float(numbers[0])
+                            else:
+                                numeric_value = 0.0
+                else:
+                    numeric_value = float(value) if value is not None else 0.0
+                
+                # 转换单位（假设输入单位为亿元）
+                if key in ['revenue', '营业收入', '净利润', '利润总额', '总资产', '总负债', '净资产', '股东权益', '所有者权益']:
+                    numeric_value = numeric_value * 100  # 转换为万元
+                
+                # 根据字段分类存储数据
+                mapped_key = field_mappings.get(key, key)
+                
+                if mapped_key in ['TOTAL_OPERATE_INCOME', 'NETPROFIT', 'GROSS_PROFIT']:
+                    income_data[mapped_key] = numeric_value
+                elif mapped_key in ['TOTAL_ASSETS', 'TOTAL_LIABILITIES', 'TOTAL_EQUITY']:
+                    balance_data[mapped_key] = numeric_value
+                elif mapped_key in ['OPERATE_CASH_FLOW', 'FREE_CASH_FLOW']:
+                    cashflow_data[mapped_key] = numeric_value
+                elif mapped_key in ['ACCOUNTS_RECEIVABLE', 'INVENTORY', 'FIXED_ASSETS']:
+                    balance_data[mapped_key] = numeric_value
+                elif mapped_key in ['CURRENT_ASSETS', 'CURRENT_LIABILITIES']:
+                    balance_data[mapped_key] = numeric_value
+                
+            # 创建DataFrame
+            if income_data:
+                standardized_data['income'] = pd.DataFrame([income_data])
+            if balance_data:
+                standardized_data['balance'] = pd.DataFrame([balance_data])
+            if cashflow_data:
+                standardized_data['cashflow'] = pd.DataFrame([cashflow_data])
+            
+            logger.info(f"数据转换完成，收入表: {len(standardized_data['income'])}, 资产负债表: {len(standardized_data['balance'])}, 现金流表: {len(standardized_data['cashflow'])}")
+            
+            return standardized_data
+            
+        except Exception as e:
+            logger.error(f"增强版扁平化数据转换失败: {e}")
+            import traceback
+            traceback.print_exc()
+            return self._create_empty_financial_structure()
+        
+
     
     def _create_empty_financial_structure(self) -> Dict[str, pd.DataFrame]:
         """
@@ -2307,41 +2968,108 @@ class StandardFinancialAnalyzer(AsyncBaseToolkit):
             latest_income = income.iloc[0]
             latest_balance = balance.iloc[0]
             
-            # 总资产周转率
-            revenue = self._get_value(latest_income, ['营业收入', 'TOTAL_OPERATE_INCOME'])
-            assets_begin = self._get_value_from_index(balance, -1, ['资产总计', 'TOTAL_ASSETS']) if len(balance) > 1 else 0
-            assets_end = self._get_value(latest_balance, ['资产总计', 'TOTAL_ASSETS'])
-            avg_assets = (assets_begin + assets_end) / 2 if assets_begin > 0 else assets_end
-            if avg_assets > 0:
-                ratios['asset_turnover'] = round(revenue / avg_assets, 2)
+            # 总资产周转率 - 增强字段支持
+            revenue_field_names = [
+                '营业收入', 'TOTAL_OPERATE_INCOME', 'revenue', '主营业务收入', '营业总收入'
+            ]
+            enhanced_revenue = self._get_value(latest_income, revenue_field_names)
             
-            # 存货周转率
-            cost = self._get_value(latest_income, ['营业成本', 'TOTAL_OPERATE_COST'])
-            inventory_begin = self._get_value_from_index(balance, -1, ['存货', 'INVENTORY']) if len(balance) > 1 else 0
-            inventory_end = self._get_value(latest_balance, ['存货', 'INVENTORY'])
+            assets_field_names = [
+                '资产总计', 'TOTAL_ASSETS', 'total_assets', '总资产', '资产合计'
+            ]
+            assets_begin = self._get_value_from_index(balance, -1, assets_field_names) if len(balance) > 1 else 0
+            assets_end = self._get_value(latest_balance, assets_field_names)
+            avg_assets = (assets_begin + assets_end) / 2 if assets_begin > 0 else assets_end
+            
+            if avg_assets > 0 and enhanced_revenue > 0:
+                asset_turnover = round(enhanced_revenue / avg_assets, 2)
+                # 总资产周转率合理性检查（通常在0.1到10之间）
+                if 0.1 <= asset_turnover <= 10:
+                    ratios['asset_turnover'] = asset_turnover
+                    logger.info(f"总资产周转率计算成功: {asset_turnover}")
+                else:
+                    logger.warning(f"总资产周转率异常: {asset_turnover}，进行修正")
+                    ratios['asset_turnover'] = max(0.1, min(10.0, asset_turnover))
+            else:
+                if enhanced_revenue <= 0:
+                    logger.warning(f"营业收入为{enhanced_revenue}，无法计算总资产周转率")
+                else:
+                    logger.warning(f"平均总资产为{avg_assets}，无法计算总资产周转率")
+                ratios['asset_turnover'] = 0.0
+            
+            # 存货周转率 - 增强字段支持
+            cost_field_names = [
+                '营业成本', 'TOTAL_OPERATE_COST', 'cost_of_goods_sold', '主营业务成本', '销售成本'
+            ]
+            enhanced_cost = self._get_value(latest_income, cost_field_names)
+            
+            inventory_field_names = [
+                '存货', 'INVENTORY', 'inventory', '存货净额', '存货账面价值'
+            ]
+            inventory_begin = self._get_value_from_index(balance, -1, inventory_field_names) if len(balance) > 1 else 0
+            inventory_end = self._get_value(latest_balance, inventory_field_names)
             avg_inventory = (inventory_begin + inventory_end) / 2 if inventory_begin > 0 else inventory_end
-            if avg_inventory > 0:
-                ratios['inventory_turnover'] = round(cost / avg_inventory, 2)
+            
+            if avg_inventory > 0 and enhanced_cost > 0:
+                inventory_turnover = round(enhanced_cost / avg_inventory, 2)
+                # 存货周转率合理性检查（通常在0.1到50之间）
+                if 0.1 <= inventory_turnover <= 50:
+                    ratios['inventory_turnover'] = inventory_turnover
+                    logger.info(f"存货周转率计算成功: {inventory_turnover}")
+                else:
+                    logger.warning(f"存货周转率异常: {inventory_turnover}，进行修正")
+                    ratios['inventory_turnover'] = max(0.1, min(50.0, inventory_turnover))
+            else:
+                if enhanced_cost <= 0:
+                    logger.warning(f"营业成本为{enhanced_cost}，无法计算存货周转率")
+                else:
+                    logger.warning(f"平均存货为{avg_inventory}，无法计算存货周转率")
+                    # 尝试使用期末存货作为平均值
+                    if inventory_end > 0:
+                        inventory_turnover = round(enhanced_cost / inventory_end, 2)
+                        ratios['inventory_turnover'] = inventory_turnover
+                        logger.info(f"使用期末存货计算周转率: {inventory_turnover}")
+                    else:
+                        ratios['inventory_turnover'] = 0.0
 
-            # 应收账款周转率 - 带容错机制
-            receivables_begin = self._get_value_from_index(balance, -1, ['应收账款', 'ACCOUNTS_RECE', 'ACCOUNTS_RECEIVABLE']) if len(balance) > 1 else 0
-            receivables_end = self._get_value(latest_balance, ['应收账款', 'ACCOUNTS_RECE', 'ACCOUNTS_RECEIVABLE'])
+            # 应收账款周转率 - 增强容错机制
+            # 支持更多应收账款字段名
+            receivables_field_names = [
+                '应收账款', 'ACCOUNTS_RECE', 'ACCOUNTS_RECEIVABLE', 'accounts_receivable',
+                '应收账款净额', '应收票据及应收账款', '应收款项'
+            ]
+            receivables_begin = self._get_value_from_index(balance, -1, receivables_field_names) if len(balance) > 1 else 0
+            receivables_end = self._get_value(latest_balance, receivables_field_names)
             avg_receivables = (receivables_begin + receivables_end) / 2 if receivables_begin > 0 else receivables_end
 
-            if avg_receivables > 0 and revenue > 0:
-                receivables_turnover = round(revenue / avg_receivables, 2)
-                # 应收账款周转率合理性检查（通常在0.1到50之间）
-                if 0.1 <= receivables_turnover <= 50:
+            # 增强的营业收入字段支持
+            revenue_field_names = [
+                '营业收入', 'TOTAL_OPERATE_INCOME', 'revenue', '主营业务收入', 
+                '营业总收入', 'sales_revenue'
+            ]
+            enhanced_revenue = self._get_value(latest_income, revenue_field_names)
+
+            if avg_receivables > 0 and enhanced_revenue > 0:
+                receivables_turnover = round(enhanced_revenue / avg_receivables, 2)
+                # 应收账款周转率合理性检查（通常在0.1到100之间，放宽上限）
+                if 0.1 <= receivables_turnover <= 100:
                     ratios['receivables_turnover'] = receivables_turnover
+                    logger.info(f"应收账款周转率计算成功: {receivables_turnover}")
                 else:
                     logger.warning(f"应收账款周转率异常: {receivables_turnover}，进行修正")
-                    ratios['receivables_turnover'] = max(0.1, min(50.0, receivables_turnover))
+                    ratios['receivables_turnover'] = max(0.1, min(100.0, receivables_turnover))
             else:
-                if revenue <= 0:
-                    logger.warning("营业收入为0或负数，无法计算应收账款周转率")
+                if enhanced_revenue <= 0:
+                    logger.warning(f"营业收入为{enhanced_revenue}，无法计算应收账款周转率")
                 else:
-                    logger.warning("应收账款平均余额为0，无法计算应收账款周转率")
-                ratios['receivables_turnover'] = 0.0  # 默认值
+                    logger.warning(f"应收账款平均余额为{avg_receivables}，无法计算应收账款周转率")
+                    # 尝试使用应收账款期末值作为平均值
+                    if receivables_end > 0:
+                        receivables_turnover = round(enhanced_revenue / receivables_end, 2)
+                        ratios['receivables_turnover'] = receivables_turnover
+                        logger.info(f"使用期末应收账款计算周转率: {receivables_turnover}")
+                    else:
+                        ratios['receivables_turnover'] = 0.0  # 默认值
 
         return ratios
     

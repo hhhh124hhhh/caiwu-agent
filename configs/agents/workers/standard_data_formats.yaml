@@ -1,0 +1,321 @@
+# 工作智能体标准数据格式定义
+# 用于统一所有工作智能体间的数据传递格式
+
+## 智础数据格式
+
+### 公司基础信息
+```yaml
+company_info:
+  company_name: string    # 公司名称
+  stock_code: string      # 股票代码
+  industry: string         # 所属行业
+  market_cap: number      # 市值（元）
+  listing_date: string    # 上市日期
+  description: string     # 公司简介
+```
+
+### 财务数据结构
+```yaml
+financial_data:
+  # 基础财务指标
+  basic_metrics:
+    revenue: number          # 营业收入
+    net_profit: number       # 净利润
+    total_assets: number     # 总资产
+    total_liabilities: number # 总负债
+    equity: number          # 净资产
+    operating_cash_flow: number # 经营现金流
+    
+  # 历史趋势数据
+  historical_trends:
+    "2024": {...}            # 按年份数据
+    "2023": {...}
+    "2022": {...}
+    
+  # 财务报表数据
+  statements:
+    income_statement:
+      latest: {...}          # 最新财报
+      previous_year: {...}    # 上年同期
+    balance_sheet:
+      latest: {...}
+      previous_year: {...}
+    cash_flow:
+      latest: {...}
+      previous_year: {...}
+```
+
+### 分析结果数据
+```yaml
+analysis_results:
+  # 财务比率分析
+  ratios:
+    profitability:
+      gross_profit_margin: number    # 毛利率(%)
+      net_profit_margin: number      # 净利率(%)
+      roe: number                     # ROE(%)
+      roa: number                     # ROA(%)
+    
+    solvency:
+      debt_to_asset_ratio: number    # 资产负债率(%)
+      current_ratio: number           # 流动比率
+      quick_ratio: number             # 速动比率
+    
+    efficiency:
+      asset_turnover: number          # 总资产周转率
+      inventory_turnover: number       # 存货周转率
+      receivables_turnover: number    # 应收账款周转率
+    
+    growth:
+      revenue_growth: number         # 营收增长率(%)
+      profit_growth: number          # 利润增长率(%)
+      eps_growth: number             # 每股收益增长率(%)
+  
+  # 趋势分析
+  trends:
+    revenue_trend:
+      data: [{}]                 # 趋势数据点
+      trend_direction: string      # 趋势方向 (上升/下降/稳定)
+      average_growth: number       # 平均增长率(%)
+    
+    profit_trend:
+      data: [{}]
+      trend_direction: string
+      average_growth: number
+      
+    multi_year_growth:             # 多年复合增长率
+      revenue_cagr: number
+      profit_cagr: number
+      
+  # 健康评估
+  health_assessment:
+    overall_score: number           # 综合评分 (0-100)
+    risk_level: string            # 风险等级 (低风险/中等风险/高风险)
+    strengths: [string]           # 优势项目
+    weaknesses: [string]          # 劣势项目
+    recommendations: [string]     # 改进建议
+    
+  # 估值分析
+  valuation:
+    pe_ratio: number            # 市盈率
+    pb_ratio: number            # 市净率
+    market_cap: number          # 市值
+    intrinsic_value: number     # 内在价值
+    investment_recommendation: string  # 投资建议
+```
+
+### 图表数据格式
+```yaml
+chart_data:
+  # 折线图/柱状图数据
+  line_bar_chart:
+    title: string             # 图表标题
+    x_axis: [string]          # X轴标签
+    series:                   # 数据系列
+      - name: string          # 系列名称
+        data: [number]       # 数据值
+        
+  # 饼图数据
+  pie_chart:
+    title: string             # 图表标题
+    labels: [string]          # 标签
+    data: [number]            # 数值
+    
+  # 雷达图数据
+  radar_chart:
+    title: string             # 图表标题
+    categories: [string]      # 维度标签
+    series:
+      - name: string          # 系列名称
+        data: [number]       # 各维度数值
+```
+
+### 报告数据格式
+```yaml
+report_data:
+  # 报告元数据
+  metadata:
+    title: string             # 报告标题
+    report_type: string       # 报告类型 (single_company/comparison)
+    company_name: string     # 公司名称
+    companies: [string]      # 公司名称列表（多公司对比时）
+    analysis_date: string     # 分析日期
+    analyst: string          # 分析师名称
+    
+  # 报告内容
+  content:
+    executive_summary: string # 执行摘要
+    company_overview: string  # 公司概况
+    financial_analysis: string # 财务分析
+    trend_analysis: string     # 趋势分析
+    risk_assessment: string    # 风险评估
+    investment_recommendation: string # 投资建议
+    future_outlook: string     # 未来展望
+    appendix: string          # 附录
+    
+  # 报告文件信息
+  files:
+    markdown: string          # MD文件路径
+    html: string              # HTML文件路径
+    pdf: string               # PDF文件路径
+    
+  # 图表信息
+  charts:
+    file_paths: [string]      # 图表文件路径列表
+    descriptions: [string]    # 图表描述列表
+```
+
+## 智能体间数据传递规范
+
+### DataAgent → DataAnalysisAgent
+```yaml
+# DataAgent 输出格式
+data_agent_output:
+  company_info: {...}
+  financial_data: {...}
+  analysis_type: "single_company"  # 或 "multi_company"
+  
+# DataAnalysisAgent 输入要求
+data_analysis_input: data_agent_output
+```
+
+### DataAnalysisAgent → FinancialAnalysisAgent
+```yaml
+# DataAnalysisAgent 输出格式
+data_analysis_output:
+  company_info: {...}
+  analysis_results:
+    ratios: {...}
+    trends: {...}
+    health_assessment: {...}
+    
+# FinancialAnalysisAgent 输入要求
+financial_analysis_input: data_analysis_output
+```
+
+### FinancialAnalysisAgent → ReportAgent
+```yaml
+# FinancialAnalysisAgent 输出格式
+financial_analysis_output:
+  company_info: {...}
+  analysis_results:
+    ratios: {...}
+    trends: {...}
+    health_assessment: {...}
+    valuation: {...}
+    investment_analysis: {...}
+    
+# ReportAgent 输入要求
+report_input: financial_analysis_output
+```
+
+### ChartGeneratorAgent 输入格式
+```yaml
+# ChartGeneratorAgent 接受格式
+chart_input:
+  # 1. 基础图表数据
+  basic_chart_data: chart_data
+  
+  # 2. 财务分析结果转换的图表数据
+  analysis_chart_data:
+    title: string
+    chart_type: string
+    data: analysis_results
+  
+  # 3. 自定义数据
+  custom_data: {...}
+```
+
+## 错误处理和验证
+
+### 数据验证规则
+```yaml
+validation_rules:
+  # 必填字段检查
+  required_fields:
+    company_info: ["company_name", "stock_code"]
+    financial_data: ["basic_metrics"]
+    analysis_results: ["ratios", "health_assessment"]
+    
+  # 数据类型检查
+  type_validation:
+    revenue: "number > 0"
+    ratios: "number between -100 and 100"
+    scores: "number between 0 and 100"
+    
+  # 逻辑一致性检查
+  consistency_checks:
+    balance_sheet: "assets = liabilities + equity"
+    growth_rates: "reasonable range check"
+    ratio_comparisons: "industry benchmark validation"
+```
+
+### 错误处理策略
+```yaml
+error_handling:
+  # 缺失数据处理
+  missing_data:
+    basic_metrics: "use_defaults"
+    historical_trends: "skip_analysis"
+    comparative_data: "use_available_only"
+    
+  # 异常值处理
+  outlier_handling:
+    extreme_growth_rates: "cap_at_reasonable_level"
+    negative_assets: "flag_as_error"
+    extreme_ratios: "flag_as_warning"
+    
+  # 工具调用错误
+  tool_errors:
+    timeout: "retry_with_fallback"
+    failure: "continue_with_partial_results"
+    unavailability: "skip_component"
+```
+
+## 性能优化
+
+### 缓存策略
+```yaml
+caching:
+  # 数据缓存
+  data_cache:
+    enabled: true
+    ttl: 1800  # 30分钟
+    max_size: 1000
+    
+  # 结果缓存
+  result_cache:
+    enabled: true
+    ttl: 900   # 15分钟
+    max_size: 500
+    
+  # 报告缓存
+  report_cache:
+    enabled: false
+    ttl: 3600  # 1小时
+    max_size: 100
+```
+
+### 批处理设置
+```yaml
+batch_processing:
+  # 多公司批量分析
+  multi_company:
+    enabled: true
+    max_companies: 10
+    parallel_processing: false
+    
+  # 多年度批量分析
+  multi_year:
+    enabled: true
+    max_years: 5
+    trend_analysis: true
+    
+  # 批量报告生成
+  batch_reports:
+    enabled: false
+    max_reports: 5
+    format_variants: ["md", "pdf"]
+```
+
+这些标准数据格式确保了智能体间的数据传递一致性和可靠性。

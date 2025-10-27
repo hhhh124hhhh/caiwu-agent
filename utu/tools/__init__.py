@@ -27,6 +27,8 @@ from .financial_analysis_toolkit import StandardFinancialAnalyzer
 from .enhanced_python_executor_toolkit import EnhancedPythonExecutorToolkit
 # 添加报告保存工具包的导入
 from .report_saver_toolkit import ReportSaverToolkit
+# 添加增强图表生成工具包的导入
+from .enhanced_chart_generator import EnhancedChartGenerator
 
 TOOLKIT_MAP = {
     "search": SearchToolkit,
@@ -55,6 +57,8 @@ TOOLKIT_MAP = {
     "enhanced_python_executor": EnhancedPythonExecutorToolkit,
     # 添加报告保存工具包到映射中
     "report_saver": ReportSaverToolkit,
+    # 添加增强图表生成工具包到映射中
+    "enhanced_chart_generator": EnhancedChartGenerator,
 }
 
 def get_toolkits_map(names: list[str] | None = None) -> dict[str, AsyncBaseToolkit]:

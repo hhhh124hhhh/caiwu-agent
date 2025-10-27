@@ -4,6 +4,7 @@ defaults:
   - /model/base@model
   - /tools/akshare_financial_data@toolkits.akshare_data
   - /tools/tabular@toolkits.tabular
+  - /agents/workers/standard_agent_config@standard_config
   - _self_
 
 agent:
@@ -30,22 +31,17 @@ agent:
     - 确保获取的数据完整准确
     - 保存数据供其他Agent使用
 
-  tool_use_behavior: "stop_on_first_tool"
+  tool_use_behavior: ${standard_config.standard_behavior.data_collection}
 
 # 专用工具配置
 toolkits:
   akshare_data:
-    config:
-      workspace_root: "./stock_analysis_workspace"
-      cache_enabled: true
-      timeout: 60
-      cache_ttl: 3600  # 缓存1小时
+    config: ${standard_config.standard_toolkits.akshare_data}
+    workspace_root: ${standard_config.standard_workspace.root}
 
   tabular:
-    config:
-      workspace_root: "./stock_analysis_workspace"
-      cache_enabled: true
-      timeout: 30
+    config: ${standard_config.standard_toolkits.tabular}
+    workspace_root: ${standard_config.standard_workspace.root}
 
 # Agent信息配置
 agent_info:
@@ -61,6 +57,19 @@ agent_info:
     - "历史数据分析"
     - "表格数据处理"
   output_format: "JSON格式的财务数据"
+  
+  # 数据格式标准
+  data_format_standards:
+    company_info:
+      required_fields: ["company_name", "stock_code"]
+      optional_fields: ["industry", "market_cap", "listing_date", "description"]
+    financial_data:
+      required_sections: ["basic_metrics"]
+      optional_sections: ["historical_trends", "statements"]
+    validation_rules:
+      revenue: "number > 0"
+      stock_code: "string matching pattern"
+      dates: "YYYY-MM-DD format"
 
 # 质量控制
 quality_control:
@@ -68,6 +77,28 @@ quality_control:
   error_handling: "retry_fallback"
   max_retries: 3
   timeout_handling: "graceful_degrade"
+  
+  # 统一错误处理策略
+  error_strategies:
+    missing_data:
+      basic_metrics: "use_defaults"
+      historical_trends: "skip_analysis"
+      company_info: "request_user_input"
+    invalid_data:
+      negative_revenue: "flag_as_error"
+      invalid_stock_code: "suggest_correction"
+      extreme_values: "validate_and_flag"
+    tool_errors:
+      timeout: "retry_with_fallback"
+      api_failure: "use_cached_data"
+      network_error: "queue_for_retry"
+  
+  # 数据验证规则
+  validation_rules:
+    completeness_check: true
+    consistency_check: true
+    range_validation: true
+    format_validation: true
 
 # 性能优化
 performance:
@@ -75,3 +106,17 @@ performance:
   cache_duration: 3600
   batch_requests: false
   parallel_processing: false
+  
+# 数据输出标准
+output_standards:
+  # 遵循standard_data_formats.yaml中定义的格式
+  follow_standard_format: true
+  include_metadata: true
+  ensure_json_validity: true
+  
+  # 数据质量要求
+  quality_requirements:
+    accuracy: "high"
+    completeness: "mandatory_fields"
+    consistency: "cross_validate"
+    timeliness: "latest_available"

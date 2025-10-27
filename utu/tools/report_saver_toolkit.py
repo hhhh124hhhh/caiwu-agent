@@ -525,6 +525,23 @@ class ReportSaverToolkit(AsyncBaseToolkit):
         # 简化HTML结构
         html_content = re.sub(r'<meta[^>]*>', '', html_content)
         
+        # 处理表格单元格内的嵌套HTML标签问题
+        # 这是修复"Unsupported nested HTML tags inside <td> element: <h2>"错误的关键部分
+        # 提取所有<td>标签内容，处理内部的嵌套标签
+        def process_table_cells(match):
+            td_content = match.group(1)
+            # 将<td>内的标题标签(h1-h6)转换为加粗文本
+            td_content = re.sub(r'<h([1-6])[^>]*>(.*?)</h\1>', r'<strong>\2</strong>', td_content)
+            # 处理其他可能导致问题的嵌套标签
+            td_content = re.sub(r'<div[^>]*>(.*?)</div>', r'\1', td_content)
+            td_content = re.sub(r'<span[^>]*>(.*?)</span>', r'\1', td_content)
+            # 移除可能存在的样式属性
+            td_content = re.sub(r'<([a-z][a-z0-9]*)[^>]*style=["\'][^"\']*["\'][^>]*>', r'<\1>', td_content)
+            return f'<td>{td_content}</td>'
+        
+        # 应用表格单元格处理
+        html_content = re.sub(r'<td[^>]*>(.*?)</td>', process_table_cells, html_content, flags=re.DOTALL)
+        
         # 确保基本的HTML结构
         if not html_content.strip().startswith('<!DOCTYPE') and not html_content.strip().startswith('<html'):
             html_content = f'<html><head><meta charset="UTF-8"></head><body>{html_content}</body></html>'

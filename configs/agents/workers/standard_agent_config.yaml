@@ -1,0 +1,314 @@
+# @package _global_
+# 工作智能体标准工具配置模板
+# 用于统一所有工作智能体的工具配置，确保一致性
+
+# 标准工作空间配置
+standard_workspace:
+  root: "./stock_analysis_workspace"
+  auto_create: true
+  max_file_size_mb: 100
+  
+  # 目录结构定义
+  directory_structure:
+    # 主要工作目录
+    data:
+      path: "data"
+      description: "原始数据和分析结果存储"
+      subdirectories:
+        raw_data: "原始数据文件"
+        processed_data: "处理后的数据文件"
+        analysis_results: "分析结果JSON文件"
+        cache: "缓存文件"
+        
+    charts:
+      path: "charts"
+      description: "图表文件存储"
+      subdirectories:
+        line_charts: "折线图"
+        bar_charts: "柱状图"
+        pie_charts: "饼图"
+        radar_charts: "雷达图"
+        advanced_charts: "高级图表"
+        
+    reports:
+      path: "reports"
+      description: "报告文件存储"
+      subdirectories:
+        markdown: "Markdown格式报告"
+        html: "HTML格式报告"
+        pdf: "PDF格式报告"
+        templates: "报告模板"
+        
+    logs:
+      path: "logs"
+      description: "日志文件存储"
+      subdirectories:
+        agent_logs: "智能体执行日志"
+        error_logs: "错误日志"
+        performance_logs: "性能日志"
+        
+    temp:
+      path: "temp"
+      description: "临时文件存储"
+      cleanup_policy: "session_end"
+      
+  # 文件管理策略
+  file_management:
+    # 文件命名规范
+    naming_conventions:
+      date_format: "%Y%m%d_%H%M%S"
+      include_timestamp: true
+      separator: "_"
+      max_filename_length: 100
+      case_sensitive: false
+      special_characters: "avoid"
+      
+    # 文件组织规则
+    organization_rules:
+      by_company: true
+      by_date: true
+      by_type: true
+      by_agent: false
+      
+    # 版本控制
+    version_control:
+      enabled: false
+      max_versions: 3
+      version_naming: "v{number}"
+      auto_cleanup: true
+      
+  # 清理和维护策略
+  maintenance:
+    # 自动清理
+    cleanup_old_files: true
+    file_retention_days: 7
+    
+    cleanup_policies:
+      temp_files:
+        enabled: true
+        retention_hours: 24
+        cleanup_frequency: "daily"
+        
+      cache_files:
+        enabled: true
+        retention_days: 7
+        cleanup_frequency: "weekly"
+        
+      log_files:
+        enabled: true
+        retention_days: 30
+        cleanup_frequency: "monthly"
+        
+      old_reports:
+        enabled: true
+        retention_days: 90
+        cleanup_frequency: "monthly"
+        
+    # 存储空间管理
+    space_management:
+      max_workspace_size: "10GB"
+      warning_threshold: "80%"
+      cleanup_trigger: "90%"
+      priority_cleanup: ["temp", "cache", "old_logs"]
+      
+    # 备份策略
+    backup:
+      enabled: false
+      frequency: "weekly"
+      backup_location: "../backups"
+      compress_backups: true
+      retention_backups: 4
+
+# 标准工具包配置
+standard_toolkits:
+  # 财务分析工具包
+  financial_analysis:
+    enabled: true
+    timeout: 30
+    cache_enabled: true
+    cache_ttl: 1800  # 30分钟缓存
+    
+  # 表格数据处理工具包
+  tabular:
+    enabled: true
+    timeout: 30
+    cache_enabled: true
+    cache_ttl: 1800
+    
+  # 报告保存工具包
+  report_saver:
+    enabled: true
+    timeout: 60
+    cache_enabled: false
+    generate_formats: ["md", "html", "pdf"]
+    
+  # 数据获取工具包（仅DataAgent需要）
+  akshare_data:
+    enabled: false
+    timeout: 60
+    cache_enabled: true
+    cache_ttl: 3600  # 1小时缓存
+    
+  # 增强Python执行器（仅ChartGeneratorAgent需要）
+  enhanced_python_executor:
+    enabled: false
+    timeout: 60
+    save_code: true
+    matplotlib_backend: "Agg"
+
+# 标准工具行为配置
+standard_behavior:
+  # 智能体间协作行为
+  data_collection: "stop_on_first_tool"      # DataAgent: 获取数据后停止
+  data_analysis: "run_llm_again"              # 分析智能体: 继续优化结果
+  content_generation: "run_llm_again"       # 内容生成智能体: 继续完善内容
+  
+  # 详细工具行为策略
+  tool_use_strategies:
+    # 数据获取行为
+    data_acquisition:
+      primary_approach: "specialized_tools_first"
+      fallback_approach: "general_tools"
+      validation_required: true
+      caching_enabled: true
+      
+    # 分析计算行为
+    analysis_computation:
+      calculation_method: "specialized_tools_only"
+      cross_validation: false
+      error_tolerance: "medium"
+      result_refinement: true
+      
+    # 内容生成行为
+    content_creation:
+      generation_method: "iterative_improvement"
+      quality_threshold: "high"
+      review_required: false
+      format_compliance: true
+      
+    # 可视化行为
+    visualization:
+      chart_generation: "smart_type_selection"
+      fallback_rendering: true
+      aesthetics_optimization: true
+      accessibility_compliance: false
+      
+    # 报告生成行为
+    report_generation:
+      template_usage: "standard_with_customization"
+      multi_format_support: true
+      integration_approach: "comprehensive"
+      quality_assurance: true
+  
+  # 错误处理策略
+  error_handling:
+    retry_attempts: 3
+    fallback_enabled: true
+    log_errors: true
+    graceful_degradation: true
+    user_notification: "informative"
+    
+  # 质量控制
+  quality_control:
+    validation_enabled: true
+    cross_check_enabled: false
+    consistency_check: true
+    performance_monitoring: true
+    
+  # 资源管理
+  resource_management:
+    memory_optimization: true
+    timeout_handling: "graceful"
+    concurrency_control: false
+    cache_management: "intelligent"
+
+# 标准数据格式定义
+standard_data_formats:
+  # 智能体间传递的标准数据格式
+  financial_data:
+    required_fields: ["company_name", "stock_code", "analysis_type"]
+    optional_fields: ["industry", "market_cap", "description"]
+    
+  analysis_results:
+    required_fields: ["ratios", "trends", "health_assessment"]
+    optional_fields: ["recommendations", "risk_factors"]
+    
+  chart_data:
+    required_fields: ["title", "chart_type", "data"]
+    optional_fields: ["file_path", "description"]
+    
+  report_data:
+    required_fields: ["content", "format", "file_path"]
+    optional_fields: ["charts", "metadata"]
+
+# 标准文件命名规范
+standard_naming:
+  date_format: "%Y%m%d"
+  include_timestamp: true
+  separator: "_"
+  max_filename_length: 100
+  
+  # 文件命名模板
+  templates:
+    analysis_report: "{company_name}_财务分析报告_{date}"
+    comparison_report: "{companies}_对比分析报告_{date}"
+    chart_file: "{title}_{chart_type}"
+    data_file: "{company_name}_财务数据_{date}"
+
+# 标准质量控制设置
+standard_quality:
+  # 数据验证
+  data_validation:
+    required_fields_check: true
+    data_type_check: true
+    value_range_check: true
+    
+  # 结果验证
+  result_validation:
+    completeness_check: true
+    consistency_check: true
+    accuracy_check: false
+    
+  # 报告验证
+  report_validation:
+    structure_check: true
+    content_quality_check: false
+    format_validation: true
+
+# 标准性能优化设置
+standard_performance:
+  # 缓存策略
+  caching:
+    enabled: true
+    default_ttl: 1800
+    max_cache_size: 1000
+    
+  # 批处理
+  batch_processing:
+    enabled: false
+    max_batch_size: 50
+    
+  # 并发处理
+  concurrency:
+    enabled: false
+    max_workers: 2
+
+# 标准错误处理设置
+standard_error_handling:
+  # 工具调用错误
+  tool_errors:
+    retry_on_timeout: true
+    fallback_on_failure: true
+    continue_on_warning: true
+    
+  # 数据错误
+  data_errors:
+    skip_invalid_data: true
+    use_default_values: false
+    log_data_issues: true
+    
+  # 系统错误
+  system_errors:
+    graceful_degradation: true
+    partial_result_output: true
+    detailed_error_logging: true

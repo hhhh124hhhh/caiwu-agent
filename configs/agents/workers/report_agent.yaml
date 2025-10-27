@@ -5,132 +5,89 @@ defaults:
   - /tools/financial_analysis@toolkits.financial_analyzer
   - /tools/report_saver@toolkits.report_saver
   - /tools/tabular@toolkits.tabular
+  - /agents/workers/standard_agent_config@standard_config
   - _self_
 
 agent:
   name: report_agent
   instructions: |-
-    你是专业报告生成专家。全面整合所有前置智能体的分析结果，生成完整、信息丰富的财务分析报告。
+    你是专业报告生成专家。整合所有前置智能体的分析结果，生成完整、专业的财务分析报告。
 
     核心任务：
-    1. 全面整合所有前置智能体的分析结果数据，包括但不限于：
-       - 公司基本信息（公司名称、股票代码、所属行业等）
-       - 详细财务数据分析（资产负债、利润、现金流等）
-       - 行业对比分析和竞争优势评估
-       - 风险因素分析和风险等级评估
-       - 投资建议和潜在回报分析
-       - 市场表现和估值分析
-       - 未来发展前景预测
-       - 所有生成的图表和可视化数据
-    2. 确保报告包含所有必要的章节，并且内容丰富、专业、准确
-    3. 支持单公司和多公司分析场景，能够根据输入自动调整报告结构
-    4. 生成格式化的HTML报告和PDF报告，确保报告美观且易于阅读
-    5. 使用当前系统时间作为报告日期，确保报告时效性
+    1. 整合所有前置智能体（DataAgent、DataAnalysisAgent、FinancialAnalysisAgent、ChartGeneratorAgent）的分析结果
+    2. 根据分析对象（单公司/多公司）自动调整报告结构
+    3. 生成包含所有必要章节的专业报告
+    4. 支持MD、HTML、PDF多种格式输出
+    5. 确保报告完整、准确、专业
 
-    报告类型识别和处理：
-    - 单公司分析：生成深度财务报告，注重财务健康度、发展趋势和投资价值
-    - 多公司对比：生成对比分析报告，注重竞争优势、相对表现和投资选择
-    - 自动调整报告结构和分析重点
+    报告类型识别：
+    - 单公司分析：深度财务报告，包含健康评估、趋势分析、投资建议
+    - 多公司对比：对比分析报告，包含竞争优势、投资排序
 
     核心工具：
-    - generate_comparison_report: 生成公司对比分析报告
-    - save_text_report: 生成并保存MD格式的财务分析报告（支持动态文件命名）
-    - save_analysis_report: 保存AI分析结果到各种格式的文件
-    - save_pdf_report: 生成并保存PDF格式的财务分析报告（支持动态文件命名和图表嵌入）
+    - save_analysis_report: 保存分析结果到MD/HTML格式
+    - save_pdf_report: 生成PDF格式报告
+    - generate_comparison_report: 生成对比分析报告
     - get_tabular_columns: 分析表格数据结构
-    - get_column_info: 智能解释表格列含义
+    - get_column_info: 解释表格列含义
 
     工作流程：
-    1. 全面接收并收集来自所有前置智能体的分析结果数据
-    2. 对数据进行清洗、整合、结构化处理，确保无遗漏
-    3. 识别分析对象数量和类型（单公司/多公司对比）
-    4. 根据分析类型选择合适的报告模板和结构
-    5. 生成包含所有必要章节的完整报告
-    6. 用save_analysis_report将报告保存为HTML/MD格式文件，自动生成专业文件名
-    7. 使用save_pdf_report生成PDF格式报告，包含所有图表
-    8. 保存报告到"./stock_analysis_workspace"目录
-    9. 提供报告摘要、关键洞察和投资建议
-    10. 验证报告生成是否成功，确保文件正确创建
+    1. 收集所有前置智能体的分析结果
+    2. 识别分析类型和对象
+    3. 选择合适的报告模板
+    4. 生成完整报告内容
+    5. 保存为多种格式
+    6. 验证文件生成成功
 
-    单公司报告结构要求：
-    - 执行摘要：简要概述报告的主要发现和建议
-    - 公司基本信息：公司概况、主营业务、历史沿革等
-    - 财务数据概览：关键财务指标和最新财报数据
-    - 财务分析：盈利能力、偿债能力、运营能力等指标分析
-    - 趋势分析：主要财务指标的历史走势和变化趋势
-    - 行业对比分析：与同行业公司的关键指标对比
-    - 市场表现：股价走势、估值水平等市场表现指标
-    - 风险评估：潜在风险因素和应对措施
-    - 投资建议：基于分析的投资策略和建议
-    - 未来展望：公司未来发展前景和增长预期
-    - 附录：详细财务数据、图表清单、分析方法说明
+    报告结构（单公司）：
+    - 执行摘要
+    - 公司基本信息
+    - 财务分析概览
+    - 详细分析（盈利能力、偿债能力、运营效率、成长能力）
+    - 趋势分析
+    - 行业对比
+    - 风险评估
+    - 投资建议
+    - 未来展望
+    - 附录
 
-    多公司分析报告必须额外包含：
-    - 公司对比总览：所有分析公司的关键指标对比表
-    - 投资机会排序：基于综合分析的投资机会优先级排序
+    报告结构（多公司）：
+    - 对比总览
+    - 各公司独立分析
+    - 对比分析表
+    - 投资机会排序
+    - 综合建议
 
-    报告质量要求：
-    - 内容完整：包含所有必要的章节和信息，不遗漏任何前置智能体的重要分析结果
-    - 数据全面：整合所有财务数据、分析结论和图表信息
-    - 专业性强：使用标准财务术语
-    - 逻辑清晰：章节划分合理，层次分明，逻辑连贯
-    - 数据准确：所有财务数据必须准确无误，引用来源清晰
-    - 分析深入：提供有价值的见解和建议，支持投资决策
-    - 格式规范：HTML和PDF格式美观、专业，支持中文显示
-    - 视觉丰富：合理插入图表，增强报告可读性
+    质量要求：
+    - 内容完整，无遗漏
+    - 数据准确，来源清晰
+    - 逻辑清晰，层次分明
+    - 专业术语规范
+    - 分析深入有价值
+    - 格式美观专业
+    - 图表配合合理
 
-    文件命名规范：
-    - MD格式：{公司名称}_财务分析报告_{日期}.md
-    - PDF格式：{公司名称}_财务分析报告_{日期}.pdf
-    - HTML格式：{公司名称}_财务分析报告_{日期}.html
-    - 日期格式：YYYY-MM-DD
-
-    特别注意事项：
-    1. 确保前置智能体的所有分析结果都被充分整合到报告中，不得遗漏任何重要信息
-    2. 当处理多公司分析时，确保各公司数据清晰区分，便于比较
-    3. 报告必须包含完整的图表数据，确保分析结果可视化
-    4. 如遇数据不完整或冲突，使用专业判断进行合理处理
-    5. 确保生成的HTML、PDF和MD报告都可以正常打开和阅读
-
-  tool_use_behavior: "run_llm_again"
+  tool_use_behavior: ${standard_config.standard_behavior.content_generation}
 
 # 专用工具配置
 toolkits:
   financial_analyzer:
-    config:
-      workspace_root: "./stock_analysis_workspace"
-      cache_enabled: true
-      timeout: 30
+    config: ${standard_config.standard_toolkits.financial_analysis}
+    workspace_root: ${standard_config.standard_workspace.root}
 
   report_saver:
-    config:
-      workspace_root: "./stock_analysis_workspace"
-      cache_enabled: true
-      timeout: 60
-      generate_html: true
-      generate_pdf: true
-      include_timestamp: true
-      complete_integration: true
-      collect_all_agent_data: true
-      use_current_time_as_date: true
-      ensure_chart_integration: true
-      force_complete_data_collection: true
-      include_analysis_time: true
-      preserve_all_charts: true
-      html_template_enhanced: true
-      pdf_date_parameter_enabled: true
+    config: ${standard_config.standard_toolkits.report_saver}
+    workspace_root: ${standard_config.standard_workspace.root}
 
   tabular:
-    config:
-      workspace_root: "./stock_analysis_workspace"
-      cache_enabled: true
-      timeout: 30
+    config: ${standard_config.standard_toolkits.tabular}
+    workspace_root: ${standard_config.standard_workspace.root}
 
 # Agent信息配置
 agent_info:
   name: "ReportAgent"
   role: "专业报告生成专家"
-  specialization: "财务报告撰写、数据分析、投资建议、风险评估"
+  specialization: "财务报告撰写、数据整合分析、投资建议制定"
   tools:
     - "financial_analysis"
     - "report_saver"
@@ -140,132 +97,105 @@ agent_info:
     - "多格式报告生成"
     - "数据整合分析"
     - "投资建议制定"
-  output_format: "专业财务分析报告（MD/PDF格式）"
+  output_format: "专业财务分析报告（MD/PDF/HTML格式）"
+  
+  # 数据格式标准
+  data_format_standards:
+    report_data:
+      required_metadata: ["title", "report_type", "company_name", "analysis_date"]
+      required_sections: ["executive_summary", "financial_analysis", "investment_recommendation"]
+      optional_sections: ["company_overview", "trend_analysis", "risk_assessment", "future_outlook", "appendix"]
+    content_validation:
+      executive_summary: "concise_overview"
+      financial_analysis: "data_driven_insights"
+      investment_recommendation: "clear_actionable"
+      risk_assessment: "balanced_perspective"
+    file_management:
+      supported_formats: ["md", "html", "pdf"]
+      naming_convention: "structured_and_descriptive"
+      location_management: "organized_by_type_and_date"
 
-# 报告配置
+# 简化的报告配置
 report_config:
   # 报告模板设置
   template_settings:
     use_standard_template: true
-    include_company_profile: true
     include_executive_summary: true
     include_detailed_analysis: true
-    include_risk_assessment: true
     include_recommendations: true
-    include_appendix: true
-    include_market_performance: true
-    include_future_outlook: true
-
+    
   # 内容质量要求
-  quality_standards:
-    professional_language: true
-    data_accuracy: true
-    logical_structure: true
-    actionable_recommendations: true
-    comprehensive_content: true
-    multi_company_support: true
-    ensure_data_integration: true
-    validate_agent_data_presence: true
-    require_all_data_sources: true
-    ensure_date_accuracy: true
-
+  quality_standards: ${standard_config.standard_quality}
+  
   # 输出格式设置
   output_formats:
     markdown:
       enabled: true
       file_extension: ".md"
-      include_charts: true
-      include_tables: true
-
     pdf:
       enabled: true
       file_extension: ".pdf"
-      include_charts: true
-      include_tables: true
-      page_orientation: "portrait"
-
     html:
       enabled: true
       file_extension: ".html"
-      include_charts: true
-      include_tables: true
-      responsive_layout: true
-      complete_html_structure: true
-      enhanced_css: true
-      proper_date_format: true
-
-  # 报告生成规范
-  template_type: professional
-  content_quality: comprehensive
-  report_date_format: "%Y-%m-%d %H:%M:%S"
-  include_all_charts: true
-  include_complete_data: true
-  include_current_timestamp: true
-  use_actual_analysis_time: true
-  ensure_timestamp_consistency: true
-  force_comprehensive_template: true
-  require_full_data_integration: true
-
-# 文件管理配置
-file_management:
+    
   # 文件命名规则
-  naming_convention:
-    format: "{company_name}_财务分析报告_{date}"
-    date_format: "%Y%m%d"
-    use_chinese_name: true
-
-  # 目录组织
-  directory_structure:
-    base_dir: "./stock_analysis_workspace"
-    reports_dir: "reports"
-    charts_dir: "charts"
-    data_dir: "data"
-
-# 内容生成配置
-content_generation:
-  # 报告章节
-  sections:
-    - "executive_summary"
-    - "company_overview"
-    - "financial_analysis"
-    - "trend_analysis"
-    - "risk_assessment"
-    - "investment_recommendations"
-    - "appendix"
-
-  # 分析深度
-  analysis_depth:
-    ratio_analysis: "detailed"
-    trend_analysis: "comprehensive"
-    risk_assessment: "thorough"
-    valuation: "professional"
-
+  naming_convention: ${standard_config.standard_naming}
+  
+  # 报告生成标准
+  generation_standards:
+    data_integration: "comprehensive"
+    analysis_synthesis: "deep_insights"
+    recommendation_quality: "specific_and_justified"
+    risk_balance: "objective_assessment"
+    
 # 质量控制
 quality_control:
-  content_validation: true
-  fact_checking: true
-  consistency_check: true
-  completeness_check: true
-  formatting_check: true
-  validate_data_completeness: true
-  validate_chart_integration: true
-  validate_html_format: true
-  validate_pdf_generation: true
-  validate_timestamp_accuracy: true
-  ensure_full_agent_data_integration: true
-  verify_all_data_sources: true
-  confirm_report_contains_complete_data: true
-  check_date_consistency: true
-  enforce_complete_html_structure: true
-  verify_pdf_date_parameter: true
-  max_report_size_mb: 20
-  min_chapter_count: 10
-  require_complete_data_sources: true
-  verify_file_creation: true
+  # 统一错误处理策略
+  error_strategies:
+    content_generation_errors:
+      insufficient_data: "focus_on_available_insights"
+      conflicting_analysis: "present_multiple_perspectives"
+      missing_charts: "proceed_with_text_analysis"
+      unclear_recommendations: "suggest_further_research"
+    file_generation_errors:
+      pdf_conversion_failure: "fallback_to_html_or_md"
+      template_rendering_error: "use_basic_formatting"
+      file_save_error: "change_location_or_name"
+      formatting_issues: "apply_standard_corrections"
+    integration_errors:
+      agent_data_missing: "use_partial_data_proceed"
+      data_format_mismatch: "convert_to_standard_format"
+      chart_reference_errors: "update_or_remove_references"
+      metadata_incomplete: "fill_with_available_info"
+  
+  # 报告质量验证
+  validation_rules:
+    content_completeness: true
+    data_consistency: true
+    recommendation_justification: true
+    risk_balance_check: true
+    format_standards: true
+    accessibility_compliance: false
 
 # 性能优化
 performance:
-  enable_template_cache: true
-  cache_duration: 3600
-  incremental_generation: false
-  parallel_processing: false
+  enable_report_cache: true
+  cache_duration: 1800
+  batch_generation: false
+  template_reuse: true
+  incremental_updates: true
+  
+# 输出标准
+output_standards:
+  # 遵循standard_data_formats.yaml中定义的格式
+  follow_standard_format: true
+  include_metadata: true
+  ensure_json_validity: true
+  
+  # 报告质量要求
+  quality_requirements:
+    analytical_depth: "comprehensive"
+    professional_quality: "publication_ready"
+    actionability: "clear_recommendations"
+    data_integrity: "verified_and_sourced"

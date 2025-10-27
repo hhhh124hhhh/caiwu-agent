@@ -1,0 +1,30 @@
+# @package _global_
+# 增强图表生成工具配置
+name: enhanced_chart_generator
+description: 增强版图表生成工具，自动处理财务数据格式转换
+
+enabled: true
+timeout: 120
+
+# 工具配置
+config: ${standard_config.standard_toolkits.enhanced_python_executor}
+workspace_root: ${standard_config.standard_workspace.root}
+save_code: true
+matplotlib_backend: "Agg"
+max_output_length: 2000
+
+# 图表生成配置
+chart_settings:
+  dpi: 300
+  figure_size: [12, 8]
+  style: "seaborn-v0_8"
+  color_palette: "Set2"
+  font_family: "SimHei"  # 支持中文
+
+# 数据转换配置
+data_conversion:
+  enabled: true
+  auto_detect_format: true
+  support_nested_data: true
+  handle_missing_data: true
+  smart_field_mapping: true

@@ -5,6 +5,7 @@ defaults:
   - /tools/financial_analysis@toolkits.financial_analyzer
   - /tools/tabular@toolkits.tabular
   - /tools/datetime@toolkits.datetime
+  - /agents/workers/standard_agent_config@standard_config
   - _self_
 
 agent:
@@ -58,22 +59,22 @@ agent:
 
     注意：专注于分析和解读，不进行基础计算。基于数据提供专业、客观的投资分析。
 
-  tool_use_behavior: "run_llm_again"
+  tool_use_behavior: ${standard_config.standard_behavior.content_generation}
 
 # 专用工具配置
 toolkits:
   financial_analyzer:
-    config:
-      workspace_root: "./stock_analysis_workspace"
-      cache_enabled: true
-      timeout: 30
-      cache_ttl: 1800
+    config: ${standard_config.standard_toolkits.financial_analysis}
+    workspace_root: ${standard_config.standard_workspace.root}
 
   tabular:
+    config: ${standard_config.standard_toolkits.tabular}
+    workspace_root: ${standard_config.standard_workspace.root}
+    
+  datetime:
     config:
-      workspace_root: "./stock_analysis_workspace"
-      cache_enabled: true
-      timeout: 30
+      timezone: "Asia/Shanghai"
+      format: "%Y-%m-%d %H:%M:%S"
 
 # Agent信息配置
 agent_info:
@@ -91,6 +92,20 @@ agent_info:
     - "行业对比分析"
     - "投资建议"
   output_format: "专业的投资分析报告"
+  
+  # 数据格式标准
+  data_format_standards:
+    analysis_results:
+      required_sections: ["ratios", "trends", "health_assessment", "valuation"]
+      optional_sections: ["investment_analysis", "industry_comparison"]
+    investment_analysis:
+      valuation_methods: ["DCF", "PE", "PB", "PS"]
+      risk_assessment: ["market_risk", "industry_risk", "company_risk"]
+      recommendations: ["buy", "hold", "sell"]
+    validation_criteria:
+      pe_ratio: "reasonable_range"
+      risk_levels: ["low", "medium", "high"]
+      recommendation_strength: "strong_moderate_weak"
 
 # 分析配置
 analysis_config:
@@ -99,19 +114,27 @@ analysis_config:
     valuation_methods: ["DCF", "PE", "PB", "PS"]
     risk_factors: ["market_risk", "industry_risk", "company_risk"]
     investment_recommendations: true
-
+    
   # 行业分析设置
   industry_analysis:
     peer_comparison: true
     benchmark_analysis: true
     trend_analysis: true
-
+    
   # 风险评估设置
   risk_assessment:
     financial_risk: true
     operational_risk: true
     market_risk: true
     systematic_risk: true
+    
+  # 深度分析标准
+  advanced_analysis:
+    trend_interpretation: true
+    ratio_quality_analysis: true
+    sustainability_assessment: true
+    competitive_positioning: true
+    future_projections: true
 
 # 专业知识库
 expertise_areas:
@@ -135,6 +158,28 @@ quality_control:
   recommendation_validation: true
   risk_assessment_completeness: true
   objectivity_verification: true
+  
+  # 统一错误处理策略
+  error_strategies:
+    valuation_errors:
+      insufficient_data: "use_available_methods"
+      abnormal_ratios: "flag_and_explain"
+      market_data_missing: "use_industry_averages"
+    risk_assessment_errors:
+      incomplete_factors: "use_available_factors"
+      qualitative_data_missing: "focus_on_quantitative"
+      benchmark_unavailable: "use_historical_comparison"
+    recommendation_errors:
+      conflicting_signals: "prioritize_safety"
+      insufficient_evidence: "recommend_holding"
+      extreme_uncertainty: "suggest_further_research"
+  
+  # 分析质量验证
+  validation_rules:
+    recommendation_consistency: true
+    risk_reward_balance: true
+    analytical_coherence: true
+    support_evidence: true
 
 # 性能优化
 performance:
@@ -142,3 +187,17 @@ performance:
   cache_duration: 1800
   template_based_analysis: false
   context_optimization: true
+  
+# 输出标准
+output_standards:
+  # 遵循standard_data_formats.yaml中定义的格式
+  follow_standard_format: true
+  include_metadata: true
+  ensure_json_validity: true
+  
+  # 分析质量要求
+  quality_requirements:
+    analytical_depth: "comprehensive"
+    objectivity: "data_driven"
+    actionable_insights: "specific_recommendations"
+    risk_clarity: "clear_assessment"

@@ -1,0 +1,295 @@
+# 工作智能体工具行为策略配置
+# 为每个智能体定义详细的工具使用行为和优化策略
+
+## 工具行为策略定义
+
+### 1. 数据获取策略 (DataAgent)
+```yaml
+data_acquisition_strategy:
+  # 工具使用优先级
+  tool_priority:
+    primary: \"akshare_financial_data\"
+    secondary: \"tabular\"
+    fallback: \"web_search\"  # 如果有的话
+    
+  # 数据获取模式
+  acquisition_patterns:
+    comprehensive_data_gathering:
+      description: \"全面数据收集模式\"
+      tools_used: [\"get_financial_reports\", \"get_key_metrics_from_reports\", \"get_historical_trend_from_reports\"]
+      sequence: \"ordered\"
+      validation: \"after_each_step\"
+      
+    targeted_data_extraction:
+      description: \"目标数据提取模式\"
+      tools_used: [\"get_key_metrics_from_reports\"]
+      sequence: \"single_tool\"
+      validation: \"post_extraction\"
+      
+    historical_analysis_mode:
+      description: \"历史数据分析模式\"
+      tools_used: [\"get_historical_trend_from_reports\", \"get_financial_reports\"]
+      sequence: \"historical_first\"
+      validation: \"trend_consistency\"
+      
+  # 数据质量控制
+  data_quality_controls:
+    completeness_check:
+      required_fields: [\"company_name\", \"stock_code\", \"basic_metrics\"]
+      tolerance_level: \"strict\"
+      
+    accuracy_validation:
+      cross_reference: \"industry_benchmarks\"
+      outlier_detection: \"statistical_methods\"
+      range_validation: \"financial_standards\"
+      
+    consistency_verification:
+      temporal_consistency: \"year_over_year\"
+      logical_consistency: \"balance_sheet_equation\"
+      calculation_consistency: \"ratio_formulas\"
+      
+  # 缓存和优化策略
+  optimization_strategies:
+    caching:
+      enabled: true
+      cache_duration: 3600  # 1小时
+      cache_key_pattern: \"{company_code}_{data_type}_{date}\"
+      invalidation_triggers: [\"market_close\", \"earnings_release\"]\"
+      
+    batch_processing:
+      enabled: false  # 由于API限制
+      max_batch_size: 1
+      rate_limiting: \"respect_api_limits\"
+      
+    error_recovery:
+      timeout_handling: \"exponential_backoff\"
+      failure_handling: \"graceful_degradation\"
+      retry_strategy: \"intelligent_retry\"
+```
+
+### 2. 数据分析策略 (DataAnalysisAgent)
+```yaml
+data_analysis_strategy:
+  # 工具使用模式
+  tool_usage_patterns:
+    comprehensive_financial_analysis:
+      description: \"全面财务分析模式\"
+      tool_sequence: [
+        \"calculate_ratios\",
+        \"analyze_trends_tool\", 
+        \"assess_health\"
+      ]
+      execution_mode: \"sequential\"
+      error_handling: \"continue_on_error\"
+      
+    ratio_focused_analysis:
+      description: \"比率重点分析模式\"
+      tools_used: [\"calculate_ratios\"]
+      depth_level: \"detailed\"
+      validation: \"cross_ratio_consistency\"
+      
+    trend_specific_analysis:
+      description: \"趋势特定分析模式\"
+      tools_used: [\"analyze_trends_tool\"]
+      trend_types: [\"revenue\", \"profit\", \"growth\", \"efficiency\"]
+      projection_methods: [\"linear\", \"cagr\", \"moving_average\"]\"
+      
+  # 分析深度控制
+  analysis_depth_control:
+    levels:
+      basic_analysis:
+        tools: [\"calculate_ratios\"]
+        output_detail: \"summary_only\"
+        
+      standard_analysis:
+        tools: [\"calculate_ratios\", \"analyze_trends_tool\"]
+        output_detail: \"detailed_findings\"
+        
+      comprehensive_analysis:
+        tools: [\"calculate_ratios\", \"analyze_trends_tool\", \"assess_health\"]
+        output_detail: \"full_report_with_insights\"
+        
+    adaptive_selection:
+      data_volume_threshold: \"high\"
+      time_constraints: \"consider_deadlines\"
+      user_requirements: \"match_expectations\"
+      
+  # 计算精度控制
+  calculation_precision:
+    ratio_calculations:
+      decimal_places: 2
+      rounding_method: \"standard\"
+      error_margin: 0.01
+      
+    trend_analysis:
+      growth_rate_precision: 1
+      cagr_calculation_method: \"compound\"
+      volatility_measurement: \"standard_deviation\"
+      
+    health_assessment:
+      scoring_precision: \"integer\"
+      weight_distribution: \"industry_adjusted\"
+      confidence_level: \"moderate\"
+      
+  # 结果验证策略
+  validation_strategies:
+    internal_consistency:
+      ratio_interrelationships: \"validate\"
+      trend_logicality: \"check_reasonableness\"
+      score_calculation: \"verify_mathematics\"
+      
+    external_benchmarks:
+      industry_comparison: \"automated_if_available\"
+      historical_performance: \"compare_to_past\"
+      peer_analysis: \"when_data_available\"
+```
+
+### 3. 专业分析策略 (FinancialAnalysisAgent)
+```yaml
+professional_analysis_strategy:
+  # 分析维度控制
+  analysis_dimensions:
+    investment_analysis:
+      valuation_approaches: [\"relative\", \"absolute\", \"asset_based\"]
+      risk_assessment_levels: [\"company\", \"industry\", \"market\"]
+      recommendation_framework: \"structured_decision_tree\"
+      
+    competitive_positioning:
+      peer_selection_criteria: \"industry_and_size_match\"
+      comparison_metrics: \"standardized_financial_ratios\"
+      market_position_indicators: [\"market_share\", \"profitability_ranking\"]\"
+      
+    future_projections:
+      projection_methods: [\"trend_extrapolation\", \"scenario_analysis\", \"expert_judgment\"]
+      time_horizons: [\"1_year\", \"3_years\", \"5_years\"]
+      confidence_intervals: \"probabilistic_assessment\"
+      
+  # 深度分析控制
+  depth_control:
+    insight_generation:
+      minimum_insights: 3
+      insight_categories: [\"strengths\", \"weaknesses\", \"opportunities\", \"threats\"]
+      evidence_requirement: \"data_supported\"
+      
+    risk_analysis:
+      risk_identification: \"comprehensive\"
+      impact_assessment: \"quantitative_when_possible\"
+      mitigation_suggestions: \"actionable_recommendations\"
+      
+    investment_thesis:
+      key_drivers: \"identify_and_quantify\"
+      competitive_advantages: \"sustainable_advantages_focus\"
+      financial_sustainability: \"long_term_viability\"
+      
+  # 专业判断标准
+  professional_judgment:
+    objectivity_measures:
+      bias_detection: \"self_check_biases\"
+      balanced_perspective: \"present_both_sides\"
+      evidence_weighting: \"prioritize_hard_data\"
+      
+    communication_standards:
+      clarity_level: \"executive_friendly\"
+        quantitative_precision: \"appropriate_for_audience\"
+      qualification_level: \"confidence_intervals_provided\"
+```
+
+### 4. 图表生成策略 (ChartGeneratorAgent)
+```yaml
+chart_generation_strategy:
+  # 智能图表类型选择
+  intelligent_chart_selection:
+    data_pattern_recognition:
+      time_series_data: [\"line\", \"area\", \"trend\"]
+      categorical_comparison: [\"bar\", \"column\", \"pie\"]
+      correlation_analysis: [\"scatter\", \"heatmap\"]
+      multi_dimensional: [\"radar\", \"bubble\", \"parallel_coordinates\"]
+      
+    user_intent_detection:
+      trend_analysis_intent: \"prefer_line_or_area\"
+      comparison_intent: \"prefer_bar_or_column\"
+      composition_intent: \"prefer_pie_or_stacked_bar\"
+      relationship_intent: \"prefer_scatter_or_heatmap\"
+      
+    aesthetic_optimization:
+      color_schemes: \"professional_finance_palettes\"
+      layout_density: \"balanced_information_density\"
+      font_selection: \"readability_priority\"
+      
+  # 数据转换策略
+  data_transformation:
+    format_standardization:
+      input_format_detection: \"automatic\"
+      conversion_rules: \"comprehensive_mapping\"
+      validation_pre_rendering: \"strict\"
+      
+    missing_data_handling:
+      interpolation_methods: [\"linear\", \"forward_fill\", \"backward_fill\"]
+      zero_value_treatment: \"distinguish_from_missing\"
+      outlier_handling: \"flag_and_visualize_differently\"
+      
+    scaling_and_normalization:
+      axis_scaling: \"data_range_optimized\"
+      multi_series_normalization: \"comparable_scales\"
+      percentage_conversion: \"when_appropriate\"
+      
+  # 质量保证策略
+  quality_assurance:
+    visual_quality_checks:
+      readability_assessment: \"automated\"
+      color_blindness_compliance: \"basic_check\"
+      label_clarity: \"automated_validation\"
+      
+    data_accuracy_validation:
+      data_point_verification: \"cross_check_with_input\"
+      scale_accuracy: \"mathematical_verification\"
+      legend_correctness: \"automated_mapping\"
+      
+    file_generation_quality:
+      resolution_standards: \"high_definition\"
+      file_size_optimization: \"balance_quality_and_size\"
+      format_compatibility: \"wide_format_support\"
+```
+
+### 5. 报告生成策略 (ReportAgent)
+```yaml
+report_generation_strategy:
+  # 内容整合策略
+  content_integration:
+    multi_source_synthesis:
+      analysis_results_priority: \"financial_analysis_agent_first\"
+      chart_integration_method: \"contextual_insertion\"
+      data_harmonization: \"consistent_formatting\"
+      
+    narrative_construction:
+      story_structure: \"executive_summary_detailed_body_recommendations\"
+      insight_prioritization: \"impact_significance_order\"
+      transition_smoothness: \"logical_flow_maintenance\"
+      
+    quality_enhancement:
+      consistency_checks: \"cross_reference_validation\"
+      completeness_verification: \"all_sections_covered\"
+      clarity_optimization: \"readability_improvement\"
+      
+  # 模板使用策略
+  template_utilization:
+    template_selection:
+      report_type_matching: \"automated_selection\"
+      complexity_adaptation: \"content_depth_based\"
+      audience_appropriateness: \"user_profile_consideration\"
+      
+    customization_level:
+      standard_sections: \"maintain_structure\"
+      custom_insights: \"flexible_insertion\"
+      formatting_preferences: \"user_specific_adaptation\"
+      
+    dynamic_content:
+      data_driven_sections: \"automatically_generated\"
+      analysis_insights: \"intelligently_integrated\"
+      recommendations: \"personalized_based_on_analysis\"
+      
+  # 格式输出策略
+  format_output_strategy:
+    multi_format_generation:
+      primary_format: \"markdown\"
+      secondary_formats: [\"html\", \"pdf\"]\n      format_optimization: \"format_specific_best_practices\"\n      \n    quality_assurance:\n      formatting_validation: \"automated_checks\"\n      link_verification: \"cross_reference_validation\"\n      rendering_consistency: \"cross_format_verification\"\n      \n    delivery_optimization:\n      file_organization: \"logical_structure\"\n      naming_conventions: \"descriptive_and_searchable\"\n      accessibility_compliance: \"basic_standards\"\n```\n\n## 工具行为优化原则\n\n### 1. 效率优化\n```yaml\nefficiency_optimization:\n  tool_selection:\n    preference: \"specialized_over_general\"\n    redundancy_elimination: true\n    parallel_execution: false  # 由于依赖关系\n    \n  execution_optimization:\n    caching_frequently_used: true\n    batch_similar_operations: true\n    intelligent_retry: true\n    \n  resource_management:\n    memory_usage: \"optimized\"\n    processing_time: \"minimized\"\n    network_calls: \"reduced\"\n```\n\n### 2. 质量优化\n```yaml\nquality_optimization:\n  result_validation:\n    multi_level_checks: true\n    consistency_validation: true\n    accuracy_verification: true\n    \n  error_prevention:\n    pre_execution_validation: true\n    input_sanitization: true\n    fallback_preparation: true\n    \n  continuous_improvement:\n    performance_monitoring: true\n    error_pattern_analysis: true\n    strategy_adaptation: true\n```\n\n### 3. 用户体验优化\n```yaml\nuser_experience_optimization:\n  transparency:\n    process_visibility: \"appropriate_level\"\n    progress_indication: true\n    error_explanation: \"clear_and_constructive\"\n    \n  responsiveness:\n    feedback_provision: \"timely\"\n    error_recovery: \"graceful\"\n    alternative_suggestions: \"proactive\"\n    \n  customization:\n    preference_learning: true\n    adaptation_capability: true\n    personalization_level: \"reasonable\"\n```\n\n这些工具行为策略确保每个智能体都能以最优的方式使用其工具，提供高质量、一致性和可靠性的结果。

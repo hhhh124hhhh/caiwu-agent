@@ -1,6 +1,7 @@
 # @package _global_
 # 最终优化版股票分析智能体 - 使用专用AKShare工具
 defaults:
+  - /agents/workers/standard_agent_config@standard_config
   - /model/base@planner_model
   - /model/base@reporter_model
   - /agents/workers/data_agent@workers.DataAgent
@@ -191,40 +192,26 @@ workers:
 
         注意：专注于报告整合和呈现，必须使用save_analysis_report和save_pdf_report工具保存报告，不要使用Python代码保存文件。
 
-# 工具配置 - 统一使用stock_analysis_workspace工作目录
+# 工具配置特殊覆盖 - 只保留需要在stock_analysis_final中特殊设置的配置
 toolkits:
-  akshare_data:
-    config:
-      workspace_root: "./stock_analysis_workspace"
-      cache_enabled: true
-      timeout: 45
-
-  financial_analyzer:
-    config:
-      workspace_root: "./stock_analysis_workspace"
-      cache_enabled: true
-      timeout: 30
-
+  # 增强的Python执行器配置 - 图表生成需要特殊设置
   analysis_executor:
-    config:
-      workspace_root: "./stock_analysis_workspace"
-      save_code: true
-      timeout: 60
-      matplotlib_backend: "Agg"
-      max_output_length: 1500
-
-  tabular:
-    config:
-      workspace_root: "./stock_analysis_workspace"
-      cache_enabled: true
-      timeout: 30
-
-  report_saver:
-    config:
-      workspace_root: "./stock_analysis_workspace"
-      cache_enabled: true
-      timeout: 60
-
+    config: ${standard_config.standard_toolkits.enhanced_python_executor}
+    workspace_root: ${standard_config.standard_workspace.root}
+    save_code: true
+    timeout: 60
+    matplotlib_backend: "Agg"
+    max_output_length: 1500
+    
+    # 图表生成相关配置
+    chart_settings:
+      dpi: 300
+      figure_size: [12, 8]
+      style: "seaborn-v0_8"
+      color_palette: "Set2"
+      font_family: "SimHei"  # 支持中文
+  
+  # 时间工具配置 - 保持原有的时间设置
   datetime:
     config:
       timezone: "Asia/Shanghai"
@@ -242,47 +229,22 @@ toolkits:
         max_retry_attempts: 3
         fallback_to_previous_period: true
 
-# Agent工作配置
-workers_info:
-  - name: DataAgent
-    desc: 财务数据获取专家
-    strengths: 专用AKShare工具、稳定数据获取、指标提取、表格数据分析
-    weaknesses: 依赖网络连接
-    tools:
-      - akshare_financial_data  # 专用财务数据工具
-      - tabular  # 表格数据处理工具
+# 统一工作空间配置
+workspace_config:
+  root: "./stock_analysis_workspace"
+  auto_create: true
+  cleanup_old_files: true
+  file_retention_days: 7
 
-  - name: DataAnalysisAgent
-    desc: 数据分析专家
-    strengths: 标准化分析、指标计算、趋势分析、健康评估、表格数据分析
-    weaknesses: 依赖数据质量
-    tools:
-      - financial_analysis
-      - tabular
-
-  - name: FinancialAnalysisAgent
-    desc: 财务分析专家
-    strengths: 深度分析、投资评估、风险识别、表格数据解读
-    weaknesses: 依赖数据质量
-    tools:
-      - financial_analysis
-      - tabular
-      - datetime
-
-  - name: ChartGeneratorAgent
-    desc: 图表生成专家
-    strengths: 数据可视化、趋势图、对比图、多维度图表
-    weaknesses: 依赖数据准确性
-    tools:
-      - tabular
-      - enhanced_python_executor
-
-  - name: ReportAgent
-    desc: 报告生成专家
-    strengths: HTML报告、结果整合、专业术语
-    weaknesses: 依赖前期分析质量
-    tools:
-      - report_saver
+# Worker智能体配置说明
+# 各智能体的详细配置现在通过引用标准配置来管理：
+# - DataAgent: 财务数据获取专家（data_agent.yaml）
+# - DataAnalysisAgent: 数据分析专家（data_analysis_agent.yaml）
+# - FinancialAnalysisAgent: 财务分析专家（financial_analysis_agent.yaml）
+# - ChartGeneratorAgent: 图表生成专家（chart_generator_agent.yaml）
+# - ReportAgent: 报告生成专家（report_agent.yaml）
+# 
+# 每个智能体的配置、工具和能力都在对应的worker配置文件中定义
 
 # 核心优化配置
 optimization_settings:
@@ -318,10 +280,10 @@ web_interface:
   title: "财务分析智能体"
   description: "基于Youtu-Agent框架构建的智能财务分析系统，专为A股市场设计"
 
-# 分析配置 - 统一使用stock_analysis_workspace工作目录
+# 分析配置 - 使用统一工作空间配置
 analysis_config:
-  workdir: "./stock_analysis_workspace"
-  output_formats: ["html"]
+  workdir: ${workspace_config.root}
+  output_formats: ["html", "pdf", "md"]  # 支持多种输出格式
   chart_formats: ["png"]
 
   # 启用数据缓存
